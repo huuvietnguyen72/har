@@ -1,0 +1,10 @@
+paho-mqtt>=2.0
+numpy
+pandas
+pyarrow
+scikit-learn
+joblib
+httpx
+python-dotenv
+# Cài trên Pi khi dùng model CNN:
+# tflite-runtime
