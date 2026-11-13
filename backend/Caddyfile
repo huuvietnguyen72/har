@@ -1,0 +1,28 @@
+# Caddy tự lấy và gia hạn chứng chỉ Let's Encrypt cho {$DOMAIN}.
+# Chạy thử trên laptop: DOMAIN=localhost (Caddy dùng chứng chỉ tự ký).
+{$DOMAIN} {
+	encode zstd gzip
+
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+	handle /ws {
+		reverse_proxy api:8000
+	}
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+	log {
+		output stdout
+		format console
+	}
+}
