@@ -39,3 +39,7 @@ edge/data/
 # --- Hệ điều hành ---
 .DS_Store
 Thumbs.db
+
+# Model đã huấn luyện (chép từ ml/models/)
+edge/models/*/
+*.tflite
