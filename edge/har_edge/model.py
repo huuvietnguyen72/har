@@ -42,6 +42,8 @@ class RFModel(BaseModel):
         import joblib
 
         self.clf = joblib.load(path)
+        if hasattr(self.clf, "n_jobs"):
+            self.clf.n_jobs = 1  # dự đoán 1 cửa sổ: song song chỉ tốn thêm chi phí khởi tạo luồng
         self.name = meta["name"]
         self.labels = meta["labels"]
         self.use_baro = bool(meta.get("use_baro"))
@@ -60,10 +62,15 @@ class RFModel(BaseModel):
 
 class TFLiteModel(BaseModel):
     def __init__(self, path: Path, meta: dict):
-        try:
-            from tflite_runtime.interpreter import Interpreter
-        except ImportError:  # trên laptop dùng TensorFlow đầy đủ
-            from tensorflow.lite import Interpreter  # type: ignore
+        try:  # thứ tự: LiteRT (mới) -> tflite-runtime (Pi) -> TensorFlow đầy đủ (laptop)
+            from ai_edge_litert.interpreter import Interpreter
+        except ImportError:
+            try:
+                from tflite_runtime.interpreter import Interpreter
+            except ImportError:
+                import tensorflow as tf
+
+                Interpreter = tf.lite.Interpreter
         self.interp = Interpreter(model_path=str(path), num_threads=2)
         self.interp.allocate_tensors()
         self.inp = self.interp.get_input_details()[0]
