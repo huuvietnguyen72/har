@@ -101,7 +101,7 @@ class Notifier:
                 raise  # giữ thứ tự; vòng ngoài chờ lâu dần rồi thử lại
             self._mark(r["id"], now, 1)
             sent += 1
-            log.info("Đã gửi Telegram cho %s", r["id"])
+            log.info("Đã báo %s (%s)", r["id"], "Telegram" if self.enabled else "màn hình")
         return sent
 
     def _mark(self, aid: str, now: int, state: int) -> None:
