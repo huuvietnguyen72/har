@@ -1,0 +1,16 @@
+[Unit]
+Description=HAR uplink – đẩy outbox lên VPS
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/har/edge
+ExecStart=/home/pi/har/edge/.venv/bin/python -m har_edge.uplink
+Restart=always
+RestartSec=3
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

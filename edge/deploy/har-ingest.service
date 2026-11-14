@@ -1,0 +1,16 @@
+[Unit]
+Description=HAR ingest – nhận gói thô từ ESP32, ghi file
+After=mosquitto.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/har/edge
+ExecStart=/home/pi/har/edge/.venv/bin/python -m har_edge.ingest
+Restart=always
+RestartSec=3
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

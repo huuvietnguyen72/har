@@ -1,0 +1,16 @@
+[Unit]
+Description=HAR infer – suy luận hoạt động và hợp nhất cảnh báo té
+After=mosquitto.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/har/edge
+ExecStart=/home/pi/har/edge/.venv/bin/python -m har_edge.infer
+Restart=always
+RestartSec=3
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
