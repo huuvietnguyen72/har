@@ -19,7 +19,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     saveSession(null);
     setSession(null);
   }, []);
-  useEffect(() => setUnauthorizedHandler(logout), [logout]);
+  useEffect(() => {
+    setUnauthorizedHandler(logout); // không return: React sẽ coi giá trị trả về là hàm dọn dẹp
+  }, [logout]);
   useEffect(() => {
     if (!session) return;
     const ms = session.expiresAt - Date.now();

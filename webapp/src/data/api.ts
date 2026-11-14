@@ -26,7 +26,9 @@ export function saveSession(s: Session | null) {
 }
 
 let onUnauthorized: () => void = () => {};
-export const setUnauthorizedHandler = (fn: () => void) => (onUnauthorized = fn);
+export function setUnauthorizedHandler(fn: () => void): void {
+  onUnauthorized = fn;
+}
 
 async function req<T>(path: string, init: RequestInit = {}, auth = true): Promise<T> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
