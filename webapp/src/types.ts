@@ -1,6 +1,6 @@
 // Kiểu dữ liệu khớp với backend (docs/api.md, docs/data-schema.md)
 
-export const LABELS = ["stand", "sit", "lie", "walk", "run", "stairs_up", "stairs_down", "fall"] as const;
+export const LABELS = ["stand", "sit", "lie", "walk", "stairs_up", "stairs_down", "fall"] as const;
 export type Label = (typeof LABELS)[number];
 
 export interface Status {

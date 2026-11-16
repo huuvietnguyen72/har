@@ -38,8 +38,8 @@ function buildSegments(): Segment[] {
       label = "lie";
       dur = (20 + r() * 60) * MIN;
     } else {
-      label = pick<Label>(r, [["sit", 5], ["stand", 3], ["walk", 3], ["lie", 1], ["stairs_up", 0.4], ["stairs_down", 0.4], ["run", 0.15]]);
-      dur = (label.startsWith("stairs") ? 0.5 + r() : label === "run" ? 3 + r() * 8 : 2 + r() * 25) * MIN;
+      label = pick<Label>(r, [["sit", 5], ["stand", 3], ["walk", 3], ["lie", 1], ["stairs_up", 0.4], ["stairs_down", 0.4]]);
+      dur = (label.startsWith("stairs") ? 0.5 + r() : 2 + r() * 25) * MIN;
     }
     const end = Math.min(t + dur, now);
     segs.push({ dev: DEV, start: t, end, label, conf_avg: 0.75 + r() * 0.22 });

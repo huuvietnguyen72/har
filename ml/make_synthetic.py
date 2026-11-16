@@ -16,7 +16,7 @@ import har_ml  # noqa: F401  (UTF-8 console)
 from har_edge import LABELS
 from har_edge.synth import generate
 
-PLAN = {"stand": (3, 60), "sit": (3, 60), "lie": (3, 60), "walk": (3, 60), "run": (2, 60),
+PLAN = {"stand": (3, 60), "sit": (3, 60), "lie": (3, 60), "walk": (3, 60),
         "stairs_up": (4, 30), "stairs_down": (4, 30), "fall": (8, 10)}  # (số phiên, giây mỗi phiên)
 
 

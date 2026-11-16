@@ -20,7 +20,7 @@ from har_edge.mqtt import make_client, publish_json
 from har_edge.synth import generate
 from har_edge.units import to_raw_acc, to_raw_gyro
 
-DEFAULT = "stand:15,walk:30,sit:20,stairs_up:15,walk:10,stairs_down:15,run:15,lie:20,stand:5,fall:8,lie:10"
+DEFAULT = "stand:15,walk:30,sit:20,stairs_up:15,walk:10,stairs_down:15,lie:20,stand:5,fall:8,lie:10"
 
 
 def main() -> None:

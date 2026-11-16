@@ -1,6 +1,6 @@
 # HAR – Bộ đeo hông nhận dạng hoạt động và phát hiện té ngã
 
-Đồ án IoT: bộ đeo hông nhận dạng 8 hoạt động và phát hiện té ngã cho người cao tuổi (prototype giám sát trong nhà).
+Đồ án IoT: bộ đeo hông nhận dạng 7 hoạt động và phát hiện té ngã cho người cao tuổi (prototype giám sát trong nhà).
 Model chạy trên Raspberry Pi 4 (edge); kết quả, số liệu đánh giá và dashboard nằm trên VPS (cloud), không xem bằng localhost.
 
 ## Kiến trúc (IoT Level 5)

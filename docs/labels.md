@@ -6,7 +6,6 @@
 | `sit` | Ngồi |
 | `lie` | Nằm |
 | `walk` | Đi |
-| `run` | Chạy |
 | `stairs_up` | Lên cầu thang |
 | `stairs_down` | Xuống cầu thang |
 | `fall` | Té |

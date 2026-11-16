@@ -62,8 +62,6 @@ def generate(activity: str, duration_s: float, rng: np.random.Generator | None =
         gyr = rng.normal(0, 0.8, (n, 3))
     elif activity == "walk":
         acc, gyr = _gait(n, rng.uniform(1.7, 2.0) * s, rng.uniform(0.22, 0.32), 25, rng)
-    elif activity == "run":
-        acc, gyr = _gait(n, rng.uniform(2.6, 3.0) * s, rng.uniform(0.8, 1.1), 70, rng)
     elif activity == "stairs_up":
         acc, gyr = _gait(n, rng.uniform(1.4, 1.7) * s, rng.uniform(0.25, 0.35), 30, rng)
         climb = rng.uniform(0.15, 0.25)

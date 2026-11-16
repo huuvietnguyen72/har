@@ -4,7 +4,7 @@
     python train_cnn.py --data data/raw --experiment B2 --baro --export
 
 Kiến trúc: 3 khối Conv1D (32, 64, 64 bộ lọc, kernel 5, BatchNorm, ReLU, MaxPool)
-→ GlobalAveragePooling → Dense 64 + Dropout 0,3 → Softmax 8 lớp.
+→ GlobalAveragePooling → Dense 64 + Dropout 0,3 → Softmax 7 lớp.
 Chuẩn hóa theo tập huấn luyện, class weight, early stopping. Đánh giá GroupKFold theo người.
 """
 import argparse

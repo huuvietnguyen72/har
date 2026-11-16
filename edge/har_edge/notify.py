@@ -23,7 +23,7 @@ log = logging.getLogger("har-notify")
 
 MERGE_MS = 60_000
 LATE_MS = 60_000
-VI = {"stand": "Đứng", "sit": "Ngồi", "lie": "Nằm", "walk": "Đi", "run": "Chạy", "stairs_up": "Lên cầu thang",
+VI = {"stand": "Đứng", "sit": "Ngồi", "lie": "Nằm", "walk": "Đi", "stairs_up": "Lên cầu thang",
       "stairs_down": "Xuống cầu thang", "fall": "Té"}
 TITLE = {"fall": "🚨 PHÁT HIỆN TÉ NGÃ", "sos": "🆘 GỌI TRỢ GIÚP (SOS)", "low_battery": "🔋 Pin yếu",
          "offline": "📴 Thiết bị mất kết nối"}

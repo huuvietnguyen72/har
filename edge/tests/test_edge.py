@@ -93,7 +93,7 @@ def test_fall_threshold_detects_fall_not_walk():
     acc, gyr, _ = generate("fall", 6, np.random.default_rng(1))
     hits = detect_all(t(len(acc)), acc, gyr)
     assert len(hits) == 1 and hits[0]["peak_g"] > 2.5
-    for act in ("walk", "run", "sit", "stairs_down"):
+    for act in ("walk", "sit", "stairs_down"):
         acc, gyr, _ = generate(act, 20, np.random.default_rng(2))
         assert detect_all(t(len(acc)), acc, gyr) == [], act
 

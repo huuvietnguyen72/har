@@ -4,7 +4,7 @@ Cập nhật 17/11/2026, dựa trên hệ thống đang chạy thật. Phần c�
 
 ## Mục tiêu
 
-- Bộ đeo hông nhận dạng 8 hoạt động ([`labels.md`](labels.md)) và phát hiện té ngã cho người cao tuổi, prototype giám sát trong nhà.
+- Bộ đeo hông nhận dạng 7 hoạt động ([`labels.md`](labels.md)) và phát hiện té ngã cho người cao tuổi, prototype giám sát trong nhà.
 - IoT Level 5, 3 tầng: bộ đeo ESP32 → Raspberry Pi 4 (edge, chạy model) → VPS (lưu trữ, dashboard). Mọi số liệu đánh giá xem được trên cloud.
 - Cảnh báo té qua Telegram và web app.
 
@@ -61,7 +61,6 @@ Cập nhật 17/11/2026, dựa trên hệ thống đang chạy thật. Phần c�
 | Ngồi | Ghế cứng, ghế mềm, ngồi bệt | 3 phút |
 | Nằm | Ngửa, nghiêng trái, nghiêng phải | 3 phút |
 | Đi | Bình thường, chậm | 3 phút |
-| Chạy | Chạy bộ nhẹ | 2 phút |
 | Lên cầu thang | Cùng một cầu thang ≥ 2 tầng | 10 lượt |
 | Xuống cầu thang | Như trên | 10 lượt |
 | Té | Trước, sau, nghiêng trái, nghiêng phải lên nệm dày | 4 hướng × 5 lần |
