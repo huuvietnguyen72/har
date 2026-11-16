@@ -36,7 +36,7 @@ ESP32 + MPU6050 + BMP280 + AHT20 + OLED ──MQTT/Wi-Fi──► Raspberry Pi 4
 
 ## Thứ tự triển khai thật
 
-1. Lắp mạch, chỉnh MT3608 về 5,0 V **trước** khi nối ESP32 ([`hardware/`](hardware/)).
+1. Mạch bộ đeo: [`hardware/Datasheet_HAR01.html`](hardware/Datasheet_HAR01.html), bảng chân [`docs/pinout.md`](docs/pinout.md). Kế hoạch và việc tiếp theo: [`docs/ke-hoach.md`](docs/ke-hoach.md).
 2. Nạp firmware ([`firmware/README.md`](firmware/README.md)).
 3. Cài Pi: `sudo HOTSPOT_PASS=... bash edge/deploy/setup-pi.sh` ([`edge/README.md`](edge/README.md)).
 4. Dựng VPS: [`backend/DEPLOY.md`](backend/DEPLOY.md).

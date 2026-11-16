@@ -54,9 +54,9 @@ struct SharedState {
   uint64_t uprightT = 0;         // thời điểm đo (epoch ms), 0 nếu chưa đo từ lúc khởi động
   char uprightReq[24] = "";      // id của lệnh calibrate_upright gần nhất
   char uprightResult[12] = "none"; // none | pending | ok | moving | bad_gravity
-  // Chẩn đoán nút GPIO32 (gửi trong status để xem từ Pi khi không cắm USB)
+  // Chẩn đoán nút PIN_BUTTON (gửi trong status để xem từ Pi khi không cắm USB)
   uint32_t btnPresses = 0;  // số lần nhấn đã qua chống dội từ lúc khởi động
-  bool btnLevel = true;     // mức GPIO32 hiện tại: true = HIGH (nhả), false = LOW (đang nhấn)
+  bool btnLevel = true;     // mức chân nút hiện tại: true = HIGH (nhả), false = LOW (đang nhấn)
   // cập nhật bởi netTask
   bool wifiUp = false, mqttUp = false, timeSynced = false;
   int rssi = 0;

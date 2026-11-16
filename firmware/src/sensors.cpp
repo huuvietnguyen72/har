@@ -161,7 +161,7 @@ bool ahtRead(float& temp, float& rh) {
   return true;
 }
 
-// NAN = không đo được pin: chưa lắp cầu chia áp vào GPIO34 (chân đọc ~0 V) hoặc đang chạy USB
+// NAN = không đo được pin: mạch hiện tại không nối áp pin vào GPIO34 (chân thả nổi, đọc ~0,3 V)
 // không có pin. Dưới 2,5 V thì Li-ion đã hỏng/ngắt bảo vệ, nên coi như không có pin.
 float readBattery() {
   uint32_t mv = 0;

@@ -1,5 +1,5 @@
 // Firmware bộ đeo HAR (ESP32 DevKit, Arduino framework).
-// Thiết kế: kế hoạch giai đoạn 2; chân: include/pins.h; payload MQTT: docs/mqtt.md.
+// Phần cứng: hardware/Datasheet_HAR01.html; chân: include/pins.h; payload MQTT: docs/mqtt.md.
 #include "app.h"
 #include "pins.h"
 

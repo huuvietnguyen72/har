@@ -2,7 +2,7 @@
 
 Mỗi phiên: <root>/<id>/imu.csv, env.csv, meta.json (subject, activity).
 
-Làm sạch theo kế hoạch:
+Làm sạch:
 1. Cắt bỏ 2 s đầu và 2 s cuối mỗi phiên.
 2. Phiên té: tìm đỉnh SVM; đoạn [đỉnh - 1,5 s, đỉnh + 1 s] là "fall"; phần nằm yên sau đó là "lie";
    phần trước khi té bị bỏ.

@@ -73,7 +73,7 @@ DATABASE_URL=sqlite:///tmp.db alembic upgrade head
 DATABASE_URL=sqlite:///tmp.db alembic revision --autogenerate -m "mo ta thay doi"
 ```
 
-## Kiểm tra tiêu chí giai đoạn 6
+## Kiểm tra sau khi dựng
 
 - [ ] Mở `https://<tên miền>` bằng 4G điện thoại
 - [ ] `curl -i https://<tên miền>/api/status` → `401`

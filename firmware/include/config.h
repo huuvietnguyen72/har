@@ -36,20 +36,20 @@
 
 // --- Cảnh báo, nút ---
 #define CANCEL_WINDOW_MS 10000  // thời gian người đeo được nhấn hủy
-#define CONFIRMED_BUZZ_MS 30000 // còi kêu liên tục sau khi xác nhận
+#define CONFIRMED_BUZZ_MS 30000 // loa kêu liên tục sau khi xác nhận
 #define LONG_PRESS_MS 3000      // giữ 3 s = SOS
 #define DOUBLE_PRESS_MS 400
 
 // --- Pin ---
 #define LOW_BATTERY_V 3.4f
-#define BATTERY_DIVIDER 2.0f    // cầu chia 100k/100k
-#define BATTERY_CAL 1.000f      // hệ số hiệu chỉnh theo đồng hồ đo (giai đoạn 1)
-#define BATTERY_PRESENT_V 2.5f  // đo dưới mức này = không có cầu chia áp/pin -> battery_v = null, OLED hiện giờ
+#define BATTERY_DIVIDER 2.0f    // hệ số chia áp vào PIN_BATTERY (mạch hiện tại không đo áp pin)
+#define BATTERY_CAL 1.000f      // hệ số hiệu chỉnh theo đồng hồ đo
+#define BATTERY_PRESENT_V 2.5f  // đo dưới mức này = không đo được pin -> battery_v = null, OLED hiện giờ
 
 // --- Ngoại vi tùy chọn ---
-#define BUZZER_PASSIVE 0        // 1 nếu dùng còi thụ động (cần phát tần số)
+#define BUZZER_PASSIVE 0        // 0: loa hiện tại kêu bằng mức logic; 1 nếu loa cần phát tần số
 #define BUZZER_FREQ_HZ 2700
-#define USE_VIBRATION 0         // 1 nếu có motor rung ở GPIO33
+#define USE_VIBRATION 0         // mạch không có motor rung
 #define USE_OLED 1
 #define DISPLAY_TIMEOUT_MS 0     // 0 = luôn sáng; >0 = tắt sau N ms không nhấn nút (tiết kiệm pin)
 #define DISPLAY_DIM_MS 60000     // giảm sáng sau N ms không nhấn nút (0 = không giảm)

@@ -15,26 +15,26 @@ Ghi lại các vấn đề gặp khi nạp firmware và chạy cùng Pi 4 lần 
 
 | # | Vấn đề | Mức độ | Trạng thái |
 | --- | --- | --- | --- |
-| 1 | Không dùng được hotspot trên Pi, mạng nhà khác thiết kế | Cao | Đã xử lý bằng cấu hình tay trên Pi |
+| 1 | Pi dùng Wi-Fi nhà, không phát hotspot được | Cao | Đã xử lý bằng cấu hình tay trên Pi |
 | 2 | OLED cắm chung bus cảm biến, màn đứng hình cũ | Cao | Đã sửa (`OLED_I2C_BUS`) |
 | 3 | NTP kẹt ở router khi mDNS lỡ lần đầu | Cao | Đã sửa |
-| 4 | Không có cầu chia áp pin: Pi báo pin yếu sai | Trung bình | Đã sửa (`battery_v: null`) |
+| 4 | Mạch không đo áp pin: Pi báo pin yếu sai | Trung bình | Đã sửa (`battery_v: null`) |
 | 5 | Con quay lệch +13,8 °/s khi nằm yên | Trung bình | Đã sửa (`lib/gyro_cal`) |
 | 6 | Màn OLED khó đọc, tắt sau 15 s | Thấp | Đã làm lại bố cục |
 | 7 | Lỡ mẫu MPU6050 không được đếm | Thấp | Đã thêm bộ đếm `lỡ=` |
 | 8 | ESP32 mất ~30 s mới biết kết nối TCP đã chết | Thấp | Chưa sửa, đo được |
 | 9 | mDNS thỉnh thoảng không trả lời | Thấp | Đã có đường vòng, nên đặt IP cố định |
 | 10 | AHT20 đọc nóng (43 °C), gia tốc tĩnh 0,94 g | Thấp | Chưa sửa, do lắp ráp và hiệu chỉnh |
-| 11 | Nút cắm GPIO19 thay vì GPIO32: không hủy được cảnh báo té | Cao | Đã sửa (`PIN_BUTTON 19`) |
+| 11 | Nút ở GPIO19 nhưng firmware đọc GPIO32: không hủy được cảnh báo té | Cao | Đã sửa (`PIN_BUTTON 19`) |
 | 12 | Pi khởi động lại sai giờ 12,3 s, ESP32 giữ giờ sai tới 1 giờ | Trung bình | Đã sửa (`NTP_SYNC_MS 60000`) |
 | 13 | MPU6050 hàn xoay 90°: trục X chỉ xuống, không phải Y | Cao | Đã sửa: code theo phần cứng (`UPRIGHT = [-1, 0, 0]`) |
 | 14 | Mỗi người đeo cài hộp khác nhau (nghiêng, ngược) | Cao | Đã thêm hiệu chỉnh hướng đứng thẳng (`calibrate_upright`) |
 
-## 1. Mạng: không dùng được hotspot trên Pi
+## 1. Mạng: ESP32 và Pi cùng vào Wi-Fi nhà
 
 **Hiện tượng.** `secrets.h` còn nguyên bản mẫu (`har-hotspot`, `hargw.local`). Pi đang vào mạng bằng Wi-Fi 5 GHz qua `wlan0` và không có dây LAN. Chạy `edge/deploy/setup-pi.sh` sẽ biến `wlan0` thành hotspot: Pi mất Internet, mất SSH và đổi tên thành `hargw`. ESP32 chỉ bắt được 2,4 GHz.
 
-**Xử lý.** Dùng phương án dự phòng số 3 trong kế hoạch: ESP32 và Pi cùng vào mạng nhà. Router phát 2,4 GHz cùng tên `BIGHOME 02`, nên ESP32 vào được.
+**Xử lý.** ESP32 và Pi cùng vào mạng nhà. Router phát 2,4 GHz cùng tên `BIGHOME 02`, nên ESP32 vào được.
 
 - Trên Pi, chạy tay các bước của `setup-pi.sh` nhưng **bỏ phần hotspot và đổi tên máy**, đồng thời đổi dải mạng:
   - ufw: mở 1883/tcp và 123/udp cho `192.168.12.0/24` (thay cho `10.42.0.0/24`), mở thêm **5353/udp (mDNS)** để ESP32 tìm `raspivn.local`.
@@ -55,10 +55,10 @@ Ghi lại các vấn đề gặp khi nạp firmware và chạy cùng Pi 4 lần 
 [i2c] bus2 SDA18/SCL19: (không có thiết bị)
 ```
 
-OLED được cắm chung GPIO21/22 với cảm biến, nhưng firmware vẽ ra bus 2 (GPIO18/19) theo `docs/pinout.md`.
+OLED được cắm chung GPIO21/22 với cảm biến, nhưng firmware lúc đó vẽ ra bus 2 (GPIO18/19).
 
 **Sửa (không phải đổi dây).**
-- `include/pins.h`: `OLED_I2C_BUS 1` cho OLED chung bus, `2` cho bus riêng như thiết kế.
+- `include/pins.h`: `OLED_I2C_BUS 1` cho OLED chung bus, `2` cho bus riêng GPIO18/19.
 - Chung bus thì mỗi lần vẽ, màn gửi khung 1 KB (khoảng 25 ms) chiếm bus, trong khi `samplerTask` chỉ chờ `i2cMutex` tối đa 8 ms. Màn được sửa để gửi **từng dải 8 dòng** (128 B, khoảng 3 ms) và nhả mutex giữa các dải.
 - Đoạn dò I2C được giữ lại: mỗi lần khởi động in ra OLED đang ở bus nào và có khớp cấu hình không.
 
@@ -76,17 +76,17 @@ OLED được cắm chung GPIO21/22 với cảm biến, nhưng firmware vẽ ra 
 
 **Kiểm chứng.** Trong lần thử tắt broker, log cho thấy mDNS lỡ, chuyển sang router, rồi quay về Pi. NTP đi theo đúng từng bước (`[ntp] máy chủ giờ 192.168.12.1` rồi `192.168.12.19`), và `ntp=1` sau khi kết nối lại.
 
-## 4. Không có cầu chia áp đo pin
+## 4. Mạch không đo áp pin
 
 **Hiện tượng.**
-- GPIO34 đọc 0,284 V. Đây là mức sàn của ADC ESP32, tương đương 0 V: chưa lắp cầu chia 100 kΩ/100 kΩ, và MT3608 cũng chưa có.
+- GPIO34 đọc 0,284 V, mức sàn của ADC ESP32: chân không nối. Quét 15 chân ADC trống ngày 17/11 cũng không chân nào mang áp pin; pin Li-ion chỉ cấp nguồn qua mạch sạc và tăng áp 5 V.
 - OLED luôn hiện `USB`, kể cả khi đã rút cáp.
 - Firmware gửi `battery_v: 0.0` khi không đo được. Vì vậy `har-infer` tạo cảnh báo `low_battery` sai, và đèn đỏ có thể nháy báo pin yếu.
 
 **Sửa.**
 - `config.h`: `BATTERY_PRESENT_V 2.5f`. Đo dưới mức này thì `battery_v = NAN`, coi như không có pin.
 - `status` gửi `"battery_v": null`. Pi đã bỏ qua `null`, không tạo cảnh báo.
-- OLED: góc phải hiện **giờ Việt Nam HH:MM**. Khi lắp cầu chia áp thì tự đổi sang `%` pin.
+- OLED: góc phải hiện **giờ Việt Nam HH:MM**. Nếu đo được áp pin (≥ 2,5 V) thì tự đổi sang `%` pin.
 
 **Kiểm chứng.** Pi nhận `"battery_v":null`, và không có cảnh báo `lowbat` mới.
 
@@ -151,7 +151,7 @@ Số đo: 0 trong phần lớn các lần chạy. Thỉnh thoảng có 1 lần n
 | Cách thử | Kết quả |
 | --- | --- |
 | Tắt Mosquitto 30 s | ESP32 phát hiện ngay (`state=-2`), vòng đệm lên 56 gói rồi xả hết, Pi nhận 59 gói `replay`, `bỏ=0`, không reset. `har-ingest` báo mất 32 gói, nhưng đó là do cách thử: `har-ingest` cũng mất broker và chưa đăng ký lại kịp khi ESP32 gửi bù. |
-| Chặn riêng ESP32 bằng iptables 30 s (giống mất Wi-Fi) | Vòng đệm lên 83 gói, xả hết sau khi mở lại, Pi nhận **87 gói `replay`**. Mất 4 gói (khoảng 2 s), không reset. Đạt tiêu chí giai đoạn 2. |
+| Chặn riêng ESP32 bằng iptables 30 s (giống mất Wi-Fi) | Vòng đệm lên 83 gói, xả hết sau khi mở lại, Pi nhận **87 gói `replay`**. Mất 4 gói (khoảng 2 s), không reset. |
 
 **Còn lại.** Khi bị chặn, ESP32 vẫn báo `mqtt=1` khoảng 30 s. Kết nối TCP đã chết nhưng chưa bị phát hiện cho tới khi hết keepalive, và 4 gói đã ghi vào socket chết đó bị mất. Có thể giảm bằng cách hạ keepalive của PubSubClient, hoặc giữ lại gói cho tới khi có ack (QoS 1). Chưa làm, vì mức mất hiện tại vẫn dưới 1 %.
 
@@ -176,7 +176,7 @@ Thỉnh thoảng `MDNS.queryHost("raspivn")` không trả lời trong 2 s, và f
 2. Nạp một chương trình dò chân tạm thời, theo dõi 11 GPIO còn trống (4, 5, 13, 14, 16, 17, 18, 19, 23, 32, 33). Pha A bật điện trở kéo lên để tìm nút nối GND, pha B bật kéo xuống để tìm nút nối 3V3. Pha A cho thấy **GPIO19 xuống LOW mỗi lần nhấn**: nút nối giữa GPIO19 và GND.
 
 **Sửa (không phải đổi dây).**
-- `include/pins.h`: `PIN_BUTTON 19`, ghi chú thiết kế gốc là GPIO32.
+- `include/pins.h`: `PIN_BUTTON 19`.
 - GPIO19 trùng SCL của bus I2C 2. Bus 2 chỉ được bật khi không trùng chân nút (`BUS2_PINS_FREE`); `OLED_I2C_BUS 2` cùng lúc nút ở GPIO18/19 sẽ báo lỗi biên dịch.
 
 **Kiểm chứng (17/11, 00:46–00:48).**
@@ -190,7 +190,7 @@ Thỉnh thoảng `MDNS.queryHost("raspivn")` không trả lời trong 2 s, và f
 
 Còi kêu ngắt quãng khi nghi té và bíp khi nhấn; LED xanh và đỏ hoạt động đúng (người dùng xác nhận).
 
-**Bài học.** Mạch lắp theo một chương trình thử cũ nên chân khác `docs/pinout.md` (OLED ở bus 1, nút ở GPIO19). Khi nhận mạch mới, nên chạy chương trình dò chân và dò I2C trước khi nạp firmware.
+**Bài học.** Khi nhận mạch mới, chạy chương trình dò chân và dò I2C trước khi nạp firmware, rồi ghi bảng chân theo kết quả dò.
 
 ## 12. Pi sai giờ sau khi khởi động lại
 
@@ -206,9 +206,9 @@ Còi kêu ngắt quãng khi nghi té và bíp khi nhấn; LED xanh và đỏ ho�
 
 ## 13. Hướng trục MPU6050: theo phần cứng
 
-**Hiện tượng.** Phiên đi bộ thử: gia tốc trung bình `ax ≈ -0,97 g, ay ≈ -0,01 g, az ≈ -0,12 g`. Kế hoạch và code giả định đứng thẳng thì `ay ≈ -1 g` (Y chỉ xuống), nhưng module đã hàn xoay 90° nên **trục X chỉ xuống**. Hậu quả với quy ước cũ: luật nhận dạng trên Pi đoán 44/58 cửa sổ là `walk`, còn lại `lie`, `stairs_*`; bộ phát hiện té coi người đeo luôn "đã đổi tư thế" (nghiêng 90°), dễ báo nhầm khi ngồi phịch xuống ghế.
+**Hiện tượng.** Phiên đi bộ thử: gia tốc trung bình `ax ≈ -0,97 g, ay ≈ -0,01 g, az ≈ -0,12 g`. Code lúc đó giả định đứng thẳng thì `ay ≈ -1 g` (Y chỉ xuống), nhưng trên mạch **trục X chỉ xuống**. Hậu quả: luật nhận dạng trên Pi đoán 44/58 cửa sổ là `walk`, còn lại `lie`, `stairs_*`; bộ phát hiện té coi người đeo luôn "đã đổi tư thế" (nghiêng 90°), dễ báo nhầm khi ngồi phịch xuống ghế.
 
-**Quyết định.** Phần cứng đã hàn, khó đổi. Code và tài liệu theo phần cứng, không đổi trục để giống kế hoạch.
+**Quyết định.** Code và tài liệu theo trục chip như đang lắp.
 
 **Sửa.**
 - Firmware: dữ liệu gửi đi là trục chip, không đổi trục. `FallParams::up = (-1, 0, 0)`. Test native viết lại theo hệ X chỉ xuống.
@@ -216,7 +216,6 @@ Còi kêu ngắt quãng khi nghi té và bíp khi nhấn; LED xanh và đỏ ho�
 
 **Kiểm chứng.** Phiên đi bộ thật với quy ước mới: góc nghiêng trung bình 6,4°, luật nhận dạng đoán đúng **58/58** cửa sổ là `walk`. Dữ liệu giả lập: đứng 0,2°, ngồi 48°, nằm 89,8°. Test: firmware 10/10, edge 17/17.
 
-**Lưu ý.** Hình 3 trong `hardware/So_do_lap_bo_deo_HAR.html` vẫn vẽ trục Y chỉ xuống theo thiết kế ban đầu; mạch thật khác hình này.
 
 ## 14. Hiệu chỉnh hướng đứng thẳng theo người đeo
 
@@ -237,25 +236,20 @@ Còi kêu ngắt quãng khi nghi té và bíp khi nhấn; LED xanh và đỏ ho�
 - `ml/`: 150 phiên giả lập, `make_windows` và `featurize` chạy đúng với `meta.json` có/không có `upright`.
 - Trên mạch: `calibrate_upright` có kết quả sau 2,1 s (`[-0.993, -0.019, -0.12]`, `upright_cal: measured`); `set_upright [-1,0,0]` khôi phục ngay (`manual`).
 
-## Đối chiếu tiêu chí trong kế hoạch
+## Kết quả kiểm tra
 
-| Giai đoạn | Tiêu chí | Kết quả |
-| --- | --- | --- |
-| 1 | I2C thấy 0x68, 0x38, 0x76/0x77 | ✅ |
-| 1 | MT3608, chạy bằng pin 10 phút | ⏳ Chưa có MT3608 |
-| 1 | Đo pin GPIO34 lệch < 0,05 V | ➖ Không lắp cầu chia áp |
-| 2 | 30 phút, mất < 1 %, 50 ± 0,5 Hz | ✅ Mất 0 gói, 50,000 Hz |
-| 2 | Mất mạng 30 s, gửi bù, không reset | ✅ 87 gói replay, mất 4 gói |
-| 2 | Thả hộp lên nệm, còi kêu, nhấn nút hủy | ✅ Sau khi sửa chân nút (mục 11) |
-| 2 | Mật khẩu không lên Git | ✅ `**/secrets.h` trong `.gitignore` |
-| 3 | Dịch vụ tự chạy khi bật Pi | ✅ systemd enable; chưa thử khởi động lại Pi |
-| 3 | File dữ liệu 50 mẫu/s, có áp suất và thời gian | ✅ `data/raw/har01/<ngày>/<giờ>_imu.csv`, `_env.csv` |
-| 3 | Outbox xả hết sau mất Internet | ⏳ Chưa có VPS, `CLOUD_BACKEND=console` |
+| Phép thử | Kết quả |
+| --- | --- |
+| I2C thấy đủ thiết bị | ✅ 0x38, 0x3C, 0x68, 0x77; ID chip đúng (MPU6050 0x68, BMP280 0x58) |
+| 30 phút, mất < 1 %, 50 ± 0,5 Hz | ✅ Mất 0 gói, 50,000 Hz |
+| Mất mạng 30 s, gửi bù, không reset | ✅ 87 gói replay, mất 4 gói |
+| Thả hộp lên nệm, loa kêu, nhấn nút hủy | ✅ Sau khi sửa chân nút (mục 11) |
+| Mật khẩu không lên Git | ✅ `**/secrets.h` trong `.gitignore` |
+| Dịch vụ Pi tự chạy khi bật | ✅ systemd enable; chưa thử khởi động lại Pi |
+| File dữ liệu 50 mẫu/s, có áp suất và thời gian | ✅ `data/raw/har01/<ngày>/<giờ>_imu.csv`, `_env.csv` |
+| Chạy bằng pin, không cắm USB | ⏳ Chưa thử |
+| Outbox xả hết sau mất Internet | ⏳ Chưa có VPS, `CLOUD_BACKEND=console` |
 
 ## Việc tiếp theo
 
-1. ~~Thử tay: thả hộp, nhấn hủy, nhấn đúp, giữ 3 s~~ — đã xong (mục 11).
-2. Thử khởi động lại Pi, xác nhận ESP32 tự kết nối lại trong 30 s.
-3. Đặt IP cố định cho Pi trên router.
-4. Gắn hộp lên đai ở hông phải, trục Y chỉ xuống, cấp nguồn bằng sạc dự phòng qua USB cho tới khi có MT3608. Sau đó chạy thử một phiên `record.py` trước khi thu dataset (giai đoạn 4).
-5. Tùy chọn: hiệu chỉnh gia tốc kế 6 mặt; hạ keepalive MQTT; bổ sung chế độ "mạng nhà" cho `setup-pi.sh`.
+Xem [ke-hoach.md](ke-hoach.md).

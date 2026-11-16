@@ -1,0 +1,747 @@
+<title>Datasheet bộ đeo HAR01</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: datasheet một cột, rộng tối đa 1080px; khối tiêu đề có bảng phiên bản bên phải; mỗi mục đánh số để tham chiếu chéo. */
+:root {
+  --paper: #f3f6f4;
+  --panel: #ffffff;
+  --ink: #16201c;
+  --muted: #5a6862;
+  --line: #cdd7d2;
+  --accent: #a4501c;      /* đồng: số liệu đọc trực tiếp từ thiết bị */
+  --accent-soft: #f4e3d7;
+  --ok: #2c7a4b;
+  --red: #b2362e;
+  --na: #8b9791;
+  --code-bg: #e9eeeb;
+  --font-display: "Archivo", "Arial Narrow", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", Consolas, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #111714; --panel: #18201c; --ink: #e2eae5; --muted: #9aa8a1; --line: #2d3a34;
+    --accent: #e48e55; --accent-soft: #3a2619; --ok: #62c28a; --red: #e8786e; --na: #6f7c76; --code-bg: #1f2924;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #111714; --panel: #18201c; --ink: #e2eae5; --muted: #9aa8a1; --line: #2d3a34;
+  --accent: #e48e55; --accent-soft: #3a2619; --ok: #62c28a; --red: #e8786e; --na: #6f7c76; --code-bg: #1f2924;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--paper); color: var(--ink);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 32px 64px;
+}
+.sheet { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 44px; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; line-height: 1.2; }
+h2 { font-size: 22px; font-weight: 700; display: flex; gap: 12px; align-items: baseline; }
+h2 .no { font-family: var(--font-mono); font-size: 14px; color: var(--accent); font-weight: 500; }
+h3 { font-size: 16px; font-weight: 700; }
+p { margin: 0; max-width: 72ch; }
+section { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+code, .mono { font-family: var(--font-mono); font-size: 0.9em; }
+code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+
+/* Khối tiêu đề */
+.masthead { display: grid; grid-template-columns: 1fr auto; gap: 24px 40px; align-items: end; border-bottom: 3px solid var(--ink); padding-bottom: 20px; }
+.masthead .kicker { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.masthead h1 { font-size: clamp(44px, 9vw, 84px); font-weight: 800; letter-spacing: -0.02em; line-height: 0.95; }
+.masthead .sub { font-size: 18px; margin-top: 10px; max-width: 46ch; }
+.rev { border: 1px solid var(--ink); font-size: 13px; border-collapse: collapse; min-width: 0; }
+.rev td { padding: 4px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.rev td:first-child { color: var(--muted); white-space: nowrap; }
+.rev td:last-child { font-family: var(--font-mono); font-size: 12.5px; }
+.rev tr:last-child td { border-bottom: 0; }
+@media (max-width: 760px) { .masthead { grid-template-columns: 1fr; } }
+
+/* Bảng */
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--line); background: var(--panel); border-radius: 4px; }
+table.data { border-collapse: collapse; width: 100%; font-size: 14px; }
+table.data th { text-align: left; font-family: var(--font-display); font-weight: 700; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding: 10px 12px; border-bottom: 2px solid var(--line); white-space: nowrap; }
+table.data td { padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.data tr:last-child td { border-bottom: 0; }
+table.data td.k { font-weight: 600; white-space: nowrap; }
+table.data td.num, table.data .mono { font-family: var(--font-mono); font-size: 13px; font-variant-numeric: tabular-nums; }
+table.data tr.off td { color: var(--muted); }
+
+/* Nhãn nguồn số liệu */
+.src { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 11.5px; padding: 1px 8px; border-radius: 999px; white-space: nowrap; border: 1px solid currentColor; }
+.src::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.src.read { color: var(--accent); }
+.src.test { color: var(--ink); }
+.src.fw { color: var(--muted); }
+.src.na { color: var(--na); border-style: dashed; }
+.src.na::before { background: transparent; border: 1.5px dashed currentColor; width: 6px; height: 6px; }
+
+/* Hình */
+figure { margin: 0; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.fig-frame { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 12px; overflow-x: auto; }
+.fig-frame svg { display: block; width: 100%; min-width: 760px; height: auto; color: var(--ink); }
+.fig-frame.flash svg { min-width: 640px; }
+figcaption { font-size: 13.5px; color: var(--muted); max-width: 90ch; }
+figcaption b { color: var(--ink); font-weight: 600; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; gap: 8px; align-items: center; }
+.legend i { display: inline-block; width: 28px; height: 0; border-top: 2.5px solid; }
+.legend i.read { border-color: var(--accent); }
+.legend i.test { border-color: var(--ink); }
+.legend i.na { border-color: var(--na); border-top-style: dashed; }
+
+/* Lớp cho nét trong SVG (tô bằng token của trang) */
+svg text { font-family: var(--font-body); fill: currentColor; }
+svg .t-title { font-family: var(--font-display); font-weight: 700; font-size: 14px; }
+svg .t-sm { font-size: 11px; fill: var(--muted); }
+svg .t-mono { font-family: var(--font-mono); font-size: 11px; }
+svg .t-pin { font-family: var(--font-mono); font-size: 11px; }
+svg .t-zone { font-family: var(--font-display); font-weight: 700; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; fill: var(--muted); }
+svg .t-acc { fill: var(--accent); }
+svg .t-na { fill: var(--na); }
+svg .box { fill: var(--panel); stroke: currentColor; stroke-width: 1.3; }
+svg .box-acc { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; }
+svg .box-na { fill: none; stroke: var(--na); stroke-width: 1.2; stroke-dasharray: 5 4; }
+svg .zone { fill: none; stroke: var(--line); stroke-width: 1.5; }
+svg .mcu { fill: var(--code-bg); stroke: currentColor; stroke-width: 2; }
+svg .w { fill: none; stroke: currentColor; stroke-width: 1.6; }
+svg .w-read { fill: none; stroke: var(--accent); stroke-width: 2; }
+svg .w-na { fill: none; stroke: var(--na); stroke-width: 1.5; stroke-dasharray: 6 4; }
+svg .dot { fill: var(--accent); }
+svg .dot-ink { fill: currentColor; }
+svg .led-g { fill: var(--ok); stroke: currentColor; stroke-width: 1.3; }
+svg .led-r { fill: var(--red); stroke: currentColor; stroke-width: 1.3; }
+svg .res { fill: var(--panel); stroke: currentColor; stroke-width: 1.5; }
+svg .arrow { fill: currentColor; }
+svg .arrow-acc { fill: var(--accent); }
+svg .arrow-na { fill: var(--na); }
+svg .seg { stroke: var(--panel); stroke-width: 1; }
+svg .seg-app { fill: var(--accent); }
+svg .seg-app2 { fill: var(--accent-soft); stroke: var(--accent); }
+svg .seg-fs { fill: var(--ok); opacity: 0.75; }
+svg .seg-sys { fill: var(--muted); }
+svg .seg-free { fill: var(--accent-soft); }
+svg .t-on { fill: var(--panel); font-size: 11.5px; font-weight: 600; }
+
+/* Nhật ký */
+pre.log { margin: 0; background: var(--code-bg); border: 1px solid var(--line); border-radius: 4px; padding: 14px 16px; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.55; overflow-x: auto; white-space: pre; }
+pre.log .hl { color: var(--accent); }
+pre.log .dim { color: var(--muted); }
+
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+.cols > * { min-width: 0; }
+.note { border-left: 3px solid var(--accent); padding: 4px 0 4px 14px; font-size: 14px; max-width: 80ch; }
+ul.plain { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; max-width: 80ch; }
+footer { border-top: 1px solid var(--line); padding-top: 16px; font-size: 13px; color: var(--muted); }
+a { color: var(--accent); }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<div class="sheet">
+
+<header class="masthead">
+  <div>
+    <div class="kicker">Datasheet · bộ đeo hông · mạch như đang hàn</div>
+    <h1>HAR01</h1>
+    <p class="sub">Bộ đeo hông nhận dạng hoạt động và phát hiện té ngã: ESP32 + MPU6050 + BMP280 + AHT20 + OLED, gửi dữ liệu qua MQTT tới Raspberry Pi 4.</p>
+  </div>
+  <table class="rev" aria-label="Thông tin tài liệu">
+    <tr><td>Phiên bản tài liệu</td><td>rev 1.2</td></tr>
+    <tr><td>Ngày đọc thiết bị</td><td>17/11/2026</td></tr>
+    <tr><td>Cổng</td><td>COM6 · CP210x · 115200</td></tr>
+    <tr><td>Firmware</td><td>HAR 1.0.0 (har01)</td></tr>
+    <tr><td>MAC Wi-Fi</td><td>48:9D:31:02:B3:64</td></tr>
+  </table>
+</header>
+
+<section>
+  <h2><span class="no">1</span>Nguồn số liệu</h2>
+  <p>Mọi thông số được gắn nhãn theo cách có được. Bảng chân và sơ đồ vẽ theo mạch đang hàn. Thông số nào chưa đo được từ thiết bị hoặc chưa được xác nhận thì để trống.</p>
+  <div class="legend" style="gap:10px 18px">
+    <span><b class="src read">đọc từ thiết bị</b> đọc qua COM6 hôm nay: log khởi động, esptool, NVS</span>
+    <span><b class="src test">đã thử / xác nhận</b> kiểm chứng bằng thao tác, hoặc người làm mạch xác nhận khi nhìn mạch</span>
+    <span><b class="src fw">firmware</b> cấu hình trong mã nguồn đang nạp</span>
+    <span><b class="src na">không có / chưa đo</b> không có trên mạch, hoặc chưa có số đo</span>
+  </div>
+</section>
+
+<section>
+  <h2><span class="no">2</span>Thông số chính</h2>
+  <div class="tbl-wrap">
+    <table class="data">
+      <thead><tr><th>Thông số</th><th>Giá trị</th><th>Nguồn</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Vi điều khiển</td><td>ESP32-D0WD-V3, revision v3.1; 2 nhân Xtensa LX6, 240 MHz; Wi-Fi 2,4 GHz + Bluetooth; VRef hiệu chỉnh trong eFuse</td><td><span class="src read">esptool</span></td></tr>
+        <tr><td class="k">Thạch anh</td><td class="num">40 MHz</td><td><span class="src read">esptool</span></td></tr>
+        <tr><td class="k">Flash</td><td>4 MB, mã hãng <span class="mono">0x68</span>, mã chip <span class="mono">0x4016</span>, áp flash 3,3 V (đặt bằng chân strap), chế độ DIO</td><td><span class="src read">esptool</span></td></tr>
+        <tr><td class="k">Cầu USB-UART</td><td>Silicon Labs CP210x (VID <span class="mono">10C4</span>, PID <span class="mono">EA60</span>), 115200 baud, tự reset qua RTS/DTR</td><td><span class="src read">Windows</span></td></tr>
+        <tr><td class="k">Ảnh firmware</td><td class="num">922 KB / 1280 KB ô app0 (72 %)</td><td><span class="src fw">bản build</span></td></tr>
+        <tr><td class="k">Heap trống khi chạy</td><td class="num">≈ 155 KB khi đã nối MQTT (154 780–154 832 B)</td><td><span class="src read">[stat]</span></td></tr>
+        <tr><td class="k">Lấy mẫu IMU</td><td class="num">50 Hz (đo 49,9 / 50,0 / 50,1 Hz mỗi chu kỳ 10 s; lỡ 0–1 mẫu mỗi lần khởi động)</td><td><span class="src read">[stat]</span></td></tr>
+        <tr><td class="k">Áp suất / nhiệt-ẩm</td><td class="num">10 Hz / mỗi 10 s</td><td><span class="src fw">config.h</span></td></tr>
+        <tr><td class="k">Bus I2C</td><td>Một bus: SDA GPIO21, SCL GPIO22, 400 kHz. 3 module, 4 địa chỉ: <span class="mono">0x38</span> AHT20, <span class="mono">0x3C</span> màn, <span class="mono">0x68</span> MPU6050, <span class="mono">0x77</span> BMP280</td><td><span class="src read">ID chip</span></td></tr>
+        <tr><td class="k">Truyền dữ liệu</td><td>MQTT qua Wi-Fi tới Pi 4, gói IMU 25 mẫu (0,5 s), vòng đệm 120 gói (60 s) khi mất mạng; RSSI −54 đến −62 dBm tại bàn</td><td><span class="src read">status</span></td></tr>
+        <tr><td class="k">Nguồn</td><td>USB 5 V từ laptop, và pin Li-ion → mạch sạc → tăng áp 5 V → VIN</td><td><span class="src test">bạn xác nhận</span></td></tr>
+        <tr><td class="k">Thời gian chạy bằng pin</td><td>Chưa đo; chưa thử chạy khi rút USB</td><td><span class="src na">chưa đo</span></td></tr>
+        <tr><td class="k">Đo áp pin</td><td>Không có. Quét 15 chân ADC trống, không chân nào giữ mức ổn định của cầu chia áp; GPIO34 thả nổi 0,14–0,27 V; firmware gửi <code>battery_v: null</code></td><td><span class="src read">quét ADC</span></td></tr>
+        <tr><td class="k">Vị trí đeo</td><td>Hông phải; đứng thẳng thì trục X của MPU6050 chỉ xuống đất</td><td><span class="src test">phiên đi bộ 17/11</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2><span class="no">3</span>Sơ đồ mạch</h2>
+  <figure>
+    <div class="fig-frame">
+      <svg viewBox="0 0 1020 690" role="img" aria-label="Sơ đồ mạch HAR01: ba module I2C nối chung bus GPIO21/22, nút ở GPIO19 nối GND, loa qua tầng transistor ở GPIO25, LED xanh GPIO26, LED đỏ GPIO27 sáng khi HIGH; GPIO34 không nối; nguồn từ USB và pin Li-ion qua mạch sạc và tăng áp.">
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrow"/></marker>
+          <marker id="ah-acc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrow-acc"/></marker>
+          <marker id="ah-na" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrow-na"/></marker>
+        </defs>
+
+        <!-- ===== ESP32 DevKit ===== -->
+        <rect x="400" y="70" width="200" height="510" rx="6" class="mcu"/>
+        <text x="500" y="290" text-anchor="middle" class="t-title">ESP32 DevKit</text>
+        <text x="500" y="310" text-anchor="middle" class="t-mono">ESP32-D0WD-V3 rev3.1</text>
+        <text x="500" y="327" text-anchor="middle" class="t-sm">2 nhân 240 MHz · 4 MB flash</text>
+        <text x="500" y="343" text-anchor="middle" class="t-sm">thạch anh 40 MHz</text>
+        <text x="500" y="365" text-anchor="middle" class="t-mono t-acc">48:9D:31:02:B3:64</text>
+        <!-- chân trái -->
+        <text x="410" y="114" class="t-pin">3V3</text>
+        <text x="410" y="144" class="t-pin">GND</text>
+        <text x="410" y="174" class="t-pin">GPIO22 SCL</text>
+        <text x="410" y="204" class="t-pin">GPIO21 SDA</text>
+        <!-- chân phải -->
+        <text x="590" y="104" text-anchor="end" class="t-pin">GPIO19</text>
+        <text x="590" y="234" text-anchor="end" class="t-pin">GPIO25</text>
+        <text x="590" y="334" text-anchor="end" class="t-pin">GPIO26</text>
+        <text x="590" y="414" text-anchor="end" class="t-pin">GPIO27</text>
+        <text x="590" y="544" text-anchor="end" class="t-pin t-na">GPIO34</text>
+        <!-- chân dưới -->
+        <text x="470" y="568" text-anchor="middle" class="t-pin">USB</text>
+        <text x="560" y="568" text-anchor="middle" class="t-pin">VIN 5V</text>
+
+        <!-- ===== I2C bus 1 ===== -->
+        <text x="40" y="84" class="t-zone">I2C bus 1 · 400 kHz</text>
+        <text x="40" y="102" class="t-mono t-acc">quét: 0x38 0x3C 0x68 0x77</text>
+        <!-- dây từ ESP32 tới 4 thanh ray -->
+        <path d="M400,110 H262 V518" class="w-read"/>
+        <path d="M400,140 H284 V518" class="w-read"/>
+        <path d="M400,170 H306 V518" class="w-read"/>
+        <path d="M400,200 H328 V518" class="w-read"/>
+
+        <!-- MPU6050 -->
+        <rect x="40" y="240" width="180" height="84" rx="4" class="box"/>
+        <text x="52" y="262" class="t-title">MPU6050</text>
+        <text x="52" y="279" class="t-mono t-acc">0x68 · AD0→GND</text>
+        <text x="52" y="296" class="t-sm">WHO_AM_I = 0x68</text>
+        <text x="52" y="312" class="t-sm">X chỉ xuống khi đứng</text>
+        <text x="212" y="258" text-anchor="end" class="t-sm">VCC</text>
+        <text x="212" y="276" text-anchor="end" class="t-sm">GND</text>
+        <text x="212" y="294" text-anchor="end" class="t-sm">SCL</text>
+        <text x="212" y="312" text-anchor="end" class="t-sm">SDA</text>
+        <path d="M220,254 H262 M220,272 H284 M220,290 H306 M220,308 H328" class="w-read"/>
+        <circle cx="262" cy="254" r="3.5" class="dot"/><circle cx="284" cy="272" r="3.5" class="dot"/><circle cx="306" cy="290" r="3.5" class="dot"/><circle cx="328" cy="308" r="3.5" class="dot"/>
+
+        <!-- AHT20 + BMP280 -->
+        <rect x="40" y="345" width="180" height="84" rx="4" class="box"/>
+        <text x="52" y="367" class="t-title">AHT20 + BMP280</text>
+        <text x="52" y="384" class="t-mono t-acc">0x38 · 0x77</text>
+        <text x="52" y="401" class="t-sm">chip_id 0x58 · status 0x18</text>
+        <text x="52" y="417" class="t-sm">1 module, 2 địa chỉ</text>
+        <text x="212" y="363" text-anchor="end" class="t-sm">VCC</text>
+        <text x="212" y="381" text-anchor="end" class="t-sm">GND</text>
+        <text x="212" y="399" text-anchor="end" class="t-sm">SCL</text>
+        <text x="212" y="417" text-anchor="end" class="t-sm">SDA</text>
+        <path d="M220,359 H262 M220,377 H284 M220,395 H306 M220,413 H328" class="w-read"/>
+        <circle cx="262" cy="359" r="3.5" class="dot"/><circle cx="284" cy="377" r="3.5" class="dot"/><circle cx="306" cy="395" r="3.5" class="dot"/><circle cx="328" cy="413" r="3.5" class="dot"/>
+
+        <!-- OLED -->
+        <rect x="40" y="450" width="180" height="84" rx="4" class="box"/>
+        <text x="52" y="472" class="t-title">OLED 0,96"</text>
+        <text x="52" y="489" class="t-mono t-acc">0x3C</text>
+        <text x="52" y="506" class="t-sm">128×64, U8g2</text>
+        <text x="52" y="522" class="t-sm">chung bus cảm biến</text>
+        <text x="212" y="468" text-anchor="end" class="t-sm">VCC</text>
+        <text x="212" y="486" text-anchor="end" class="t-sm">GND</text>
+        <text x="212" y="504" text-anchor="end" class="t-sm">SCL</text>
+        <text x="212" y="522" text-anchor="end" class="t-sm">SDA</text>
+        <path d="M220,464 H262 M220,482 H284 M220,500 H306 M220,518 H328" class="w-read"/>
+        <circle cx="262" cy="464" r="3.5" class="dot"/><circle cx="284" cy="482" r="3.5" class="dot"/><circle cx="306" cy="500" r="3.5" class="dot"/><circle cx="328" cy="518" r="3.5" class="dot"/>
+
+        <!-- ===== GPIO19: nút ===== -->
+        <path d="M600,100 H690" class="w-read"/>
+        <circle cx="694" cy="100" r="3.5" class="dot"/>
+        <circle cx="736" cy="100" r="3.5" class="dot"/>
+        <path d="M688,86 H742 M715,86 V76" class="w-read"/>
+        <path d="M740,100 H860 V114" class="w-read"/>
+        <path d="M849,114 H871 M853,119 H867 M857,124 H863" class="w-read"/>
+        <text x="715" y="68" text-anchor="middle" class="t-sm">nút 12×12 mm</text>
+        <text x="760" y="118" class="t-mono t-acc">nhấn = LOW</text>
+        <text x="880" y="104" class="t-sm">pull-up trong</text>
+        <text x="880" y="118" class="t-sm">HIGH lúc khởi động</text>
+
+        <!-- ===== GPIO25: loa qua tầng đệm ===== -->
+        <path d="M600,230 H660" class="w-read"/>
+        <rect x="660" y="208" width="130" height="44" rx="4" class="box"/>
+        <text x="725" y="227" text-anchor="middle" class="t-title" style="font-size:13px">Tầng đệm</text>
+        <text x="725" y="243" text-anchor="middle" class="t-sm">transistor, đo thấy B-E</text>
+        <path d="M790,230 H830" class="w" marker-end="url(#ah)"/>
+        <rect x="830" y="208" width="120" height="44" rx="4" class="box"/>
+        <text x="890" y="227" text-anchor="middle" class="t-title" style="font-size:13px">Loa</text>
+        <text x="890" y="243" text-anchor="middle" class="t-sm">kêu khi chân HIGH</text>
+        <text x="725" y="198" text-anchor="middle" class="t-sm">loại transistor, điện trở chưa đo</text>
+
+        <!-- ===== GPIO26: LED xanh ===== -->
+        <path d="M600,330 H650" class="w"/>
+        <rect x="650" y="323" width="48" height="14" class="res"/>
+        <text x="674" y="316" text-anchor="middle" class="t-sm">R</text>
+        <path d="M698,330 H740" class="w"/>
+        <polygon points="740,318 740,342 762,330" class="led-g"/>
+        <path d="M762,318 V342" class="w"/>
+        <path d="M750,314 L758,304 M757,318 L765,308" class="w"/>
+        <path d="M762,330 H820 V346" class="w"/>
+        <path d="M809,346 H831 M813,351 H827 M817,356 H823" class="w"/>
+        <text x="845" y="326" class="t-sm">LED xanh, sáng khi HIGH</text>
+        <text x="845" y="340" class="t-sm">MQTT đã nối / đang nối</text>
+
+        <!-- ===== GPIO27: LED đỏ ===== -->
+        <path d="M600,410 H650" class="w"/>
+        <rect x="650" y="403" width="48" height="14" class="res"/>
+        <text x="674" y="396" text-anchor="middle" class="t-sm">R</text>
+        <path d="M698,410 H740" class="w"/>
+        <polygon points="740,398 740,422 762,410" class="led-r"/>
+        <path d="M762,398 V422" class="w"/>
+        <path d="M750,394 L758,384 M757,398 L765,388" class="w"/>
+        <path d="M762,410 H820 V426" class="w"/>
+        <path d="M809,426 H831 M813,431 H827 M817,436 H823" class="w"/>
+        <text x="845" y="406" class="t-sm">LED đỏ, sáng khi HIGH</text>
+        <text x="845" y="420" class="t-sm">cảnh báo, lỗi cảm biến</text>
+
+        <!-- ===== GPIO34: không nối ===== -->
+        <path d="M600,540 H690" class="w-na"/>
+        <rect x="690" y="524" width="200" height="32" rx="4" class="box-na"/>
+        <text x="790" y="544" text-anchor="middle" class="t-sm t-na">không nối · không có cầu chia áp</text>
+        <text x="900" y="538" class="t-mono t-acc">thả nổi</text>
+        <text x="900" y="552" class="t-sm">0,14–0,27 V</text>
+
+        <!-- ===== Nguồn ===== -->
+        <path d="M470,580 V614" class="w-read" marker-start="url(#ah-acc)"/>
+        <rect x="400" y="614" width="140" height="44" rx="4" class="box-acc"/>
+        <text x="470" y="633" text-anchor="middle" class="t-title" style="font-size:13px">Laptop USB</text>
+        <text x="470" y="649" text-anchor="middle" class="t-mono">5 V · COM6</text>
+        <text x="40" y="610" class="t-zone">Nguồn</text>
+        <text x="40" y="630" class="t-sm">Có hai nguồn: USB và pin.</text>
+        <text x="40" y="646" class="t-sm">Chưa thử chạy khi rút USB.</text>
+        <text x="40" y="662" class="t-sm">ESP32 không đo được áp pin.</text>
+
+        <path d="M560,580 V636 H604" class="w" marker-start="url(#ah)"/>
+        <rect x="604" y="618" width="110" height="36" rx="4" class="box"/>
+        <text x="659" y="640" text-anchor="middle" class="t-sm">Tăng áp 5 V</text>
+        <path d="M734,636 H714" class="w" marker-end="url(#ah)"/>
+        <rect x="734" y="618" width="100" height="36" rx="4" class="box"/>
+        <text x="784" y="640" text-anchor="middle" class="t-sm">Mạch sạc</text>
+        <path d="M854,636 H834" class="w" marker-end="url(#ah)"/>
+        <rect x="854" y="618" width="152" height="36" rx="4" class="box"/>
+        <text x="930" y="640" text-anchor="middle" class="t-sm">Pin Li-ion</text>
+      </svg>
+    </div>
+    <div class="legend">
+      <span><i class="read"></i>đọc từ thiết bị (ID chip I2C, đo chân, nguồn USB)</span>
+      <span><i class="test"></i>đã thử hoặc bạn xác nhận (loa, LED, khối pin)</span>
+      <span><i class="na"></i>không nối</span>
+    </div>
+    <figcaption><b>Hình 1.</b> Mạch như đang hàn, vẽ theo số đo trên thiết bị và xác nhận của người làm mạch. Ba module dùng chung một bus I2C ở GPIO21/22, kể cả màn; module AHT20 + BMP280 chiếm hai địa chỉ nên quét ra 4 địa chỉ. Nút nối giữa GPIO19 và GND, dùng điện trở kéo lên trong chip. Loa ở GPIO25 đi qua một tầng transistor. Hai LED sáng khi chân ở mức HIGH. Giá trị điện trở, mã transistor và tên các module nguồn chưa đo được từ phần mềm nên không ghi.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2><span class="no">4</span>Bảng chân</h2>
+  <div class="tbl-wrap">
+    <table class="data">
+      <thead><tr><th>GPIO</th><th>Chức năng</th><th>Nối tới</th><th>Chế độ</th><th>Nguồn</th></tr></thead>
+      <tbody>
+        <tr><td class="num">21</td><td>I2C SDA</td><td>MPU6050, AHT20 + BMP280, màn</td><td class="mono">Wire, 400 kHz</td><td><span class="src read">ID chip</span></td></tr>
+        <tr><td class="num">22</td><td>I2C SCL</td><td>như trên</td><td class="mono">Wire, 400 kHz</td><td><span class="src read">ID chip</span></td></tr>
+        <tr><td class="num">19</td><td>Nút nhấn</td><td>nút → GND</td><td class="mono">INPUT_PULLUP, nhấn = LOW</td><td><span class="src read">HIGH lúc khởi động</span></td></tr>
+        <tr><td class="num">25</td><td>Loa</td><td>qua tầng transistor (đo thấy mối B-E xuống GND)</td><td class="mono">OUTPUT, HIGH = kêu</td><td><span class="src read">đo chân</span> <span class="src test">đã thử</span></td></tr>
+        <tr><td class="num">26</td><td>LED xanh</td><td>LED, sáng khi HIGH</td><td class="mono">OUTPUT</td><td><span class="src test">bạn xác nhận</span></td></tr>
+        <tr><td class="num">27</td><td>LED đỏ</td><td>LED, sáng khi HIGH</td><td class="mono">OUTPUT</td><td><span class="src test">bạn xác nhận</span></td></tr>
+        <tr class="off"><td class="num">34</td><td>(đo áp pin theo firmware)</td><td>không nối</td><td class="mono">ADC, chỉ vào</td><td><span class="src read">thả nổi</span></td></tr>
+        <tr class="off"><td class="num">18, 32, 33, 35, 36, 39</td><td>Trống</td><td>không nối</td><td class="mono">—</td><td><span class="src read">quét ADC</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2><span class="no">5</span>Sơ đồ hệ thống</h2>
+  <figure>
+    <div class="fig-frame">
+      <svg viewBox="0 0 1000 470" role="img" aria-label="Sơ đồ hệ thống: ESP32 đọc cảm biến, đóng gói, gửi MQTT qua Wi-Fi tới Mosquitto trên Pi 4; Pi lưu dữ liệu, chạy mô hình, gửi lệnh và nhãn hiển thị về ESP32, đẩy dữ liệu lên VPS qua HTTPS và báo Telegram.">
+        <defs>
+          <marker id="sa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrow"/></marker>
+          <marker id="sa-acc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrow-acc"/></marker>
+        </defs>
+
+        <!-- Vùng 1: bộ đeo -->
+        <rect x="20" y="40" width="236" height="410" rx="6" class="zone"/>
+        <text x="36" y="30" class="t-zone">Bộ đeo HAR01 · ESP32</text>
+        <rect x="44" y="64" width="200" height="46" rx="4" class="box"/>
+        <text x="58" y="84" class="t-title" style="font-size:13px">Cảm biến I2C bus 1</text>
+        <text x="58" y="100" class="t-sm">MPU6050 · BMP280 · AHT20</text>
+        <path d="M144,110 V146" class="w" marker-end="url(#sa)"/>
+        <text x="152" y="132" class="t-sm">50 / 10 / 0,1 Hz</text>
+        <rect x="44" y="146" width="200" height="46" rx="4" class="box"/>
+        <text x="58" y="166" class="t-title" style="font-size:13px">samplerTask · core 1</text>
+        <text x="58" y="182" class="t-sm">gói 25 mẫu, phát hiện té</text>
+        <path d="M144,192 V228" class="w" marker-end="url(#sa)"/>
+        <text x="152" y="214" class="t-sm">hàng đợi</text>
+        <rect x="44" y="228" width="200" height="46" rx="4" class="box"/>
+        <text x="58" y="248" class="t-title" style="font-size:13px">Vòng đệm 120 gói</text>
+        <text x="58" y="264" class="t-sm">giữ 60 s khi mất mạng</text>
+        <path d="M144,274 V310" class="w" marker-end="url(#sa)"/>
+        <rect x="44" y="310" width="200" height="46" rx="4" class="box-acc"/>
+        <text x="58" y="330" class="t-title" style="font-size:13px">netTask · core 0</text>
+        <text x="58" y="346" class="t-sm">Wi-Fi, MQTT, NTP, gửi bù</text>
+        <rect x="44" y="388" width="200" height="46" rx="4" class="box"/>
+        <text x="58" y="408" class="t-title" style="font-size:13px">uiTask + displayTask</text>
+        <text x="58" y="424" class="t-sm">nút, loa, LED, OLED</text>
+        <path d="M44,169 H32 V411 H44" class="w" marker-end="url(#sa)"/>
+        <text x="28" y="300" class="t-sm" transform="rotate(-90 28 300)" text-anchor="middle">sự kiện té</text>
+        <path d="M144,356 V388" class="w" marker-end="url(#sa)"/>
+        <text x="138" y="377" text-anchor="end" class="t-sm">lệnh, nhãn OLED</text>
+
+        <!-- Khoảng nối Wi-Fi -->
+        <text x="323" y="256" text-anchor="middle" class="t-sm">Wi-Fi 2,4 GHz</text>
+        <text x="323" y="270" text-anchor="middle" class="t-mono">MQTT :1883</text>
+        <text x="262" y="300" class="t-sm t-acc">imu · env</text>
+        <text x="262" y="314" class="t-sm t-acc">event · status</text>
+        <path d="M244,322 H404" class="w-read" marker-end="url(#sa-acc)"/>
+        <path d="M404,338 H244" class="w" marker-end="url(#sa)"/>
+        <text x="262" y="354" class="t-sm">cmd · display · ack</text>
+        <path d="M404,400 H300 V370 H230 V356" class="w" marker-end="url(#sa)"/>
+        <text x="306" y="393" class="t-sm">giờ mỗi 60 s</text>
+
+        <!-- Vùng 2: Pi -->
+        <rect x="390" y="40" width="270" height="410" rx="6" class="zone"/>
+        <text x="406" y="30" class="t-zone">Raspberry Pi 4 · raspivn</text>
+        <rect x="404" y="64" width="72" height="292" rx="4" class="box-acc"/>
+        <text x="440" y="200" text-anchor="middle" class="t-title" style="font-size:13px">Mosquitto</text>
+        <text x="440" y="216" text-anchor="middle" class="t-sm">pub / sub</text>
+        <text x="440" y="232" text-anchor="middle" class="t-sm">Last Will</text>
+        <!-- dịch vụ -->
+        <rect x="510" y="64" width="136" height="46" rx="4" class="box"/>
+        <text x="520" y="84" class="t-title" style="font-size:13px">har-uplink</text>
+        <text x="520" y="100" class="t-sm">outbox → VPS</text>
+        <rect x="510" y="146" width="136" height="46" rx="4" class="box"/>
+        <text x="520" y="166" class="t-title" style="font-size:13px">har-ingest</text>
+        <text x="520" y="182" class="t-sm">SQLite + CSV, ack</text>
+        <path d="M578,146 V110" class="w" marker-end="url(#sa)"/>
+        <text x="584" y="132" class="t-sm">outbox</text>
+        <rect x="510" y="228" width="136" height="46" rx="4" class="box"/>
+        <text x="520" y="248" class="t-title" style="font-size:13px">har-infer</text>
+        <text x="520" y="264" class="t-sm">RF / 1D-CNN mỗi 1 s</text>
+        <rect x="510" y="310" width="136" height="46" rx="4" class="box"/>
+        <text x="520" y="330" class="t-title" style="font-size:13px">har-notify</text>
+        <text x="520" y="346" class="t-sm">alert → tin nhắn</text>
+        <path d="M476,169 H510" class="w" marker-end="url(#sa)"/>
+        <path d="M476,251 H510" class="w" marker-start="url(#sa)" marker-end="url(#sa)"/>
+        <path d="M476,333 H510" class="w" marker-end="url(#sa)"/>
+        <rect x="404" y="388" width="242" height="46" rx="4" class="box"/>
+        <text x="418" y="408" class="t-title" style="font-size:13px">chrony · NTP :123</text>
+        <text x="418" y="424" class="t-sm">máy chủ giờ cho ESP32</text>
+
+        <!-- Vùng 3: VPS -->
+        <rect x="740" y="40" width="244" height="260" rx="6" class="zone"/>
+        <text x="756" y="30" class="t-zone">VPS · cloud</text>
+        <rect x="756" y="64" width="212" height="46" rx="4" class="box"/>
+        <text x="770" y="84" class="t-title" style="font-size:13px">Caddy · HTTPS</text>
+        <text x="770" y="100" class="t-sm">API key thiết bị</text>
+        <rect x="756" y="146" width="100" height="46" rx="4" class="box"/>
+        <text x="766" y="166" class="t-title" style="font-size:13px">FastAPI</text>
+        <text x="766" y="182" class="t-sm">/api</text>
+        <rect x="868" y="146" width="100" height="46" rx="4" class="box"/>
+        <text x="878" y="166" class="t-title" style="font-size:13px">Web app</text>
+        <text x="878" y="182" class="t-sm">React, 4 trang</text>
+        <rect x="756" y="228" width="100" height="46" rx="4" class="box"/>
+        <text x="766" y="248" class="t-title" style="font-size:13px">PostgreSQL</text>
+        <text x="766" y="264" class="t-sm">chống trùng id</text>
+        <path d="M806,110 V146" class="w" marker-end="url(#sa)"/>
+        <path d="M918,110 V146" class="w" marker-end="url(#sa)"/>
+        <path d="M806,192 V228" class="w" marker-end="url(#sa)"/>
+        <path d="M646,87 H756" class="w" marker-end="url(#sa)"/>
+        <text x="662" y="80" class="t-mono">HTTPS</text>
+
+        <!-- Ngoài -->
+        <rect x="756" y="388" width="100" height="46" rx="4" class="box"/>
+        <text x="766" y="408" class="t-title" style="font-size:13px">Telegram</text>
+        <text x="766" y="424" class="t-sm">người thân</text>
+        <rect x="868" y="388" width="116" height="46" rx="4" class="box"/>
+        <text x="878" y="408" class="t-title" style="font-size:13px">Trình duyệt</text>
+        <text x="878" y="424" class="t-sm">đăng nhập</text>
+        <path d="M646,333 H700 V411 H756" class="w" marker-end="url(#sa)"/>
+        <text x="706" y="378" class="t-sm">Bot API</text>
+        <path d="M926,388 V192" class="w" marker-end="url(#sa)"/>
+        <text x="932" y="330" class="t-sm">HTTPS</text>
+      </svg>
+    </div>
+    <div class="legend"><span><i class="read"></i>đường dữ liệu cảm biến rời bộ đeo</span></div>
+    <figcaption><b>Hình 2.</b> Bộ đeo chỉ đóng gói dữ liệu sau khi lấy được giờ từ chrony trên Pi; phát hiện té chạy ngay từ lúc bật. Sự kiện té được lưu LittleFS và gửi lại mỗi 5 s đến khi <code>har-ingest</code> trả <code>ack</code>. <code>har-infer</code> nhận gói IMU, dự đoán nhãn mỗi 1 s và gửi nhãn về OLED qua topic <code>display</code>. Lần đọc cuối ngày 17/11, bộ đeo đã nối MQTT và lấy giờ từ Pi (192.168.12.19); <code>status</code> tới được laptop qua broker.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2><span class="no">6</span>Cảm biến và ngoại vi</h2>
+  <div class="tbl-wrap">
+    <table class="data">
+      <thead><tr><th>Linh kiện</th><th>Địa chỉ / ID</th><th>Cấu hình trong firmware</th><th>Số đo</th></tr></thead>
+      <tbody>
+        <tr><td class="k">MPU6050</td><td class="num">0x68<br>WHO_AM_I 0x68</td><td>±8 g (4096 LSB/g), ±500 °/s (65,5 LSB/(°/s)), DLPF 21 Hz gia tốc / 20 Hz con quay, đồng hồ PLL theo trục X con quay, đọc 50 Hz bằng <code>vTaskDelayUntil</code>, gửi int16 thô theo trục chip</td><td>ID đúng MPU6050, không phải bản clone <span class="src read">ID chip</span><br>Lệch con quay: <b class="mono">13,60 / 4,06 / 0,44 °/s</b> <span class="src read">log</span><br>SVM nằm yên 0,942 ± 0,007 g, chưa hiệu chỉnh 6 mặt <span class="src test">nhật ký</span></td></tr>
+        <tr><td class="k">BMP280</td><td class="num">0x77<br>chip_id 0x58</td><td>Chế độ normal, oversampling nhiệt ×2, áp ×16, lọc IIR ×4, standby 1 ms; đọc 10 Hz</td><td>ID đúng BMP280, không phải BME280 <span class="src read">ID chip</span><br>100 954 Pa ± 2,8 Pa, đúng 10 Hz <span class="src test">nhật ký</span></td></tr>
+        <tr><td class="k">AHT20</td><td class="num">0x38<br>status 0x18</td><td>Cùng module với BMP280. Gửi lệnh đo <code>0xAC</code> rồi đọc sau, không giữ bus 80 ms; mỗi 10 s</td><td>Đã hiệu chỉnh xuất xưởng (bit 3 = 1) <span class="src read">ID chip</span><br>31 °C / 98 % lúc bật, 43 °C / 72 % sau 1 giờ: bị ESP32 hâm nóng <span class="src test">nhật ký</span></td></tr>
+        <tr><td class="k">Màn OLED 0,96"</td><td class="num">0x3C</td><td>128×64, U8g2, chung bus I2C; gửi từng dải 8 dòng (128 B, ~3 ms) và nhả khóa I2C giữa các dải; tối đa 2 lần/s; giảm sáng sau 60 s</td><td>Trả lời ở 0x3C, hiển thị đúng <span class="src read">log</span></td></tr>
+        <tr><td class="k">Loa</td><td class="num">GPIO25</td><td>Bật/tắt bằng mức logic (<code>BUZZER_PASSIVE 0</code>), không phát tần số</td><td>Kêu ngắt quãng khi nghi té, bíp khi nhấn <span class="src test">đã thử</span></td></tr>
+        <tr><td class="k">Nút</td><td class="num">GPIO19</td><td>Chống dội; nhận nhấn 1 lần, nhấn đúp (≤ 400 ms), giữ 3 s</td><td>Mức HIGH lúc khởi động, đúng khi nhả <span class="src read">log</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Hệ trục MPU6050 như đang lắp</h3>
+  <p>Khi đeo ở hông phải và đứng thẳng, <b>trục X chỉ xuống đất</b> (ax ≈ −1 g). Firmware và Pi dùng chung quy ước này, mặc định <code>UPRIGHT = [−1, 0, 0]</code>. Vector đứng thẳng đang lưu trong NVS của thiết bị là <b class="mono">(−0,980; −0,159; −0,118)</b>, lệch khoảng 11° so với mặc định, do người đeo đo bằng lệnh <code>calibrate_upright</code>.</p>
+</section>
+
+<section>
+  <h2><span class="no">7</span>Bộ nhớ flash</h2>
+  <figure>
+    <div class="fig-frame flash">
+      <svg viewBox="0 0 1000 130" role="img" aria-label="Bảng phân vùng flash 4 MB đọc từ thiết bị: hai ô ứng dụng 1280 KB, ô LittleFS 1408 KB, firmware hiện tại dùng 922 KB của app0.">
+        <!-- tỉ lệ: x = 20 + KB × 960/4096 -->
+        <rect x="20" y="50" width="8.4" height="34" class="seg seg-sys"/>
+        <rect x="28.4" y="50" width="4.7" height="34" class="seg seg-sys" style="opacity:.7"/>
+        <rect x="33.1" y="50" width="1.9" height="34" class="seg seg-sys" style="opacity:.5"/>
+        <rect x="35" y="50" width="300" height="34" class="seg seg-free"/>
+        <rect x="35" y="50" width="216.1" height="34" class="seg seg-app"/>
+        <rect x="335" y="50" width="300" height="34" class="seg seg-app2"/>
+        <rect x="635" y="50" width="330" height="34" class="seg seg-fs"/>
+        <rect x="965" y="50" width="15" height="34" class="seg seg-sys"/>
+        <text x="45" y="72" class="t-on">app0 · firmware 922 KB</text>
+        <text x="293" y="72" text-anchor="middle" class="t-sm">trống</text>
+        <text x="485" y="72" text-anchor="middle" style="font-size:11.5px">app1 · OTA 1280 KB</text>
+        <text x="800" y="72" text-anchor="middle" class="t-on">LittleFS · sự kiện 1408 KB</text>
+        <path d="M27,48 V38" class="w"/>
+        <text x="20" y="32" class="t-sm">bootloader, nvs, otadata (64 KB)</text>
+        <path d="M972,48 V38" class="w"/>
+        <text x="980" y="32" text-anchor="end" class="t-sm">coredump 64 KB</text>
+        <path d="M20,90 V96 M260,90 V96 M500,90 V96 M740,90 V96 M980,90 V96" class="w"/>
+        <text x="20" y="112" class="t-mono">0</text>
+        <text x="260" y="112" text-anchor="middle" class="t-mono">1 MB</text>
+        <text x="500" y="112" text-anchor="middle" class="t-mono">2 MB</text>
+        <text x="740" y="112" text-anchor="middle" class="t-mono">3 MB</text>
+        <text x="980" y="112" text-anchor="end" class="t-mono">4 MB</text>
+      </svg>
+    </div>
+    <figcaption><b>Hình 3.</b> Bảng phân vùng đọc tại <code>0x8000</code>, vẽ đúng tỉ lệ. Firmware chiếm 72 % ô app0, còn khoảng 358 KB để thêm tính năng trước khi phải đổi bảng phân vùng.</figcaption>
+  </figure>
+  <div class="tbl-wrap">
+    <table class="data">
+      <thead><tr><th>Tên</th><th>Loại</th><th>Địa chỉ</th><th>Kích thước</th><th>Dùng cho</th></tr></thead>
+      <tbody>
+        <tr><td class="k">nvs</td><td class="mono">data / nvs</td><td class="num">0x9000</td><td class="num">20 KB</td><td>Lệch con quay, vector đứng thẳng, ngưỡng té, cấu hình Wi-Fi</td></tr>
+        <tr><td class="k">otadata</td><td class="mono">data / ota</td><td class="num">0xE000</td><td class="num">8 KB</td><td>Chọn ô app khởi động</td></tr>
+        <tr><td class="k">app0</td><td class="mono">app / ota_0</td><td class="num">0x10000</td><td class="num">1280 KB</td><td>Firmware HAR 1.0.0 (922 KB)</td></tr>
+        <tr><td class="k">app1</td><td class="mono">app / ota_1</td><td class="num">0x150000</td><td class="num">1280 KB</td><td>Dự phòng OTA, chưa dùng</td></tr>
+        <tr><td class="k">spiffs</td><td class="mono">data / spiffs</td><td class="num">0x290000</td><td class="num">1408 KB</td><td>LittleFS: mỗi sự kiện chờ gửi một file (tối đa 50)</td></tr>
+        <tr><td class="k">coredump</td><td class="mono">data / coredump</td><td class="num">0x3F0000</td><td class="num">64 KB</td><td>Lưu lỗi khi crash</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Giá trị trong NVS lúc đọc</h3>
+  <div class="tbl-wrap">
+    <table class="data">
+      <thead><tr><th>Namespace / khóa</th><th>Giá trị</th><th>Ý nghĩa</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">imu / gbx, gby, gbz</td><td class="num">908, 266, 32 LSB</td><td>Lệch con quay 13,86 / 4,06 / 0,49 °/s, đo lại sau mỗi lần khởi động khi nằm yên 1,5 s</td></tr>
+        <tr><td class="mono">imu / upx, upy, upz</td><td class="num">−0,980; −0,159; −0,118</td><td>Vector đứng thẳng của người đeo</td></tr>
+        <tr><td class="mono">fall / *</td><td class="num">không có</td><td>Chưa đổi ngưỡng té, firmware dùng giá trị mặc định (mục 8)</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">Không đọc namespace Wi-Fi (<code>nvs.net80211</code>) để không lộ mật khẩu ra file tạm.</p>
+</section>
+
+<section>
+  <h2><span class="no">8</span>Firmware</h2>
+  <div class="cols">
+    <div class="tbl-wrap">
+      <table class="data">
+        <thead><tr><th>Task FreeRTOS</th><th>Core</th><th>Ưu tiên</th><th>Stack</th></tr></thead>
+        <tbody>
+          <tr><td class="k">sampler</td><td class="num">1</td><td class="num">5</td><td class="num">4096</td></tr>
+          <tr><td class="k">slow</td><td class="num">1</td><td class="num">2</td><td class="num">3072</td></tr>
+          <tr><td class="k">ui</td><td class="num">0</td><td class="num">4</td><td class="num">4096</td></tr>
+          <tr><td class="k">net</td><td class="num">0</td><td class="num">3</td><td class="num">12288</td></tr>
+          <tr><td class="k">display</td><td class="num">0</td><td class="num">1</td><td class="num">4096</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="tbl-wrap">
+      <table class="data">
+        <thead><tr><th>Ngưỡng té (mặc định)</th><th>Giá trị</th></tr></thead>
+        <tbody>
+          <tr><td>Rơi tự do</td><td class="num">SVM &lt; 0,40 g trong ≥ 80 ms</td></tr>
+          <tr><td>Va chạm</td><td class="num">&gt; 2,50 g trong 500 ms sau rơi</td></tr>
+          <tr><td>Đổi tư thế</td><td class="num">&gt; 50° so với đứng thẳng</td></tr>
+          <tr><td>Bất động</td><td class="num">con quay &lt; 30 °/s sau 2 s</td></tr>
+          <tr><td>Cửa sổ hủy</td><td class="num">10 s, rồi loa kêu liên tục 30 s</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="cols">
+    <div class="tbl-wrap">
+      <table class="data">
+        <thead><tr><th>Thao tác nút</th><th>Khi nào</th><th>Kết quả</th></tr></thead>
+        <tbody>
+          <tr><td class="k">Nhấn 1 lần</td><td>Đang cảnh báo</td><td>Hủy (<code>cancelled</code>) hoặc tắt loa</td></tr>
+          <tr><td class="k">Nhấn 1 lần</td><td>Bình thường</td><td>Bật màn hình</td></tr>
+          <tr><td class="k">Nhấn đúp</td><td>Bình thường</td><td>Gửi <code>marker</code></td></tr>
+          <tr><td class="k">Giữ 3 s</td><td>Bình thường</td><td>Gửi <code>sos</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="tbl-wrap">
+      <table class="data">
+        <thead><tr><th>Đèn</th><th>Trạng thái</th><th>Ý nghĩa</th></tr></thead>
+        <tbody>
+          <tr><td class="k">Xanh</td><td>Sáng / nháy chậm</td><td>Đã nối MQTT / đang nối</td></tr>
+          <tr><td class="k">Đỏ</td><td>Nháy nhanh</td><td>Đang cảnh báo té</td></tr>
+          <tr><td class="k">Đỏ</td><td>Sáng</td><td>Lỗi MPU6050</td></tr>
+          <tr class="off"><td class="k">Đỏ</td><td>Nháy chậm</td><td>Pin yếu: không xảy ra vì mạch không đo áp pin</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="tbl-wrap">
+    <table class="data">
+      <thead><tr><th>Topic MQTT</th><th>Hướng</th><th>Nội dung</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">har/har01/imu</td><td>ESP32 → Pi</td><td>25 mẫu ax, ay, az, gx, gy, gz int16, <code>seq</code>, <code>t0</code>, <code>dt = 20</code>, <code>replay</code></td></tr>
+        <tr><td class="mono">har/har01/env</td><td>ESP32 → Pi</td><td>5 mẫu áp suất (Pa), kèm nhiệt độ và độ ẩm khi có số mới</td></tr>
+        <tr><td class="mono">har/har01/event</td><td>ESP32 → Pi</td><td><code>suspected</code>, <code>cancelled</code>, <code>confirmed</code>, <code>sos</code>, <code>marker</code></td></tr>
+        <tr><td class="mono">har/har01/status</td><td>ESP32 → Pi</td><td>Mỗi 10 s, retained: RSSI, heap, trạng thái cảm biến, hiệu chỉnh, nút; Last Will <code>online:false</code></td></tr>
+        <tr><td class="mono">har/har01/cmd</td><td>Pi → ESP32</td><td><code>beep</code>, <code>set_threshold</code>, <code>calibrate_gyro</code>, <code>calibrate_upright</code>, <code>set_upright</code>, <code>test_alarm</code>, <code>reboot</code></td></tr>
+        <tr><td class="mono">har/har01/display</td><td>Pi → ESP32</td><td>Nhãn hoạt động và độ tin cậy cho OLED</td></tr>
+        <tr><td class="mono">har/har01/ack</td><td>Pi → ESP32</td><td>Xác nhận đã lưu sự kiện, ESP32 xóa file trong LittleFS</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2><span class="no">9</span>Trạng thái lúc đọc</h2>
+  <p>Log Serial sau khi reset bằng RTS, lần đọc cuối ngày 17/11 (đã bỏ các dòng lặp):</p>
+<pre class="log">=== HAR firmware 1.0.0 (har01) ===
+<span class="hl">[btn] GPIO19 lúc khởi động: HIGH (nhả, đúng)</span>
+[events] 0 sự kiện chờ gửi
+<span class="dim">[E][Preferences.cpp:50] begin(): nvs_open failed: NOT_FOUND   (chưa lưu ngưỡng té, dùng mặc định)</span>
+[fall] rơi&lt;0.40g 80ms, va chạm&gt;2.50g, tư thế&gt;50°
+<span class="hl">[sensors] MPU6050=1 BMP280=1 AHT20=1 pin=nan V</span>
+[gyro] bias NVS: 13.69 4.08 0.44 °/s — đo lại khi nằm yên 1,5 s
+[upright] NVS: -0.980 -0.159 -0.118
+<span class="hl">[i2c] bus1 SDA21/SCL22: 0x38 0x3C 0x68 0x77</span>
+[i2c] bus2 không bật: GPIO19 đang dùng cho nút
+[oled] thấy OLED 0x3C trên bus1 — OK
+[gyro] đã hiệu chỉnh: bias 13.60 4.06 0.44 °/s (lưu NVS)
+[net] broker raspivn.local -&gt; 192.168.12.19
+[ntp] máy chủ giờ 192.168.12.19
+<span class="hl">[mqtt] đã kết nối</span>
+[stat] 49.9 Hz, lỡ=0 imuQ=0 envQ=0 bỏ=0 wifi=1 mqtt=1 ntp=1 pin=nanV heap=154780</pre>
+
+  <h3>Đo trực tiếp trên chân</h3>
+  <p>Nạp tạm một chương trình dò: đọc ID từng chip I2C, rồi với mỗi chân lần lượt bật điện trở kéo lên, kéo xuống trong chip và đọc ADC (trung bình 32 lần, 4 vòng). Mỗi kiểu tải cho ra mức khác nhau. Đo xong nạp lại firmware HAR; NVS và LittleFS giữ nguyên.</p>
+  <div class="tbl-wrap">
+    <table class="data">
+      <thead><tr><th>Chân</th><th>Kéo lên</th><th>Kéo xuống</th><th>Thả nổi</th><th>Kết luận</th></tr></thead>
+      <tbody>
+        <tr><td class="num">GPIO25</td><td class="num">0,29–0,37 V</td><td class="num">0,13–0,19 V</td><td class="num">0,24–0,35 V</td><td>Kéo lên bị ghim thấp: có mối nối kiểu diode xuống GND, tức chân B của transistor đệm cho loa</td></tr>
+        <tr><td class="num">GPIO26</td><td class="num">2,14–2,32 V</td><td class="num">2,07–2,14 V</td><td class="num">2,06–2,13 V</td><td>Có tải LED. Mức thả nổi cao chưa giải thích hết; logic đã kiểm bằng mắt: HIGH = sáng</td></tr>
+        <tr><td class="num">GPIO27</td><td class="num">1,76–3,07 V</td><td class="num">1,53–1,96 V</td><td class="num">1,56–2,52 V</td><td>Như GPIO26</td></tr>
+        <tr class="off"><td class="num">GPIO13, 32</td><td class="num">0,96–1,30 V</td><td class="num">0,13–0,26 V</td><td class="num">0,15–0,40 V</td><td>Chân trống, dùng để so sánh</td></tr>
+        <tr class="off"><td class="num">GPIO34</td><td class="num">—</td><td class="num">—</td><td class="num">0,14–0,27 V</td><td>Không có kéo lên/xuống trong chip; dao động như chân trống, không có cầu chia áp</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <ul class="plain">
+    <li>Phần cứng: đủ 3 module I2C với ID đúng, nút ở mức nhả, nhịp lấy mẫu 50 Hz ổn định.</li>
+    <li>Mạng: Wi-Fi, MQTT và NTP đều đã nối; <code>status</code> mỗi 10 s tới được Pi và laptop.</li>
+    <li>Đèn lúc chạy: xanh sáng, đỏ tắt, đúng với trạng thái đã nối MQTT.</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="no">10</span>Chạy thử đã ghi nhận</h2>
+  <div class="tbl-wrap">
+    <table class="data">
+      <thead><tr><th>Phép thử</th><th>Kết quả</th></tr></thead>
+      <tbody>
+        <tr><td>Truyền liên tục 30 phút</td><td>Mất 0 gói, 50,000 Hz</td></tr>
+        <tr><td>Chặn ESP32 30 s bằng iptables</td><td>Vòng đệm lên 83 gói, gửi bù 87 gói <code>replay</code>, mất 4 gói (~2 s), không reset</td></tr>
+        <tr><td>Thả hộp lên nệm</td><td>Va chạm 8,5 g và 12,1 g, ra <code>suspected</code>; nhấn nút trong 10 s ra <code>cancelled</code></td></tr>
+        <tr><td>Giữ nút 3 s</td><td><code>sos</code> tới Pi, báo trong 0,3 s</td></tr>
+        <tr><td>Lệch giờ ESP32 so với Pi</td><td>Trung vị −20 ms (độ trễ đóng gói và mạng)</td></tr>
+        <tr><td>Hiệu chỉnh con quay</td><td>Sau hiệu chỉnh, trung bình nằm yên −0,03 / −0,02 / −0,01 °/s</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2><span class="no">11</span>Hạn chế của mạch hiện tại</h2>
+  <div class="tbl-wrap">
+    <table class="data">
+      <thead><tr><th>Mục</th><th>Mạch thật</th><th>Ảnh hưởng</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Màn OLED</td><td>Chung bus I2C với cảm biến</td><td>Khi màn vẽ, thời điểm đọc MPU6050 có thể lệch tới ~3 ms; firmware gửi màn từng dải 8 dòng để giữ nhịp 50 Hz</td></tr>
+        <tr><td class="k">Bus I2C thứ hai</td><td>Không có, GPIO19 là nút</td><td>Mọi thiết bị I2C dùng chung GPIO21/22</td></tr>
+        <tr><td class="k">Đo áp pin</td><td>Không có cầu chia áp</td><td><code>battery_v: null</code>; OLED hiện giờ thay cho %; không có cảnh báo pin yếu</td></tr>
+        <tr><td class="k">Báo động</td><td>Chỉ có loa và 2 LED, không có motor rung</td><td>Người đeo chỉ nhận cảnh báo bằng tiếng và đèn</td></tr>
+        <tr><td class="k">AHT20</td><td>Gần ESP32, bị hâm nóng</td><td>Đọc 43 °C sau 1 giờ; không dùng làm đặc trưng nhận dạng</td></tr>
+        <tr><td class="k">Gia tốc kế</td><td>SVM nằm yên 0,942 g</td><td>Chưa hiệu chỉnh 6 mặt; ảnh hưởng nhỏ tới ngưỡng té</td></tr>
+        <tr><td class="k">Con quay</td><td>Lệch ~13,6 °/s trục X</td><td>Firmware tự trừ lệch sau mỗi lần khởi động khi nằm yên 1,5 s</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2><span class="no">12</span>Cách đọc lại số liệu</h2>
+  <p>Chạy trên laptop đang cắm ESP32. Các lệnh chỉ đọc, ESP32 tự khởi động lại firmware sau mỗi lệnh.</p>
+<pre class="log"><span class="dim"># Thông tin chip và flash</span>
+~/.platformio/penv/Scripts/python.exe ~/.platformio/packages/tool-esptoolpy/esptool.py --port COM6 flash_id
+
+<span class="dim"># Bảng phân vùng</span>
+esptool.py --port COM6 read_flash 0x8000 0xC00 pt.bin
+python gen_esp32part.py pt.bin
+
+<span class="dim"># Log khởi động (quét I2C, cảm biến, nút, [stat] mỗi 10 s)</span>
+pio device monitor -p COM6 -b 115200
+
+<span class="dim"># Trạng thái qua Pi khi không cắm USB (tài khoản MQTT trong secrets.h)</span>
+mosquitto_sub -h 192.168.12.19 -u har01 -P "&lt;mật khẩu&gt;" -t har/har01/status -v</pre>
+</section>
+
+<footer>
+  Tài liệu liên quan trong repo: <code>docs/pinout.md</code>, <code>docs/mqtt.md</code>, <code>docs/firmware-integration.md</code>, <code>firmware/include/pins.h</code>, <code>firmware/include/config.h</code>.
+</footer>
+
+</div>

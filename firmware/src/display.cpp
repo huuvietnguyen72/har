@@ -60,7 +60,7 @@ void draw() {
   conf = g.conf;
   xSemaphoreGive(stateMutex);
 
-  // Góc phải: % pin nếu đo được (có cầu chia áp GPIO34), không thì giờ Việt Nam HH:MM từ Pi
+  // Góc phải: % pin nếu đo được, không thì giờ Việt Nam HH:MM từ Pi (mạch hiện tại không đo áp pin)
   if (!isnan(g.battery_v)) {
     snprintf(right, sizeof(right), "%d%%", batteryPct(g.battery_v));
   } else if (g.timeSynced) {
