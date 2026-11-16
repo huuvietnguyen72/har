@@ -146,7 +146,7 @@ class Infer:
             else:
                 pressure = np.zeros(len(t))
         t0 = time.perf_counter()
-        probs = self.model.predict_proba(acc, gyr, pressure)
+        probs = self.model.predict_proba(acc, gyr, pressure, st.esp.get("upright"))  # hướng đã hiệu chỉnh
         infer_ms = (time.perf_counter() - t0) * 1000
         raw = max(probs, key=probs.get)
         conf = float(probs[raw])

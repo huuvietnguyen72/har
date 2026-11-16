@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 
 from har_edge import LABELS
-from har_edge.features import smooth_pressure
+from har_edge.features import smooth_pressure, upright_vec
 
 FS = 50
 TRIM_S = 2.0
@@ -33,6 +33,7 @@ class Recording:
     gyr: np.ndarray  # (n,3) °/s
     pressure: np.ndarray | None  # (n,) Pa, đã nội suy + lọc
     synthetic: bool = False
+    upright: np.ndarray | None = None  # vector đứng thẳng của phiên (meta.json), None = UPRIGHT
 
 
 @dataclass
@@ -44,6 +45,7 @@ class Windows:
     groups: np.ndarray  # (N,) mã người
     rec_ids: np.ndarray  # (N,) id phiên
     window_s: float
+    up: np.ndarray | None = None  # (N, 3) vector đứng thẳng của phiên chứa cửa sổ
 
     def __len__(self) -> int:
         return len(self.y)
@@ -73,6 +75,7 @@ def load_recordings(root: str | Path) -> list[Recording]:
             id=meta.get("id", d.name), subject=str(meta.get("subject") or "S00"), activity=meta["activity"],
             t=t, acc=imu[["ax", "ay", "az"]].to_numpy(), gyr=imu[["gx", "gy", "gz"]].to_numpy(),
             pressure=pressure, synthetic=bool(meta.get("synthetic", False)),
+            upright=np.asarray(meta["upright"], dtype=np.float64) if meta.get("upright") else None,
         ))
     return recs
 
@@ -110,7 +113,7 @@ def _segments(rec: Recording, window_s: float) -> list[tuple[int, int, str, int]
 
 def make_windows(recs: list[Recording], window_s: float = 2.5) -> Windows:
     w = int(round(window_s * FS))
-    A, G, P, Y, GR, R = [], [], [], [], [], []
+    A, G, P, Y, GR, R, U = [], [], [], [], [], [], []
     for rec in recs:
         p_full = rec.pressure if rec.pressure is not None else np.zeros(len(rec.t))
         for lo, hi, label, step in _segments(rec, window_s):
@@ -121,10 +124,11 @@ def make_windows(recs: list[Recording], window_s: float = 2.5) -> Windows:
                 Y.append(LABELS.index(label))
                 GR.append(rec.subject)
                 R.append(rec.id)
+                U.append(upright_vec(rec.upright))
     if not A:
         raise ValueError("Không cắt được cửa sổ nào — kiểm tra thư mục dữ liệu")
     return Windows(np.asarray(A, np.float32), np.asarray(G, np.float32), np.asarray(P, np.float32),
-                   np.asarray(Y), np.asarray(GR), np.asarray(R), window_s)
+                   np.asarray(Y), np.asarray(GR), np.asarray(R), window_s, np.asarray(U, np.float64))
 
 
 def summary(win: Windows) -> pd.DataFrame:

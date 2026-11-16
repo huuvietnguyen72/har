@@ -9,6 +9,7 @@
 #include "app.h"
 #include "gyro_cal.h"
 #include "pins.h"
+#include "upright_cal.h"
 
 namespace {
 
@@ -22,6 +23,11 @@ volatile bool gyroCalRequest = false;            // netTask -> samplerTask
 volatile uint8_t gyroCalReport = 0;              // samplerTask -> slowTask: 1 = đạt (lưu NVS), 2 = bỏ cuộc
 volatile int16_t gyroCalBiasRaw[3] = {0, 0, 0};  // bias vừa đo, để slowTask lưu NVS
 
+// Hướng đứng thẳng: chỉ samplerTask đụng vào uprightCal và fallDetector.params().up_*
+UprightCal uprightCal;
+volatile bool uprightRequest = false;  // netTask -> samplerTask
+volatile uint8_t uprightReport = 0;    // samplerTask -> slowTask: 1 = đạt, 2 = đang cử động, 3 = sai 1 g
+
 void loadGyroBias() {
   Preferences p;
   p.begin("imu", true);
@@ -31,6 +37,31 @@ void loadGyroBias() {
   }
   p.end();
   for (int k = 0; k < 3; k++) g.gyroBiasDps[k] = gyroCal.biasDps(k);
+}
+
+void loadUpright() {
+  FallParams& fp = fallDetector.params();
+  Preferences p;
+  p.begin("imu", true);
+  if (p.isKey("upx")) {
+    fp.up_x = p.getFloat("upx", fp.up_x);
+    fp.up_y = p.getFloat("upy", fp.up_y);
+    fp.up_z = p.getFloat("upz", fp.up_z);
+    g.uprightState = 1;
+  }
+  p.end();
+  g.upright[0] = fp.up_x;
+  g.upright[1] = fp.up_y;
+  g.upright[2] = fp.up_z;
+}
+
+void saveUpright(const float u[3]) {
+  Preferences p;
+  p.begin("imu", false);
+  p.putFloat("upx", u[0]);
+  p.putFloat("upy", u[1]);
+  p.putFloat("upz", u[2]);
+  p.end();
 }
 
 void saveGyroBias(const int16_t b[3]) {
@@ -155,6 +186,9 @@ bool sensorsBegin() {
   Serial.printf("[gyro] bias %s: %.2f %.2f %.2f °/s — đo lại khi nằm yên 1,5 s\n",
                 g.gyroCalState ? "NVS" : "chưa có", g.gyroBiasDps[0], g.gyroBiasDps[1], g.gyroBiasDps[2]);
   gyroCalRequest = true;  // samplerTask đo ngay khi bắt đầu
+  loadUpright();
+  Serial.printf("[upright] %s: %.3f %.3f %.3f\n", g.uprightState ? "NVS" : "mặc định", g.upright[0],
+                g.upright[1], g.upright[2]);
   return g.mpuOk;
 }
 
@@ -163,7 +197,7 @@ void samplerTask(void*) {
   EnvPacket ep{};
   uint8_t i = 0;
   uint32_t seq = 0, envSeq = 0, n = 0, fails = 0;
-  int calTries = 0;
+  int calTries = 0, upTries = 0;
   int16_t raw[6] = {0, (int16_t)-ACC_LSB_PER_G, 0, 0, 0, 0};  // thô từ MPU6050
   int16_t cr[6];                                              // đã trừ bias con quay
   TickType_t last = xTaskGetTickCount();
@@ -223,6 +257,29 @@ void samplerTask(void*) {
     // Bộ phát hiện té chạy với thời gian millis() (đơn điệu), đổi sang epoch khi báo
     const float ax = cr[0] / ACC_LSB_PER_G, ay = cr[1] / ACC_LSB_PER_G, az = cr[2] / ACC_LSB_PER_G;
     const float gx = cr[3] / GYRO_LSB_PER_DPS, gy = cr[4] / GYRO_LSB_PER_DPS, gz = cr[5] / GYRO_LSB_PER_DPS;
+    // Hiệu chỉnh hướng đứng thẳng (theo lệnh): người đeo đứng thẳng yên ~2 s
+    if (uprightRequest) {
+      uprightRequest = false;
+      upTries = 0;
+      uprightCal.start();
+    }
+    if (ok && uprightCal.active()) {
+      const UprightCal::Result r = uprightCal.feed(ax, ay, az, gx, gy, gz);
+      if (r == UprightCal::OK) {
+        FallParams& fp = fallDetector.params();
+        fp.up_x = uprightCal.up()[0];
+        fp.up_y = uprightCal.up()[1];
+        fp.up_z = uprightCal.up()[2];
+        for (int k = 0; k < 3; k++) g.upright[k] = uprightCal.up()[k];
+        g.uprightState = 2;
+        g.uprightT = timeValid() ? epochMs() : 0;
+        uprightReport = 1;
+      } else if (r != UprightCal::PENDING && ++upTries >= UPRIGHT_CAL_TRIES) {
+        uprightCal.stop();
+        uprightReport = r == UprightCal::MOVING ? 2 : 3;
+      }
+    }
+
     if (fallDetector.update(nowMs, ax, ay, az, gx, gy, gz)) {
       FallTrigger ft;
       const uint64_t ageMs = nowMs - fallDetector.impactMs();
@@ -279,6 +336,47 @@ void samplerTask(void*) {
 
 void requestGyroCal() { gyroCalRequest = true; }
 
+bool setUpright(const float u[3]) {
+  const float n = sqrtf(u[0] * u[0] + u[1] * u[1] + u[2] * u[2]);
+  if (!(n > 0.5f && n < 2.0f)) return false;
+  FallParams& fp = fallDetector.params();  // float ghi đơn lẻ, samplerTask đọc lại ở mẫu sau
+  fp.up_x = u[0] / n;
+  fp.up_y = u[1] / n;
+  fp.up_z = u[2] / n;
+  g.upright[0] = fp.up_x;
+  g.upright[1] = fp.up_y;
+  g.upright[2] = fp.up_z;
+  g.uprightState = 3;
+  saveUpright(g.upright);
+  Serial.printf("[upright] đặt tay: %.3f %.3f %.3f (lưu NVS)\n", g.upright[0], g.upright[1], g.upright[2]);
+  requestStatusNow();
+  return true;
+}
+
+void requestUprightCal(const char* id) {
+  strlcpy(g.uprightReq, id, sizeof(g.uprightReq));
+  strlcpy(g.uprightResult, "pending", sizeof(g.uprightResult));
+  uprightRequest = true;
+  requestStatusNow();
+}
+
+// Báo kết quả hiệu chỉnh hướng đứng thẳng (ghi NVS, in Serial, gửi status) ngoài samplerTask
+void reportUpright() {
+  const uint8_t rep = uprightReport;
+  if (!rep) return;
+  uprightReport = 0;
+  if (rep == 1) {
+    const float u[3] = {g.upright[0], g.upright[1], g.upright[2]};
+    saveUpright(u);
+    strlcpy(g.uprightResult, "ok", sizeof(g.uprightResult));
+    Serial.printf("[upright] đã hiệu chỉnh: %.3f %.3f %.3f (lưu NVS)\n", u[0], u[1], u[2]);
+  } else {
+    strlcpy(g.uprightResult, rep == 2 ? "moving" : "bad_gravity", sizeof(g.uprightResult));
+    Serial.printf("[upright] không đạt (%s), giữ hướng cũ\n", g.uprightResult);
+  }
+  requestStatusNow();
+}
+
 // Báo kết quả hiệu chỉnh con quay (in Serial, ghi NVS) ngoài samplerTask để không làm trễ nhịp 50 Hz
 void reportGyroCal() {
   const uint8_t rep = gyroCalReport;
@@ -301,6 +399,7 @@ void slowTask(void*) {
   bool first = true;
   for (;;) {
     reportGyroCal();
+    reportUpright();
     if (!first && millis() - lastSlow < SLOW_PERIOD_MS) {
       vTaskDelay(pdMS_TO_TICKS(250));
       continue;

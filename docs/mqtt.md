@@ -44,6 +44,9 @@ Broker cổng 1883, bắt buộc user/mật khẩu; tường lửa chỉ mở ch
  "gyro_cal":"measured", "gyro_bias_dps":[13.69,4.21,0.44]}
 // gyro_cal: measured = vừa đo lúc nằm yên | nvs = dùng giá trị lần trước | none = chưa hiệu chỉnh
 // chẩn đoán nút: "btn_presses":12 (số lần nhấn từ lúc khởi động), "btn_level":1 (1 = nhả, 0 = đang nhấn)
+// hướng đứng thẳng: "upright":[-0.993,-0.019,-0.12], "upright_cal":"measured" (measured | nvs | manual | default),
+//   "upright_t": thời điểm đo (epoch ms, 0 nếu chưa đo từ lúc khởi động), "upright_req": id lệnh gần nhất,
+//   "upright_result": none | pending | ok | moving | bad_gravity
 
 // har/har01/cmd
 {"cmd":"beep", "ms":200}
@@ -52,13 +55,16 @@ Broker cổng 1883, bắt buộc user/mật khẩu; tường lửa chỉ mở ch
  "impact_window_ms":500, "still_gyro_dps":30, "posture_deg":50}   // lưu NVS
 {"cmd":"test_alarm"}
 {"cmd":"calibrate_gyro"}                                  // đặt nằm yên ≥ 1,5 s; lưu NVS
+{"cmd":"calibrate_upright", "id":"rec-1763060000"}        // người đeo đứng thẳng yên ~2 s; lưu NVS
+{"cmd":"set_upright", "up":[-1,0,0]}                      // đặt tay vector đứng thẳng; lưu NVS
 {"cmd":"reboot"}
 
 // har/har01/display (retained)
 {"v":1, "label":"walk", "conf":0.91, "mode":"monitor"}
 
 // har/har01/session
-{"action":"start", "id":"har01_S01_walk_20261120-101500", "subject":"S01", "activity":"walk", "note":""}
+{"action":"start", "id":"har01_S01_walk_20261120-101500", "subject":"S01", "activity":"walk", "note":"",
+ "upright":[-0.993,-0.019,-0.12], "upright_source":"measured", "upright_angle_deg":7.0}   // ghi vào meta.json
 {"action":"stop", "id":"har01_S01_walk_20261120-101500"}
 
 // har/har01/pred

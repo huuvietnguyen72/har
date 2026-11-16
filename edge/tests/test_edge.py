@@ -7,7 +7,8 @@ import pytest
 from har_edge import store
 from har_edge.config import Config
 from har_edge.fall_threshold import detect_all
-from har_edge.features import FEATURE_NAMES_BARO, FEATURE_NAMES_IMU, cnn_input, extract_features
+from har_edge.features import (FEATURE_NAMES_BARO, FEATURE_NAMES_IMU, UPRIGHT, cnn_input, extract_features,
+                               upright_vec)
 from har_edge.infer import Infer
 from har_edge.ingest import Ingest
 from har_edge.logic import FallFusion, Segmenter, Smoother, TechMonitor
@@ -68,6 +69,25 @@ def test_features_shape_and_tilt():
 
 
 # ---------- ngưỡng té ----------
+def test_tilt_uses_calibrated_upright():
+    """Hộp cài nghiêng 40°: theo hướng mặc định thì đứng trông như ngồi; theo hướng đã hiệu chỉnh thì đứng."""
+    acc, gyr, _ = generate("stand", 2.5, RNG)
+    r = np.radians(40)
+    rot = np.array([[np.cos(r), 0, -np.sin(r)], [0, 1, 0], [np.sin(r), 0, np.cos(r)]])
+    acc_t, gyr_t = acc @ rot.T, gyr @ rot.T
+    up = acc_t.mean(axis=0)
+    i = FEATURE_NAMES_IMU.index("tilt_deg")
+    assert extract_features(acc_t, gyr_t)[i] > 30
+    assert extract_features(acc_t, gyr_t, up=up)[i] < 8
+    m = HeuristicModel()
+    p_default = m.predict_proba(acc_t, gyr_t, None)
+    p_cal = m.predict_proba(acc_t, gyr_t, None, up=list(up))
+    assert max(p_default, key=p_default.get) == "sit"
+    assert max(p_cal, key=p_cal.get) == "stand"
+    assert upright_vec(None) is UPRIGHT and upright_vec([0, 0, 0]) is UPRIGHT and upright_vec("x") is UPRIGHT
+    assert np.allclose(upright_vec([0, 0, 2]), [0, 0, 1])
+
+
 def test_fall_threshold_detects_fall_not_walk():
     t = lambda n: T0 + np.arange(n) * 20  # noqa: E731
     acc, gyr, _ = generate("fall", 6, np.random.default_rng(1))

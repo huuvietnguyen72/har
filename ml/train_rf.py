@@ -30,7 +30,8 @@ GRID = [(200, None), (200, 20), (400, None), (100, 12)]
 
 def featurize(win, use_baro: bool) -> np.ndarray:
     return np.nan_to_num(np.stack([
-        extract_features(win.acc[i], win.gyr[i], win.pressure[i] if use_baro else None) for i in range(len(win))
+        extract_features(win.acc[i], win.gyr[i], win.pressure[i] if use_baro else None,
+                         up=None if win.up is None else win.up[i]) for i in range(len(win))
     ]))
 
 
@@ -79,7 +80,8 @@ def main() -> None:
     # Độ trễ suy luận một cửa sổ (đặc trưng + dự đoán) trên máy này; đo lại trên Pi
     t0 = time.perf_counter()
     for i in range(50):
-        final.predict_proba(extract_features(win.acc[i], win.gyr[i], win.pressure[i] if a.baro else None)[None, :])
+        final.predict_proba(extract_features(win.acc[i], win.gyr[i], win.pressure[i] if a.baro else None,
+                                             up=None if win.up is None else win.up[i])[None, :])
     infer_ms = (time.perf_counter() - t0) / 50 * 1000
 
     names = feature_names(a.baro)

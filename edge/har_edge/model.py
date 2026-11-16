@@ -33,7 +33,9 @@ class BaseModel:
     def n_samples(self) -> int:
         return int(round(self.window_s * self.fs))
 
-    def predict_proba(self, acc: np.ndarray, gyr: np.ndarray, pressure: np.ndarray | None) -> dict[str, float]:
+    def predict_proba(self, acc: np.ndarray, gyr: np.ndarray, pressure: np.ndarray | None,
+                      up=None) -> dict[str, float]:
+        """up: vector đứng thẳng đã hiệu chỉnh theo người đeo (None = UPRIGHT mặc định)."""
         raise NotImplementedError
 
 
@@ -51,8 +53,8 @@ class RFModel(BaseModel):
         self.fs = int(meta.get("fs", 50))
         self._classes = [self.labels[int(c)] if not isinstance(c, str) else c for c in self.clf.classes_]
 
-    def predict_proba(self, acc, gyr, pressure):
-        x = extract_features(acc, gyr, pressure if self.use_baro else None, self.fs)[None, :]
+    def predict_proba(self, acc, gyr, pressure, up=None):
+        x = extract_features(acc, gyr, pressure if self.use_baro else None, self.fs, up)[None, :]
         x = np.nan_to_num(x)
         p = self.clf.predict_proba(x)[0]
         out = {lbl: 0.0 for lbl in self.labels}
@@ -83,7 +85,7 @@ class TFLiteModel(BaseModel):
         self.mean = np.asarray(meta["norm"]["mean"], dtype=np.float32)
         self.std = np.asarray(meta["norm"]["std"], dtype=np.float32)
 
-    def predict_proba(self, acc, gyr, pressure):
+    def predict_proba(self, acc, gyr, pressure, up=None):  # CNN dùng trục thô, chưa dùng up
         x = (cnn_input(acc, gyr, pressure if self.use_baro else None) - self.mean) / self.std
         x = x[None, ...].astype(np.float32)
         if self.inp["dtype"] == np.int8:  # model lượng tử hóa int8
@@ -106,9 +108,9 @@ class HeuristicModel(BaseModel):
     name = "heuristic-v1"
     use_baro = True
 
-    def predict_proba(self, acc, gyr, pressure):
+    def predict_proba(self, acc, gyr, pressure, up=None):
         svm = np.linalg.norm(acc, axis=1)
-        tilt = float(tilt_deg(acc.mean(axis=0)[None, :])[0])
+        tilt = float(tilt_deg(acc.mean(axis=0)[None, :], up)[0])
         std = float(svm.std())
         slope = 0.0
         if pressure is not None and np.all(np.isfinite(pressure)):

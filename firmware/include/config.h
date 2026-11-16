@@ -20,6 +20,9 @@
 // Hiệu chỉnh độ lệch con quay (lib/gyro_cal): mỗi lần thử 1,5 s nằm yên, thử tối đa N lần sau khi
 // khởi động hoặc sau lệnh {"cmd":"calibrate_gyro"}; không đạt thì giữ giá trị lưu NVS lần trước.
 #define GYRO_CAL_TRIES 40       // 40 × 1,5 s = 60 s
+// Hiệu chỉnh hướng đứng thẳng (lib/upright_cal) theo lệnh {"cmd":"calibrate_upright","id":...}:
+// người đeo đứng thẳng yên; mỗi lần thử 2 s, tối đa N lần. Kết quả lưu NVS, gửi trong status.
+#define UPRIGHT_CAL_TRIES 4     // 4 × 2 s = 8 s
 
 // --- Mạng ---
 #define MQTT_BUFFER_SIZE 2048   // mặc định 256 B của PubSubClient sẽ làm rơi gói IMU
