@@ -7,5 +7,6 @@
 | [data-schema.md](data-schema.md) | Bảng dữ liệu trên VPS (PostgreSQL) |
 | [api.md](api.md) | API của backend trên VPS |
 | [pinout.md](pinout.md) | Bảng chân ESP32 |
+| [firmware-integration.md](firmware-integration.md) | Nhật ký tích hợp firmware với Pi: vấn đề gặp, cách sửa, số đo kiểm chứng |
 
 Quy ước chung: thời gian là epoch mili giây UTC; `{dev}` là mã thiết bị, ví dụ `har01`.

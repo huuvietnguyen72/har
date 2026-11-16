@@ -3,9 +3,11 @@
 //   BMP280 (0x76/0x77) — thư viện Adafruit, normal mode, oversampling áp ×16, IIR ×4
 //   AHT20 (0x38) — driver trực tiếp, chia lệnh đo và đọc để không giữ bus 80 ms
 #include <Adafruit_BMP280.h>
+#include <Preferences.h>
 #include <Wire.h>
 
 #include "app.h"
+#include "gyro_cal.h"
 #include "pins.h"
 
 namespace {
@@ -13,6 +15,32 @@ namespace {
 constexpr uint8_t MPU_ADDR = 0x68;
 constexpr uint8_t AHT_ADDR = 0x38;
 Adafruit_BMP280 bmp(&Wire);
+
+// Hiệu chỉnh con quay: chỉ samplerTask đụng vào gyroCal; các task khác giao tiếp qua cờ volatile
+GyroCal gyroCal;
+volatile bool gyroCalRequest = false;            // netTask -> samplerTask
+volatile uint8_t gyroCalReport = 0;              // samplerTask -> slowTask: 1 = đạt (lưu NVS), 2 = bỏ cuộc
+volatile int16_t gyroCalBiasRaw[3] = {0, 0, 0};  // bias vừa đo, để slowTask lưu NVS
+
+void loadGyroBias() {
+  Preferences p;
+  p.begin("imu", true);
+  if (p.isKey("gbx")) {
+    gyroCal.setBias(p.getShort("gbx", 0), p.getShort("gby", 0), p.getShort("gbz", 0));
+    g.gyroCalState = 1;
+  }
+  p.end();
+  for (int k = 0; k < 3; k++) g.gyroBiasDps[k] = gyroCal.biasDps(k);
+}
+
+void saveGyroBias(const int16_t b[3]) {
+  Preferences p;
+  p.begin("imu", false);
+  p.putShort("gbx", b[0]);
+  p.putShort("gby", b[1]);
+  p.putShort("gbz", b[2]);
+  p.end();
+}
 
 bool writeReg(uint8_t addr, uint8_t reg, uint8_t val) {
   Wire.beginTransmission(addr);
@@ -121,6 +149,12 @@ bool sensorsBegin() {
   g.ahtOk = ahtInit();
   g.battery_v = readBattery();
   Serial.printf("[sensors] MPU6050=%d BMP280=%d AHT20=%d pin=%.2f V\n", g.mpuOk, g.bmpOk, g.ahtOk, g.battery_v);
+  gyroCal.params().lsb_per_dps = GYRO_LSB_PER_DPS;
+  gyroCal.params().lsb_per_g = ACC_LSB_PER_G;
+  loadGyroBias();
+  Serial.printf("[gyro] bias %s: %.2f %.2f %.2f °/s — đo lại khi nằm yên 1,5 s\n",
+                g.gyroCalState ? "NVS" : "chưa có", g.gyroBiasDps[0], g.gyroBiasDps[1], g.gyroBiasDps[2]);
+  gyroCalRequest = true;  // samplerTask đo ngay khi bắt đầu
   return g.mpuOk;
 }
 
@@ -129,7 +163,9 @@ void samplerTask(void*) {
   EnvPacket ep{};
   uint8_t i = 0;
   uint32_t seq = 0, envSeq = 0, n = 0, fails = 0;
-  int16_t raw[6] = {0, (int16_t)-ACC_LSB_PER_G, 0, 0, 0, 0};
+  int calTries = 0;
+  int16_t raw[6] = {0, (int16_t)-ACC_LSB_PER_G, 0, 0, 0, 0};  // thô từ MPU6050
+  int16_t cr[6];                                              // đã trừ bias con quay
   TickType_t last = xTaskGetTickCount();
 
   for (;;) {
@@ -161,9 +197,32 @@ void samplerTask(void*) {
     n++;
     g.samples = n;
 
+    // Hiệu chỉnh con quay: chỉ cho ăn mẫu đọc thật (mẫu lặp khi lỗi sẽ làm sai thống kê)
+    if (gyroCalRequest) {
+      gyroCalRequest = false;
+      calTries = 0;
+      gyroCal.start();
+    }
+    if (ok && gyroCal.active()) {
+      const GyroCal::Result r = gyroCal.feed(raw);
+      if (r == GyroCal::OK) {
+        for (int k = 0; k < 3; k++) {
+          gyroCalBiasRaw[k] = gyroCal.bias()[k];
+          g.gyroBiasDps[k] = gyroCal.biasDps(k);
+        }
+        g.gyroCalState = 2;
+        gyroCalReport = 1;
+      } else if (r != GyroCal::PENDING && ++calTries >= GYRO_CAL_TRIES) {
+        gyroCal.stop();
+        gyroCalReport = 2;
+      }
+    }
+    memcpy(cr, raw, sizeof(cr));
+    gyroCal.apply(cr);
+
     // Bộ phát hiện té chạy với thời gian millis() (đơn điệu), đổi sang epoch khi báo
-    const float ax = raw[0] / ACC_LSB_PER_G, ay = raw[1] / ACC_LSB_PER_G, az = raw[2] / ACC_LSB_PER_G;
-    const float gx = raw[3] / GYRO_LSB_PER_DPS, gy = raw[4] / GYRO_LSB_PER_DPS, gz = raw[5] / GYRO_LSB_PER_DPS;
+    const float ax = cr[0] / ACC_LSB_PER_G, ay = cr[1] / ACC_LSB_PER_G, az = cr[2] / ACC_LSB_PER_G;
+    const float gx = cr[3] / GYRO_LSB_PER_DPS, gy = cr[4] / GYRO_LSB_PER_DPS, gz = cr[5] / GYRO_LSB_PER_DPS;
     if (fallDetector.update(nowMs, ax, ay, az, gx, gy, gz)) {
       FallTrigger ft;
       const uint64_t ageMs = nowMs - fallDetector.impactMs();
@@ -178,7 +237,7 @@ void samplerTask(void*) {
       pk.t0 = epochMs();
       pk.seq = seq;
     }
-    for (int k = 0; k < 6; k++) pk.v[k][i] = raw[k];
+    for (int k = 0; k < 6; k++) pk.v[k][i] = cr[k];
     if (++i >= PACKET_SAMPLES) {
       pk.createdMs = millis();
       if (xQueueSend(imuQueue, &pk, 0) != pdTRUE) {  // đầy (mất mạng > 60 s): bỏ gói cũ nhất
@@ -218,8 +277,36 @@ void samplerTask(void*) {
   }
 }
 
+void requestGyroCal() { gyroCalRequest = true; }
+
+// Báo kết quả hiệu chỉnh con quay (in Serial, ghi NVS) ngoài samplerTask để không làm trễ nhịp 50 Hz
+void reportGyroCal() {
+  const uint8_t rep = gyroCalReport;
+  if (!rep) return;
+  gyroCalReport = 0;
+  if (rep == 1) {
+    const int16_t b[3] = {gyroCalBiasRaw[0], gyroCalBiasRaw[1], gyroCalBiasRaw[2]};
+    saveGyroBias(b);
+    Serial.printf("[gyro] đã hiệu chỉnh: bias %.2f %.2f %.2f °/s (lưu NVS)\n", g.gyroBiasDps[0], g.gyroBiasDps[1],
+                  g.gyroBiasDps[2]);
+  } else {
+    Serial.printf("[gyro] không nằm yên đủ lâu trong %d s, giữ bias %s\n", GYRO_CAL_TRIES * 3 / 2,
+                  g.gyroCalState ? "NVS" : "0 (chưa hiệu chỉnh)");
+  }
+  requestStatusNow();
+}
+
 void slowTask(void*) {
+  uint32_t lastSlow = 0;
+  bool first = true;
   for (;;) {
+    reportGyroCal();
+    if (!first && millis() - lastSlow < SLOW_PERIOD_MS) {
+      vTaskDelay(pdMS_TO_TICKS(250));
+      continue;
+    }
+    first = false;
+    lastSlow = millis();
     if (g.ahtOk) {
       bool trig = false;
       if (xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
@@ -240,6 +327,5 @@ void slowTask(void*) {
     }
     const float v = readBattery();
     g.battery_v = (isnan(g.battery_v) || isnan(v)) ? v : 0.7f * g.battery_v + 0.3f * v;  // làm mượt
-    vTaskDelay(pdMS_TO_TICKS(SLOW_PERIOD_MS));
   }
 }

@@ -20,7 +20,8 @@ Broker cổng 1883, bắt buộc user/mật khẩu; tường lửa chỉ mở ch
 ## Payload (phiên bản `v: 1`)
 
 ```jsonc
-// har/har01/imu — giá trị thô int16; Pi đổi sang g và °/s
+// har/har01/imu — giá trị thô int16; Pi đổi sang g và °/s. gx/gy/gz đã trừ độ lệch con quay
+// (hiệu chỉnh lúc nằm yên sau khi khởi động, xem gyro_cal trong status)
 // MPU6050: ±8 g (4096 LSB/g), ±500 °/s (65,5 LSB/(°/s)); mẫu i có thời điểm t0 + i*dt
 {"v":1, "seq":10234, "t0":1763060000000, "dt":20, "replay":false,
  "ax":[/*25 số*/], "ay":[], "az":[], "gx":[], "gy":[], "gz":[]}
@@ -38,7 +39,9 @@ Broker cổng 1883, bắt buộc user/mật khẩu; tường lửa chỉ mở ch
 
 // har/har01/status (retained) — battery_v = null khi không đo được pin (chưa lắp cầu chia áp GPIO34)
 {"v":1, "t":1763060010000, "online":true, "battery_v":3.92, "rssi":-58, "uptime_s":3600, "fw":"1.0.0",
- "heap":182000, "mpu_ok":true, "bmp_ok":true, "aht_ok":true, "pending_events":0, "dropped":0}
+ "heap":182000, "mpu_ok":true, "bmp_ok":true, "aht_ok":true, "pending_events":0, "dropped":0,
+ "gyro_cal":"measured", "gyro_bias_dps":[13.69,4.21,0.44]}
+// gyro_cal: measured = vừa đo lúc nằm yên | nvs = dùng giá trị lần trước | none = chưa hiệu chỉnh
 
 // har/har01/cmd
 {"cmd":"beep", "ms":200}
@@ -46,6 +49,7 @@ Broker cổng 1883, bắt buộc user/mật khẩu; tường lửa chỉ mở ch
 {"cmd":"set_threshold", "freefall_g":0.4, "freefall_ms":80, "impact_g":2.5,
  "impact_window_ms":500, "still_gyro_dps":30, "posture_deg":50}   // lưu NVS
 {"cmd":"test_alarm"}
+{"cmd":"calibrate_gyro"}                                  // đặt nằm yên ≥ 1,5 s; lưu NVS
 {"cmd":"reboot"}
 
 // har/har01/display (retained)

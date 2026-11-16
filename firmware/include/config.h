@@ -14,6 +14,9 @@
 // MPU6050: ±8 g → 4096 LSB/g ; ±500 °/s → 65,5 LSB/(°/s). Khớp edge/har_edge/units.py
 #define ACC_LSB_PER_G 4096.0f
 #define GYRO_LSB_PER_DPS 65.5f
+// Hiệu chỉnh độ lệch con quay (lib/gyro_cal): mỗi lần thử 1,5 s nằm yên, thử tối đa N lần sau khi
+// khởi động hoặc sau lệnh {"cmd":"calibrate_gyro"}; không đạt thì giữ giá trị lưu NVS lần trước.
+#define GYRO_CAL_TRIES 40       // 40 × 1,5 s = 60 s
 
 // --- Mạng ---
 #define MQTT_BUFFER_SIZE 2048   // mặc định 256 B của PubSubClient sẽ làm rơi gói IMU
