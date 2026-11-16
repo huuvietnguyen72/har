@@ -103,12 +103,17 @@ bool scanBus(TwoWire& bus, const char* name, uint8_t want) {
 void displayWake() { g.displayWakeMs = millis(); }
 
 void displayBegin() {
-  Wire1.begin(PIN_I2C2_SDA, PIN_I2C2_SCL, 400000);
   char name[32];
   snprintf(name, sizeof(name), "bus1 SDA%d/SCL%d", PIN_I2C1_SDA, PIN_I2C1_SCL);
   const bool onBus1 = scanBus(Wire, name, 0x3C);
+  bool onBus2 = false;
+#if BUS2_PINS_FREE
+  Wire1.begin(PIN_I2C2_SDA, PIN_I2C2_SCL, 400000);
   snprintf(name, sizeof(name), "bus2 SDA%d/SCL%d", PIN_I2C2_SDA, PIN_I2C2_SCL);
-  const bool onBus2 = scanBus(Wire1, name, 0x3C);
+  onBus2 = scanBus(Wire1, name, 0x3C);
+#else
+  Serial.printf("[i2c] bus2 không bật: GPIO%d đang dùng cho nút\n", PIN_BUTTON);
+#endif
   const bool onConfigured = OLED_I2C_BUS == 1 ? onBus1 : onBus2;
   if (onConfigured) Serial.printf("[oled] thấy OLED 0x3C trên bus%d — OK\n", OLED_I2C_BUS);
   else if (onBus1 || onBus2)

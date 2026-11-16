@@ -7,7 +7,7 @@
 | Còi | GPIO25 | Qua 1 kΩ vào S8050, diode 1N4148 chặn xung ngược |
 | LED xanh | GPIO26 | 220 Ω; đang chạy, đã kết nối |
 | LED đỏ | GPIO27 | 220 Ω; pin yếu, mất Wi-Fi, lỗi cảm biến, đang cảnh báo |
-| Nút nhấn | GPIO32 | `INPUT_PULLUP`, nhấn nối GND |
+| Nút nhấn | GPIO32 | `INPUT_PULLUP`, nhấn nối GND. Mạch hiện tại cắm GPIO19: `PIN_BUTTON 19` trong `firmware/include/pins.h` (khi đó không dùng được bus 2) |
 | Motor rung (tùy chọn) | GPIO33 | Mắc giống còi |
 | Đo áp pin | GPIO34 | Cầu chia 100 kΩ / 100 kΩ (pin 4,2 V → 2,1 V); chỉ vào, không có pull-up |
 

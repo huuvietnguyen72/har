@@ -81,6 +81,10 @@ void uiBegin() {
   pinMode(PIN_LED_GREEN, OUTPUT);
   pinMode(PIN_LED_RED, OUTPUT);
   pinMode(PIN_BUTTON, INPUT_PULLUP);
+  delay(5);
+  g.btnLevel = digitalRead(PIN_BUTTON);
+  Serial.printf("[btn] GPIO%d lúc khởi động: %s\n", PIN_BUTTON,
+                g.btnLevel ? "HIGH (nhả, đúng)" : "LOW (đang nối GND: nút kẹt hoặc đấu sai chân)");
 #if BUZZER_PASSIVE
   ledcSetup(0, BUZZER_FREQ_HZ, 8);
   ledcAttachPin(PIN_BUZZER, 0);
@@ -98,7 +102,14 @@ void uiTask(void*) {
   for (;;) {
     vTaskDelayUntil(&last, pdMS_TO_TICKS(10));
     const uint32_t now = millis();
-    const uint8_t ev = button.update(digitalRead(PIN_BUTTON) == LOW, now);
+    g.btnLevel = digitalRead(PIN_BUTTON);
+    const uint8_t ev = button.update(!g.btnLevel, now);
+    if (ev) {
+      if (ev & Button::PRESS) g.btnPresses++;
+      Serial.printf("[btn]%s%s%s%s (tổng %lu lần nhấn)\n", (ev & Button::PRESS) ? " nhấn" : "",
+                    (ev & Button::SINGLE) ? " 1-lần" : "", (ev & Button::DOUBLE) ? " nhấn-đúp" : "",
+                    (ev & Button::LONG) ? " giữ-3s" : "", (unsigned long)g.btnPresses);
+    }
 
     FallTrigger ft;
     if (xQueueReceive(fallQueue, &ft, 0) == pdTRUE) startAlarm(ft);
