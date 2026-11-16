@@ -20,7 +20,8 @@ Broker cổng 1883, bắt buộc user/mật khẩu; tường lửa chỉ mở ch
 ## Payload (phiên bản `v: 1`)
 
 ```jsonc
-// har/har01/imu — giá trị thô int16; Pi đổi sang g và °/s. gx/gy/gz đã trừ độ lệch con quay
+// har/har01/imu — giá trị thô int16 theo trục chip MPU6050; Pi đổi sang g và °/s.
+// Bộ đeo hiện tại: đeo hông phải, đứng thẳng thì X chỉ xuống (ax ≈ -1 g). gx/gy/gz đã trừ độ lệch con quay
 // (hiệu chỉnh lúc nằm yên sau khi khởi động, xem gyro_cal trong status)
 // MPU6050: ±8 g (4096 LSB/g), ±500 °/s (65,5 LSB/(°/s)); mẫu i có thời điểm t0 + i*dt
 {"v":1, "seq":10234, "t0":1763060000000, "dt":20, "replay":false,

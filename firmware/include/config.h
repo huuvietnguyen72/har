@@ -14,6 +14,9 @@
 // MPU6050: ±8 g → 4096 LSB/g ; ±500 °/s → 65,5 LSB/(°/s). Khớp edge/har_edge/units.py
 #define ACC_LSB_PER_G 4096.0f
 #define GYRO_LSB_PER_DPS 65.5f
+// Hệ trục = trục chip MPU6050 như đang hàn trên mạch: đeo hông phải, đứng thẳng thì trục X chỉ xuống
+// đất (ax ≈ -1 g; phiên đi bộ 17/11: ax ≈ -0,97 g). Bộ phát hiện té (FallParams::up_*) và Pi
+// (edge/har_edge/features.py UPRIGHT) dùng cùng quy ước này.
 // Hiệu chỉnh độ lệch con quay (lib/gyro_cal): mỗi lần thử 1,5 s nằm yên, thử tối đa N lần sau khi
 // khởi động hoặc sau lệnh {"cmd":"calibrate_gyro"}; không đạt thì giữ giá trị lưu NVS lần trước.
 #define GYRO_CAL_TRIES 40       // 40 × 1,5 s = 60 s
@@ -24,6 +27,7 @@
 #define REPLAY_AGE_MS 2000      // gói cũ hơn mức này khi gửi -> replay = true
 #define MAX_PUBLISH_PER_LOOP 8
 #define STATUS_PERIOD_MS 10000
+#define NTP_SYNC_MS 60000       // hỏi giờ Pi mỗi 60 s (mặc định ESP-IDF 1 giờ; tối thiểu 15 s)
 #define EVENT_RESEND_MS 5000    // gửi lại sự kiện đến khi Pi trả har/{dev}/ack
 #define MAX_STORED_EVENTS 50
 

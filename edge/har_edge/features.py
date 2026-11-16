@@ -2,15 +2,16 @@
 
 Đổi bất cứ thứ gì ở đây thì phải huấn luyện lại model.
 
-Quy ước đeo: hông phải, mũi tên Y của MPU6050 chỉ xuống đất. Khi đứng thẳng,
-gia tốc kế đọc ay ≈ -1 g, nên hướng "đứng thẳng" trong hệ trục cảm biến là UPRIGHT.
+Hệ trục = trục chip MPU6050 như đang hàn trên bộ đeo: đeo hông phải, đứng thẳng thì trục X
+chỉ xuống đất, gia tốc kế đọc ax ≈ -1 g (phiên đi bộ 17/11/2026: ax ≈ -0,97 g). Hướng "đứng thẳng"
+trong hệ trục cảm biến là UPRIGHT; firmware dùng cùng giá trị (FallParams::up_*).
 """
 import numpy as np
 
 from .units import PA_PER_METER
 
 FS = 50
-UPRIGHT = np.array([0.0, -1.0, 0.0])
+UPRIGHT = np.array([-1.0, 0.0, 0.0])
 
 _CHANNELS = ["ax", "ay", "az", "gx", "gy", "gz", "svm", "gmag"]
 _STATS = ["mean", "std", "min", "max", "rms", "skew", "kurt"]

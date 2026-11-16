@@ -21,8 +21,9 @@ struct FallParams {
   float still_gyro_dps = 30.0f;
   float still_ratio = 0.9f;
   float posture_deg = 50.0f;
-  // Hướng "đứng thẳng" trong hệ trục cảm biến: đeo hông phải, mũi tên Y chỉ xuống đất → ay ≈ -1 g
-  float up_x = 0.0f, up_y = -1.0f, up_z = 0.0f;
+  // Hướng "đứng thẳng" trong hệ trục cảm biến như đang hàn trên mạch: đeo hông phải, trục X của
+  // MPU6050 chỉ xuống đất → ax ≈ -1 g. Khớp UPRIGHT trong edge/har_edge/features.py
+  float up_x = -1.0f, up_y = 0.0f, up_z = 0.0f;
 };
 
 class FallDetector {

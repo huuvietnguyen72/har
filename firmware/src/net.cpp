@@ -4,6 +4,7 @@
 #include <ESPmDNS.h>
 #include <PubSubClient.h>
 #include <WiFi.h>
+#include <esp_sntp.h>
 
 #include "app.h"
 #include "secrets.h"
@@ -55,6 +56,9 @@ bool ntpNeedsStart() { return !ntpStarted || (!strlen(NTP_HOST) && ntpIp != brok
 void startNtp() {
   static String ntpHost;  // configTime giữ con trỏ, phải sống suốt chương trình
   ntpHost = strlen(NTP_HOST) ? String(NTP_HOST) : brokerIp.toString();
+  // Mặc định ESP-IDF 1 giờ mới hỏi giờ lại. Pi không có RTC: vừa khởi động thì giờ Pi có thể sai
+  // (đo được 12,3 s) cho tới khi chrony đồng bộ Internet. Hỏi lại mỗi NTP_SYNC_MS để sai lệch tự hết.
+  sntp_set_sync_interval(NTP_SYNC_MS);
   configTime(0, 0, ntpHost.c_str());
   ntpIp = brokerIp;
   ntpStarted = true;

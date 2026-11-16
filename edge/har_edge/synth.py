@@ -3,28 +3,31 @@
 Chỉ dùng để thử toàn tuyến (fake_device.py) và kiểm tra code huấn luyện
 (ml/make_synthetic.py). KHÔNG dùng số liệu từ dữ liệu giả lập trong báo cáo.
 
-Hệ trục: đeo hông phải, Y chỉ xuống đất -> đứng thẳng đọc ay ≈ -1 g.
+Hệ trục: như bộ đeo thật (features.UPRIGHT) — đeo hông phải, X chỉ xuống đất -> đứng thẳng đọc ax ≈ -1 g.
 """
 import numpy as np
 
+from .features import UPRIGHT
 from .units import PA_PER_METER
 
 FS = 50
 
 
-def _rot_x(deg: float) -> np.ndarray:
+def _rot_y(deg: float) -> np.ndarray:
+    """Xoay quanh trục Y (trục ngang của bộ đeo): nghiêng người tới/lui."""
     r = np.radians(deg)
-    return np.array([[1, 0, 0], [0, np.cos(r), -np.sin(r)], [0, np.sin(r), np.cos(r)]])
+    return np.array([[np.cos(r), 0, np.sin(r)], [0, 1, 0], [-np.sin(r), 0, np.cos(r)]])
 
 
 def _gravity(posture: str, rng: np.random.Generator) -> np.ndarray:
-    up = np.array([0.0, -1.0, 0.0])
+    up = UPRIGHT.astype(float)
     if posture == "stand":
-        return _rot_x(rng.normal(0, 4)) @ up
+        return _rot_y(rng.normal(0, 4)) @ up
     if posture == "sit":
-        return _rot_x(rng.uniform(30, 55)) @ up
+        return _rot_y(-rng.uniform(30, 55)) @ up
     if posture == "lie":
-        variants = [np.array([0.0, 0.05, 1.0]), np.array([1.0, 0.1, 0.1]), np.array([-1.0, 0.1, 0.1])]
+        # nằm ngửa / nghiêng hai bên: trục X (đứng thì chỉ xuống) nằm ngang
+        variants = [np.array([0.05, 0.0, 1.0]), np.array([0.1, -1.0, 0.1]), np.array([0.1, 1.0, 0.1])]
         g = variants[rng.integers(len(variants))] + rng.normal(0, 0.05, 3)
         return g / np.linalg.norm(g)
     return up
@@ -35,12 +38,13 @@ def _gait(n: int, f: float, amp: float, gyro_amp: float, rng: np.random.Generato
     ph = rng.uniform(0, 2 * np.pi)
     w = 2 * np.pi * f
     acc = np.zeros((n, 3))
-    acc[:, 1] = -1 + amp * np.sin(w * t + ph) + 0.3 * amp * np.sin(2 * w * t + ph)
+    # trục X thẳng đứng (dao động mỗi bước), Y ngang (lắc hông nửa nhịp), Z trước-sau
+    acc[:, 0] = -1 + amp * np.sin(w * t + ph) + 0.3 * amp * np.sin(2 * w * t + ph)
+    acc[:, 1] = -0.4 * amp * np.sin(0.5 * w * t + ph)
     acc[:, 2] = 0.6 * amp * np.sin(w * t + ph + 1.2)
-    acc[:, 0] = 0.4 * amp * np.sin(0.5 * w * t + ph)
     gyr = np.zeros((n, 3))
-    gyr[:, 0] = gyro_amp * np.sin(w * t + ph + 0.5)
-    gyr[:, 1] = 0.7 * gyro_amp * np.sin(0.5 * w * t + ph)
+    gyr[:, 0] = 0.7 * gyro_amp * np.sin(0.5 * w * t + ph)
+    gyr[:, 1] = -gyro_amp * np.sin(w * t + ph + 0.5)
     gyr[:, 2] = 0.5 * gyro_amp * np.sin(w * t + ph + 2.0)
     return acc, gyr
 
