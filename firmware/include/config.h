@@ -34,11 +34,13 @@
 #define LOW_BATTERY_V 3.4f
 #define BATTERY_DIVIDER 2.0f    // cầu chia 100k/100k
 #define BATTERY_CAL 1.000f      // hệ số hiệu chỉnh theo đồng hồ đo (giai đoạn 1)
+#define BATTERY_PRESENT_V 2.5f  // đo dưới mức này = không có cầu chia áp/pin -> battery_v = null, OLED hiện giờ
 
 // --- Ngoại vi tùy chọn ---
 #define BUZZER_PASSIVE 0        // 1 nếu dùng còi thụ động (cần phát tần số)
 #define BUZZER_FREQ_HZ 2700
 #define USE_VIBRATION 0         // 1 nếu có motor rung ở GPIO33
 #define USE_OLED 1
-#define DISPLAY_TIMEOUT_MS 15000
+#define DISPLAY_TIMEOUT_MS 0     // 0 = luôn sáng; >0 = tắt sau N ms không nhấn nút (tiết kiệm pin)
+#define DISPLAY_DIM_MS 60000     // giảm sáng sau N ms không nhấn nút (0 = không giảm)
 #define DISPLAY_REFRESH_MS 500  // ≤ 2 lần/giây

@@ -1,27 +1,41 @@
-// OLED 0,96" SSD1315 (tương thích SSD1306) trên bus I2C thứ hai (GPIO18/19), task ưu tiên thấp,
-// vẽ tối đa 2 lần/giây, tự tắt sau 15 s; bật lại khi nhấn nút, khi cảnh báo hoặc khi Pi gửi lệnh.
+// OLED 0,96" SSD1315 (tương thích SSD1306) trên bus I2C chọn bằng OLED_I2C_BUS (pins.h), task ưu tiên thấp,
+// vẽ tối đa 2 lần/giây, luôn sáng (DISPLAY_TIMEOUT_MS = 0), giảm sáng sau DISPLAY_DIM_MS không nhấn nút.
 #include "app.h"
 #include "pins.h"
-#include "secrets.h"
+#include "secrets.h"  // WIFI_SSID
 
 #if USE_OLED
 #include <U8g2lib.h>
 #include <Wire.h>
 
-namespace {
-U8G2_SSD1306_128X64_NONAME_F_2ND_HW_I2C oled(U8G2_R0, U8X8_PIN_NONE);
-bool ready = false, on = true;
+#include "oled_layout.h"
 
-const char* labelVi(const char* l) {
-  if (!strcmp(l, "stand")) return "Đứng";
-  if (!strcmp(l, "sit")) return "Ngồi";
-  if (!strcmp(l, "lie")) return "Nằm";
-  if (!strcmp(l, "walk")) return "Đi";
-  if (!strcmp(l, "run")) return "Chạy";
-  if (!strcmp(l, "stairs_up")) return "Lên cầu thang";
-  if (!strcmp(l, "stairs_down")) return "Xuống c.thang";
-  if (!strcmp(l, "fall")) return "Té!";
-  return l;
+namespace {
+#if OLED_I2C_BUS == 1
+// Chung bus với cảm biến: mọi giao dịch I2C của màn phải giữ i2cMutex
+U8G2_SSD1306_128X64_NONAME_F_HW_I2C oled(U8G2_R0, U8X8_PIN_NONE);
+#define OLED_LOCK() xSemaphoreTake(i2cMutex, portMAX_DELAY)
+#define OLED_UNLOCK() xSemaphoreGive(i2cMutex)
+#else
+U8G2_SSD1306_128X64_NONAME_F_2ND_HW_I2C oled(U8G2_R0, U8X8_PIN_NONE);
+#define OLED_LOCK() ((void)0)
+#define OLED_UNLOCK() ((void)0)
+#endif
+bool ready = false, on = true, dimmed = false;
+
+// Gửi khung hình. Bus riêng: một lần. Chung bus: từng dải 8 dòng (128 B ≈ 3 ms ở 400 kHz),
+// nhả bus giữa các dải — samplerTask chỉ chờ i2cMutex tối đa 8 ms nên không mất mẫu.
+void sendFrame() {
+#if OLED_I2C_BUS == 1
+  for (uint8_t ty = 0; ty < 8; ty++) {
+    OLED_LOCK();
+    oled.updateDisplayArea(0, ty, 16, 1);
+    OLED_UNLOCK();
+    vTaskDelay(1);
+  }
+#else
+  oled.sendBuffer();
+#endif
 }
 
 int batteryPct(float v) {
@@ -35,9 +49,9 @@ int batteryPct(float v) {
   return 100;
 }
 
+// Gom trạng thái rồi vẽ bằng oledDraw() trong oled_layout.h (dùng chung với bản xem trước trên PC)
 void draw() {
-  char line[40];
-  char label[16], mode[12], activity[16];
+  char label[16], mode[12], activity[16], right[8] = "";
   float conf;
   xSemaphoreTake(stateMutex, portMAX_DELAY);
   strlcpy(label, g.label, sizeof(label));
@@ -46,52 +60,66 @@ void draw() {
   conf = g.conf;
   xSemaphoreGive(stateMutex);
 
-  oled.clearBuffer();
-  // dòng trạng thái (font nhỏ ASCII)
-  oled.setFont(u8g2_font_6x10_tf);
-  int pct = batteryPct(g.battery_v);
-  snprintf(line, sizeof(line), "%s %s %s", DEVICE_ID, g.mqttUp ? "MQTT" : (g.wifiUp ? "WiFi.." : "noWiFi"),
-           g.timeSynced ? "" : "noNTP");
-  oled.drawStr(0, 9, line);
-  if (pct >= 0) {
-    snprintf(line, sizeof(line), "%d%%", pct);
-    oled.drawStr(128 - oled.getStrWidth(line), 9, line);
+  // Góc phải: % pin nếu đo được (có cầu chia áp GPIO34), không thì giờ Việt Nam HH:MM từ Pi
+  if (!isnan(g.battery_v)) {
+    snprintf(right, sizeof(right), "%d%%", batteryPct(g.battery_v));
+  } else if (g.timeSynced) {
+    const time_t now = time(nullptr) + 7 * 3600;  // configTime(0, 0): đồng hồ hệ thống là UTC
+    struct tm tmv;
+    gmtime_r(&now, &tmv);
+    snprintf(right, sizeof(right), "%02d:%02d", tmv.tm_hour, tmv.tm_min);
   }
-  oled.drawHLine(0, 12, 128);
-
-  oled.setFont(u8g2_font_unifont_t_vietnamese2);
-  if (g.alarm == ALARM_SUSPECTED) {
-    oled.drawUTF8(0, 32, "NGHI TÉ NGÃ!");
-    int left = (int)((int32_t)(g.alarmUntilMs - millis()) / 1000) + 1;
-    snprintf(line, sizeof(line), "Nhấn nút để hủy %ds", left < 0 ? 0 : left);
-    oled.drawUTF8(0, 54, line);
-  } else if (g.alarm == ALARM_CONFIRMED) {
-    oled.drawUTF8(0, 32, "ĐÃ GỬI CẢNH BÁO");
-    oled.drawUTF8(0, 54, "Nhấn để tắt còi");
-  } else if (!strcmp(mode, "record")) {
-    oled.drawUTF8(0, 32, "● ĐANG THU");
-    oled.drawUTF8(0, 54, activity[0] ? labelVi(activity) : "");
-  } else {
-    oled.drawUTF8(0, 34, label[0] ? labelVi(label) : "…");
-    oled.setFont(u8g2_font_6x10_tf);
-    if (!isnan(conf)) {
-      snprintf(line, sizeof(line), "tin cay %d%%", (int)(conf * 100));
-      oled.drawStr(0, 50, line);
-    }
-    if (!isnan(g.temp_c)) {
-      snprintf(line, sizeof(line), "%.1fC %.0f%%RH  %ddBm", g.temp_c, g.rh, g.rssi);
-      oled.drawStr(0, 63, line);
-    }
-  }
-  oled.sendBuffer();
+  const bool recording = !strcmp(mode, "record");
+  OledView v;
+  v.conn = g.mqttUp ? "MQTT" : (g.wifiUp ? "WiFi.." : "noWiFi");
+  v.ntpOk = g.timeSynced;
+  v.right = right;
+  v.ssid = WIFI_SSID;
+  v.alarm = g.alarm == ALARM_SUSPECTED ? OLED_SUSPECTED : g.alarm == ALARM_CONFIRMED ? OLED_CONFIRMED : OLED_IDLE;
+  v.alarmLeftS = (int)((int32_t)(g.alarmUntilMs - millis()) / 1000) + 1;
+  v.recording = recording;
+  v.label = recording ? activity : label;
+  v.conf = recording ? NAN : conf;
+  oledDraw(oled.getU8g2(), &v);
+  sendFrame();
 }
 }  // namespace
+
+// Dò I2C lúc khởi động (chưa có task nào chạy nên không cần i2cMutex). Trả về true nếu thấy addr.
+bool scanBus(TwoWire& bus, const char* name, uint8_t want) {
+  char found[128] = "";
+  bool hit = false;
+  for (uint8_t a = 1; a < 127; a++) {
+    bus.beginTransmission(a);
+    if (bus.endTransmission() == 0) {
+      snprintf(found + strlen(found), sizeof(found) - strlen(found), " 0x%02X", a);
+      hit |= (a == want);
+    }
+  }
+  Serial.printf("[i2c] %s:%s\n", name, found[0] ? found : " (không có thiết bị)");
+  return hit;
+}
 
 void displayWake() { g.displayWakeMs = millis(); }
 
 void displayBegin() {
   Wire1.begin(PIN_I2C2_SDA, PIN_I2C2_SCL, 400000);
+  char name[32];
+  snprintf(name, sizeof(name), "bus1 SDA%d/SCL%d", PIN_I2C1_SDA, PIN_I2C1_SCL);
+  const bool onBus1 = scanBus(Wire, name, 0x3C);
+  snprintf(name, sizeof(name), "bus2 SDA%d/SCL%d", PIN_I2C2_SDA, PIN_I2C2_SCL);
+  const bool onBus2 = scanBus(Wire1, name, 0x3C);
+  const bool onConfigured = OLED_I2C_BUS == 1 ? onBus1 : onBus2;
+  if (onConfigured) Serial.printf("[oled] thấy OLED 0x3C trên bus%d — OK\n", OLED_I2C_BUS);
+  else if (onBus1 || onBus2)
+    Serial.printf("[oled] OLED 0x3C nằm trên bus%d nhưng firmware đặt OLED_I2C_BUS=%d (include/pins.h)\n",
+                  onBus1 ? 1 : 2, OLED_I2C_BUS);
+  else Serial.println("[oled] KHÔNG thấy OLED 0x3C — kiểm tra dây SDA/SCL/VCC/GND");
+  OLED_LOCK();
+  oled.setBusClock(400000);  // giữ đúng xung nhịp bus cảm biến (U8g2 đặt lại clock mỗi lần gửi)
   ready = oled.begin();
+  if (ready) oled.setContrast(255);
+  OLED_UNLOCK();
   if (ready) oled.enableUTF8Print();
   displayWake();
 }
@@ -100,10 +128,21 @@ void displayTask(void*) {
   for (;;) {
     vTaskDelay(pdMS_TO_TICKS(DISPLAY_REFRESH_MS));
     if (!ready) continue;
-    const bool want = g.alarm != ALARM_IDLE || millis() - g.displayWakeMs < DISPLAY_TIMEOUT_MS;
+    const uint32_t idle = millis() - g.displayWakeMs;
+    const bool alarm = g.alarm != ALARM_IDLE;
+    const bool want = alarm || DISPLAY_TIMEOUT_MS == 0 || idle < (uint32_t)DISPLAY_TIMEOUT_MS;
+    const bool dim = !alarm && DISPLAY_DIM_MS > 0 && idle >= (uint32_t)DISPLAY_DIM_MS;
     if (want != on) {
       on = want;
+      OLED_LOCK();
       oled.setPowerSave(!on);
+      OLED_UNLOCK();
+    }
+    if (dim != dimmed) {  // giảm sáng khi lâu không ai nhấn nút để đỡ lưu ảnh trên OLED
+      dimmed = dim;
+      OLED_LOCK();
+      oled.setContrast(dim ? 16 : 255);
+      OLED_UNLOCK();
     }
     if (on) draw();
   }

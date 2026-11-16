@@ -3,7 +3,7 @@
 | Chức năng | Chân | Ghi chú |
 | --- | --- | --- |
 | I2C bus 1 SDA / SCL | GPIO21 / GPIO22 | MPU6050 (0x68, AD0 nối GND), AHT20 (0x38), BMP280 (0x76 hoặc 0x77) |
-| I2C bus 2 SDA / SCL | GPIO18 / GPIO19 | OLED 0,96" SSD1315 (0x3C), tách riêng để không làm lệch nhịp lấy mẫu 50 Hz |
+| I2C bus 2 SDA / SCL | GPIO18 / GPIO19 | OLED 0,96" SSD1315 (0x3C), tách riêng để không làm lệch nhịp lấy mẫu 50 Hz. Nếu cắm OLED chung GPIO21/22: đặt `OLED_I2C_BUS 1` trong `firmware/include/pins.h` |
 | Còi | GPIO25 | Qua 1 kΩ vào S8050, diode 1N4148 chặn xung ngược |
 | LED xanh | GPIO26 | 220 Ω; đang chạy, đã kết nối |
 | LED đỏ | GPIO27 | 220 Ω; pin yếu, mất Wi-Fi, lỗi cảm biến, đang cảnh báo |
