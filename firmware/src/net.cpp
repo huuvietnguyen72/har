@@ -68,12 +68,12 @@ void publishStatus() {
   int n = snprintf(buf, sizeof(buf),
                    "{\"v\":1,\"t\":%llu,\"online\":true,\"battery_v\":%s,\"rssi\":%d,\"uptime_s\":%lu,\"fw\":\"%s\","
                    "\"heap\":%u,\"mpu_ok\":%s,\"bmp_ok\":%s,\"aht_ok\":%s,\"pending_events\":%d,\"dropped\":%lu,"
-                   "\"gyro_cal\":\"%s\",\"gyro_bias_dps\":[%.2f,%.2f,%.2f]}",
+                   "\"gyro_cal\":\"%s\",\"gyro_bias_dps\":[%.2f,%.2f,%.2f],\"btn_presses\":%lu,\"btn_level\":%d}",
                    (unsigned long long)epochMs(), bat, WiFi.RSSI(),
                    (unsigned long)(millis() / 1000), FW_VERSION, (unsigned)ESP.getFreeHeap(), g.mpuOk ? "true" : "false",
                    g.bmpOk ? "true" : "false", g.ahtOk ? "true" : "false", eventCount(), (unsigned long)g.dropped,
                    g.gyroCalState == 2 ? "measured" : g.gyroCalState == 1 ? "nvs" : "none", g.gyroBiasDps[0],
-                   g.gyroBiasDps[1], g.gyroBiasDps[2]);
+                   g.gyroBiasDps[1], g.gyroBiasDps[2], (unsigned long)g.btnPresses, g.btnLevel ? 1 : 0);
   if (n > 0) mqtt.publish(tStatus.c_str(), (const uint8_t*)buf, n, true);
   lastStatus = millis();
 }

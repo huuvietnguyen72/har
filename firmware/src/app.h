@@ -48,6 +48,9 @@ struct SharedState {
   // Hiệu chỉnh con quay: 0 = chưa có (bias 0), 1 = dùng giá trị NVS lần trước, 2 = vừa đo lúc nằm yên
   uint8_t gyroCalState = 0;
   float gyroBiasDps[3] = {0, 0, 0};
+  // Chẩn đoán nút GPIO32 (gửi trong status để xem từ Pi khi không cắm USB)
+  uint32_t btnPresses = 0;  // số lần nhấn đã qua chống dội từ lúc khởi động
+  bool btnLevel = true;     // mức GPIO32 hiện tại: true = HIGH (nhả), false = LOW (đang nhấn)
   // cập nhật bởi netTask
   bool wifiUp = false, mqttUp = false, timeSynced = false;
   int rssi = 0;

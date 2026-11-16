@@ -25,6 +25,7 @@ Ghi lại các vấn đề gặp khi nạp firmware và chạy cùng Pi 4 lần 
 | 8 | ESP32 mất ~30 s mới biết kết nối TCP đã chết | Thấp | Chưa sửa, đo được |
 | 9 | mDNS thỉnh thoảng không trả lời | Thấp | Đã có đường vòng, nên đặt IP cố định |
 | 10 | AHT20 đọc nóng (43 °C), gia tốc tĩnh 0,94 g | Thấp | Chưa sửa, do lắp ráp và hiệu chỉnh |
+| 11 | Nút cắm GPIO19 thay vì GPIO32: không hủy được cảnh báo té | Cao | Đã sửa (`PIN_BUTTON 19`) |
 
 ## 1. Mạng: không dùng được hotspot trên Pi
 
@@ -163,6 +164,31 @@ Thỉnh thoảng `MDNS.queryHost("raspivn")` không trả lời trong 2 s, và f
 | MPU6050 gia tốc | SVM lúc nằm yên 0,942 ± 0,007 g, thay vì 1,0 g | Sai số offset hoặc tỉ lệ của gia tốc kế, chưa hiệu chỉnh. Ảnh hưởng nhỏ tới ngưỡng té (0,4 g, 2,5 g, cửa sổ bất động 0,8–1,2 g). Có thể hiệu chỉnh 6 mặt sau. |
 | BMP280 | 100.954 Pa ± 2,8 Pa, đúng 10 Hz | Bình thường |
 
+## 11. Nút cắm nhầm chân: không hủy được cảnh báo té
+
+**Hiện tượng.** Thả hộp lên nệm thì phát hiện té đúng (lực va chạm 8,5 g và 12,1 g), Pi nhận `suspected`, nhưng nhấn nút trong 10 s vẫn ra `confirmed`. Nhấn đúp và giữ 3 s cũng không có tác dụng.
+
+**Chẩn đoán.**
+1. Thêm log cho nút: Serial in mức chân lúc khởi động và từng thao tác nhấn; `status` có `btn_presses`, `btn_level`. Kết quả: GPIO32 luôn ở mức HIGH, nhấn nút không tạo ra sự kiện nào.
+2. Nạp một chương trình dò chân tạm thời, theo dõi 11 GPIO còn trống (4, 5, 13, 14, 16, 17, 18, 19, 23, 32, 33). Pha A bật điện trở kéo lên để tìm nút nối GND, pha B bật kéo xuống để tìm nút nối 3V3. Pha A cho thấy **GPIO19 xuống LOW mỗi lần nhấn**: nút nối giữa GPIO19 và GND.
+
+**Sửa (không phải đổi dây).**
+- `include/pins.h`: `PIN_BUTTON 19`, ghi chú thiết kế gốc là GPIO32.
+- GPIO19 trùng SCL của bus I2C 2. Bus 2 chỉ được bật khi không trùng chân nút (`BUS2_PINS_FREE`); `OLED_I2C_BUS 2` cùng lúc nút ở GPIO18/19 sẽ báo lỗi biên dịch.
+
+**Kiểm chứng (17/11, 00:46–00:48).**
+
+| Thao tác | ESP32 | Pi |
+| --- | --- | --- |
+| Nhấn 1 lần | `[btn] 1-lần` | — |
+| Nhấn đúp | `[btn] nhấn-đúp` | `marker`, 5 lần |
+| Giữ 3 s | `[btn] giữ-3s` | `sos` → cảnh báo mức cao, đã báo trong 0,3 s; các SOS dưới 60 s được gộp |
+| Thả hộp, nhấn trong 10 s | — | `suspected` lúc 00:47:39, `cancelled` lúc 00:47:41, cảnh báo `cancelled: true`, `notify: false` |
+
+Còi kêu ngắt quãng khi nghi té và bíp khi nhấn; LED xanh và đỏ hoạt động đúng (người dùng xác nhận).
+
+**Bài học.** Mạch lắp theo một chương trình thử cũ nên chân khác `docs/pinout.md` (OLED ở bus 1, nút ở GPIO19). Khi nhận mạch mới, nên chạy chương trình dò chân và dò I2C trước khi nạp firmware.
+
 ## Đối chiếu tiêu chí trong kế hoạch
 
 | Giai đoạn | Tiêu chí | Kết quả |
@@ -172,7 +198,7 @@ Thỉnh thoảng `MDNS.queryHost("raspivn")` không trả lời trong 2 s, và f
 | 1 | Đo pin GPIO34 lệch < 0,05 V | ➖ Không lắp cầu chia áp |
 | 2 | 30 phút, mất < 1 %, 50 ± 0,5 Hz | ✅ Mất 0 gói, 50,000 Hz |
 | 2 | Mất mạng 30 s, gửi bù, không reset | ✅ 87 gói replay, mất 4 gói |
-| 2 | Thả hộp lên nệm, còi kêu, nhấn nút hủy | ⏳ Chưa thử tay |
+| 2 | Thả hộp lên nệm, còi kêu, nhấn nút hủy | ✅ Sau khi sửa chân nút (mục 11) |
 | 2 | Mật khẩu không lên Git | ✅ `**/secrets.h` trong `.gitignore` |
 | 3 | Dịch vụ tự chạy khi bật Pi | ✅ systemd enable; chưa thử khởi động lại Pi |
 | 3 | File dữ liệu 50 mẫu/s, có áp suất và thời gian | ✅ `data/raw/har01/<ngày>/<giờ>_imu.csv`, `_env.csv` |
@@ -180,7 +206,7 @@ Thỉnh thoảng `MDNS.queryHost("raspivn")` không trả lời trong 2 s, và f
 
 ## Việc tiếp theo
 
-1. Thử tay: thả hộp lên nệm, nhấn hủy, nhấn đúp (`marker`), giữ 3 s (`sos`).
+1. ~~Thử tay: thả hộp, nhấn hủy, nhấn đúp, giữ 3 s~~ — đã xong (mục 11).
 2. Thử khởi động lại Pi, xác nhận ESP32 tự kết nối lại trong 30 s.
 3. Đặt IP cố định cho Pi trên router.
 4. Gắn hộp lên đai ở hông phải, trục Y chỉ xuống, cấp nguồn bằng sạc dự phòng qua USB cho tới khi có MT3608. Sau đó chạy thử một phiên `record.py` trước khi thu dataset (giai đoạn 4).

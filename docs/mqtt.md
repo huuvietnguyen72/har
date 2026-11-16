@@ -42,6 +42,7 @@ Broker cổng 1883, bắt buộc user/mật khẩu; tường lửa chỉ mở ch
  "heap":182000, "mpu_ok":true, "bmp_ok":true, "aht_ok":true, "pending_events":0, "dropped":0,
  "gyro_cal":"measured", "gyro_bias_dps":[13.69,4.21,0.44]}
 // gyro_cal: measured = vừa đo lúc nằm yên | nvs = dùng giá trị lần trước | none = chưa hiệu chỉnh
+// chẩn đoán nút: "btn_presses":12 (số lần nhấn từ lúc khởi động), "btn_level":1 (1 = nhả, 0 = đang nhấn)
 
 // har/har01/cmd
 {"cmd":"beep", "ms":200}
