@@ -9,6 +9,10 @@
 #define PIN_I2C2_SDA 18
 #define PIN_I2C2_SCL 19
 
+// OLED nằm trên bus nào: 2 = bus riêng GPIO18/19 (thiết kế, không ảnh hưởng nhịp 50 Hz);
+// 1 = chung bus cảm biến GPIO21/22 — màn gửi từng dải 8 dòng có khóa i2cMutex để MPU6050 chen vào kịp.
+#define OLED_I2C_BUS 1
+
 #define PIN_BUZZER    25  // qua S8050
 #define PIN_LED_GREEN 26
 #define PIN_LED_RED   27

@@ -44,6 +44,7 @@ struct SharedState {
   bool thFresh = false;
   bool mpuOk = false, bmpOk = false, ahtOk = false;
   uint32_t samples = 0;
+  uint32_t imuMiss = 0;  // số lần không đọc được MPU6050 (bus bận > 8 ms hoặc lỗi I2C) — lặp mẫu trước
   // cập nhật bởi netTask
   bool wifiUp = false, mqttUp = false, timeSynced = false;
   int rssi = 0;

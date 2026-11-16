@@ -102,10 +102,13 @@ bool ahtRead(float& temp, float& rh) {
   return true;
 }
 
+// NAN = không đo được pin: chưa lắp cầu chia áp vào GPIO34 (chân đọc ~0 V) hoặc đang chạy USB
+// không có pin. Dưới 2,5 V thì Li-ion đã hỏng/ngắt bảo vệ, nên coi như không có pin.
 float readBattery() {
   uint32_t mv = 0;
   for (int i = 0; i < 16; i++) mv += analogReadMilliVolts(PIN_BATTERY);
-  return (mv / 16.0f) / 1000.0f * BATTERY_DIVIDER * BATTERY_CAL;
+  const float v = (mv / 16.0f) / 1000.0f * BATTERY_DIVIDER * BATTERY_CAL;
+  return v < BATTERY_PRESENT_V ? NAN : v;
 }
 
 }  // namespace
@@ -142,6 +145,7 @@ void samplerTask(void*) {
       xSemaphoreGive(i2cMutex);
     }
     if (!ok) {  // giữ nhịp 50 Hz: lặp lại mẫu trước, thử khởi tạo lại sau 1 s lỗi liên tục
+      g.imuMiss++;
       if (++fails >= 50) {
         g.mpuOk = false;
         if (xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
@@ -235,7 +239,7 @@ void slowTask(void*) {
       }
     }
     const float v = readBattery();
-    g.battery_v = isnan(g.battery_v) ? v : 0.7f * g.battery_v + 0.3f * v;  // làm mượt
+    g.battery_v = (isnan(g.battery_v) || isnan(v)) ? v : 0.7f * g.battery_v + 0.3f * v;  // làm mượt
     vTaskDelay(pdMS_TO_TICKS(SLOW_PERIOD_MS));
   }
 }

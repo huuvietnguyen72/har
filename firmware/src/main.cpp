@@ -47,8 +47,8 @@ void loop() {
   static uint32_t lastSamples = 0;
   vTaskDelay(pdMS_TO_TICKS(10000));
   const uint32_t s = g.samples;
-  Serial.printf("[stat] %.1f Hz, imuQ=%u envQ=%u bỏ=%lu wifi=%d mqtt=%d ntp=%d pin=%.2fV heap=%u\n",
-                (s - lastSamples) / 10.0f, (unsigned)uxQueueMessagesWaiting(imuQueue),
+  Serial.printf("[stat] %.1f Hz, lỡ=%lu imuQ=%u envQ=%u bỏ=%lu wifi=%d mqtt=%d ntp=%d pin=%.2fV heap=%u\n",
+                (s - lastSamples) / 10.0f, (unsigned long)g.imuMiss, (unsigned)uxQueueMessagesWaiting(imuQueue),
                 (unsigned)uxQueueMessagesWaiting(envQueue), (unsigned long)g.dropped, g.wifiUp, g.mqttUp,
                 g.timeSynced, g.battery_v, (unsigned)ESP.getFreeHeap());
   lastSamples = s;

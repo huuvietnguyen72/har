@@ -45,19 +45,30 @@ bool resolveBroker() {
   return true;
 }
 
+IPAddress ntpIp;  // địa chỉ broker lúc khởi động NTP (khi NTP_HOST = "")
+
+// NTP_HOST = "" thì máy chủ giờ đi theo broker. Lần đầu mDNS có thể lỡ -> tạm dùng gateway
+// (router), MQTT lỗi -> giải tên lại ra Pi; khi đó phải khởi động lại NTP, nếu không sẽ kẹt
+// hỏi giờ router mãi (ntp=0, không bao giờ gửi dữ liệu).
+bool ntpNeedsStart() { return !ntpStarted || (!strlen(NTP_HOST) && ntpIp != brokerIp); }
+
 void startNtp() {
   static String ntpHost;  // configTime giữ con trỏ, phải sống suốt chương trình
   ntpHost = strlen(NTP_HOST) ? String(NTP_HOST) : brokerIp.toString();
   configTime(0, 0, ntpHost.c_str());
+  ntpIp = brokerIp;
   ntpStarted = true;
   Serial.printf("[ntp] máy chủ giờ %s\n", ntpHost.c_str());
 }
 
 void publishStatus() {
+  // battery_v = null khi không đo được pin (Pi bỏ qua, không báo pin yếu sai)
+  char bat[12] = "null";
+  if (!isnan(g.battery_v)) snprintf(bat, sizeof(bat), "%.3f", g.battery_v);
   int n = snprintf(buf, sizeof(buf),
-                   "{\"v\":1,\"t\":%llu,\"online\":true,\"battery_v\":%.3f,\"rssi\":%d,\"uptime_s\":%lu,\"fw\":\"%s\","
+                   "{\"v\":1,\"t\":%llu,\"online\":true,\"battery_v\":%s,\"rssi\":%d,\"uptime_s\":%lu,\"fw\":\"%s\","
                    "\"heap\":%u,\"mpu_ok\":%s,\"bmp_ok\":%s,\"aht_ok\":%s,\"pending_events\":%d,\"dropped\":%lu}",
-                   (unsigned long long)epochMs(), isnan(g.battery_v) ? 0.0f : g.battery_v, WiFi.RSSI(),
+                   (unsigned long long)epochMs(), bat, WiFi.RSSI(),
                    (unsigned long)(millis() / 1000), FW_VERSION, (unsigned)ESP.getFreeHeap(), g.mpuOk ? "true" : "false",
                    g.bmpOk ? "true" : "false", g.ahtOk ? "true" : "false", eventCount(), (unsigned long)g.dropped);
   if (n > 0) mqtt.publish(tStatus.c_str(), (const uint8_t*)buf, n, true);
@@ -188,7 +199,7 @@ void netTask(void*) {
     }
     g.rssi = WiFi.RSSI();
     if (!brokerKnown) resolveBroker();
-    if (brokerKnown && !ntpStarted) startNtp();
+    if (brokerKnown && ntpNeedsStart()) startNtp();
     g.timeSynced = timeValid();
 
     if (!mqtt.connected()) {

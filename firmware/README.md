@@ -18,7 +18,7 @@ PlatformIO + Arduino framework (espressif32 6.9.0). Thiết kế ở kế hoạc
 | `src/sensors.cpp` | **samplerTask** (core 1, ưu tiên 5): MPU6050 50 Hz bằng `vTaskDelayUntil`, BMP280 10 Hz, chạy bộ phát hiện té, đóng gói 25 mẫu. **slowTask**: AHT20 + áp pin mỗi 10 s |
 | `src/net.cpp` | **netTask** (core 0): Wi-Fi, tìm Pi (`hargw.local` qua mDNS → gateway), NTP từ Pi, MQTT (`setBufferSize(2048)`, Last Will), xả vòng đệm, gửi lại sự kiện đến khi có `ack`, nhận lệnh |
 | `src/ui.cpp` | **uiTask** (10 ms): nút, máy trạng thái cảnh báo, LED, còi |
-| `src/display.cpp` | **displayTask**: OLED trên bus I2C thứ hai (U8g2, font tiếng Việt), ≤ 2 lần/giây, tắt sau 15 s |
+| `src/display.cpp` + `src/oled_layout.h` | **displayTask**: OLED (U8g2, bus chọn bằng `OLED_I2C_BUS`), nhãn tiếng Anh "Lie (70%)", cảnh báo té tiếng Việt; ≤ 2 lần/giây, luôn sáng (giảm sáng sau 60 s không nhấn nút; đổi trong `config.h`) |
 | `src/events.cpp` | Sự kiện lưu LittleFS (mỗi sự kiện một file), giờ hệ thống, ngưỡng lưu NVS |
 | `lib/fall_detector/` | Phát hiện té bằng ngưỡng, C++ thuần — giống hệt `edge/har_edge/fall_threshold.py` |
 | `lib/button/` | Nhận dạng nhấn 1 lần / nhấn đúp / giữ 3 s, chống dội |
