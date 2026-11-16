@@ -2,4 +2,4 @@
 
 __version__ = "1.0.0"
 
-LABELS: list[str] = ["stand", "sit", "lie", "walk", "run", "stairs_up", "stairs_down", "fall"]
+LABELS: list[str] = ["stand", "sit", "lie", "walk", "stairs_up", "stairs_down", "fall"]

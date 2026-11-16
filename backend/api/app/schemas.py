@@ -3,8 +3,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-Label = Literal["stand", "sit", "lie", "walk", "run", "stairs_up", "stairs_down", "fall"]
-LABELS: list[str] = ["stand", "sit", "lie", "walk", "run", "stairs_up", "stairs_down", "fall"]
+Label = Literal["stand", "sit", "lie", "walk", "stairs_up", "stairs_down", "fall"]
+LABELS: list[str] = ["stand", "sit", "lie", "walk", "stairs_up", "stairs_down", "fall"]
 
 
 class StatusIn(BaseModel):

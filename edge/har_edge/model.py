@@ -3,7 +3,7 @@
 Thư mục model (MODEL_DIR, mặc định edge/models/current/) chứa meta.json do ml/ xuất ra:
 
     {"name": "rf-imu+baro-v1", "type": "rf", "file": "model.joblib",
-     "labels": [...8 nhãn...], "use_baro": true, "window_s": 2.5, "fs": 50}
+     "labels": [...7 nhãn...], "use_baro": true, "window_s": 2.5, "fs": 50}
     {"name": "cnn-imu+baro-v1", "type": "tflite", "file": "model_int8.tflite",
      "labels": [...], "use_baro": true, "window_s": 2.5, "fs": 50,
      "norm": {"mean": [...], "std": [...]}}
@@ -119,10 +119,8 @@ class HeuristicModel(BaseModel):
             label = "fall"
         elif std < 0.06:
             label = "lie" if tilt > 65 else ("sit" if tilt > 25 else "stand")
-        elif std < 0.45:
+        else:  # vận động mạnh (kể cả chạy, không có nhãn riêng) gộp vào đi / cầu thang
             label = "stairs_up" if slope < -1.2 else ("stairs_down" if slope > 1.2 else "walk")
-        else:
-            label = "run"
         probs = {lbl: 0.3 / (len(LABELS) - 1) for lbl in LABELS}
         probs[label] = 0.7
         return probs

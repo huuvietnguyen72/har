@@ -9,7 +9,7 @@ import { LABEL_COLOR, LABEL_VI } from "../labels";
 import { LABELS } from "../types";
 import type { DaySummary, HarEvent, Segment } from "../types";
 
-const ACTIVE = ["walk", "run", "stairs_up", "stairs_down"] as const;
+const ACTIVE = ["walk", "stairs_up", "stairs_down"] as const;
 
 export default function History() {
   const { selectedDev } = useLive();
