@@ -1,14 +1,19 @@
 # Bảng chân ESP32 DevKit
 
+Theo mạch đang hàn, đo trên thiết bị ngày 17/11/2026: quét I2C, đọc ID chip, đo tải trên từng chân. Chi tiết số đo: [`hardware/Datasheet_HAR01.html`](../hardware/Datasheet_HAR01.html). Firmware: [`firmware/include/pins.h`](../firmware/include/pins.h).
+
 | Chức năng | Chân | Ghi chú |
 | --- | --- | --- |
-| I2C bus 1 SDA / SCL | GPIO21 / GPIO22 | MPU6050 (0x68, AD0 nối GND), AHT20 (0x38), BMP280 (0x76 hoặc 0x77) |
-| I2C bus 2 SDA / SCL | GPIO18 / GPIO19 | OLED 0,96" SSD1315 (0x3C), tách riêng để không làm lệch nhịp lấy mẫu 50 Hz. Nếu cắm OLED chung GPIO21/22: đặt `OLED_I2C_BUS 1` trong `firmware/include/pins.h` |
-| Còi | GPIO25 | Qua 1 kΩ vào S8050, diode 1N4148 chặn xung ngược |
-| LED xanh | GPIO26 | 220 Ω; đang chạy, đã kết nối |
-| LED đỏ | GPIO27 | 220 Ω; pin yếu, mất Wi-Fi, lỗi cảm biến, đang cảnh báo |
-| Nút nhấn | GPIO32 | `INPUT_PULLUP`, nhấn nối GND. Mạch hiện tại cắm GPIO19: `PIN_BUTTON 19` trong `firmware/include/pins.h` (khi đó không dùng được bus 2) |
-| Motor rung (tùy chọn) | GPIO33 | Mắc giống còi |
-| Đo áp pin | GPIO34 | Cầu chia 100 kΩ / 100 kΩ (pin 4,2 V → 2,1 V); chỉ vào, không có pull-up |
+| I2C SDA / SCL | GPIO21 / GPIO22 | Một bus, 400 kHz, 3 module / 4 địa chỉ: MPU6050 (0x68), board AHT20 + BMP280 (0x38 + 0x77), OLED 0,96" (0x3C). `OLED_I2C_BUS 1` |
+| Nút nhấn | GPIO19 | Nút nối GND, `INPUT_PULLUP`, nhấn = LOW |
+| Loa | GPIO25 | Qua tầng transistor (đo thấy mối B-E xuống GND); mức HIGH = kêu, `BUZZER_PASSIVE 0` |
+| LED xanh | GPIO26 | Sáng khi HIGH; đã nối MQTT / đang nối |
+| LED đỏ | GPIO27 | Sáng khi HIGH; cảnh báo, lỗi cảm biến |
 
-Nguồn: pin 18650 → TP4056 → công tắc → MT3608 (chỉnh đúng 5,0 V trước khi nối) → chân 5V ESP32.
+Chân trống (đo thả nổi): GPIO18, 32, 33, 34, 35, 36, 39.
+
+MPU6050: đeo ở hông phải, đứng thẳng thì trục X chỉ xuống đất (ax ≈ −1 g).
+
+Nguồn: USB 5 V hoặc pin Li-ion → mạch sạc → tăng áp 5 V → VIN. Không có cầu chia áp đo pin: firmware đọc GPIO34 (`PIN_BATTERY`), đọc dưới 2,5 V nên gửi `battery_v: null`, OLED hiện giờ thay cho %, không có cảnh báo pin yếu. Không có motor rung (`USE_VIBRATION 0`).
+
+Giá trị điện trở, mã transistor và tên module sạc/tăng áp chưa đối chiếu trên mạch nên chưa ghi.

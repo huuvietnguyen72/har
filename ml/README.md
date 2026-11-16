@@ -1,6 +1,6 @@
 # ML – dataset và huấn luyện
 
-Huấn luyện trên laptop hoặc Google Colab, chỉ suy luận trên Pi. Thiết kế ở kế hoạch, giai đoạn 4.
+Huấn luyện trên laptop hoặc Google Colab, chỉ suy luận trên Pi. Kế hoạch: [`docs/ke-hoach.md`](../docs/ke-hoach.md).
 Đặc trưng lấy từ [`../edge/har_edge/features.py`](../edge/har_edge/features.py) — **cùng một file** với lúc suy luận trên Pi, nên không thể lệch nhau.
 
 ## Cài đặt

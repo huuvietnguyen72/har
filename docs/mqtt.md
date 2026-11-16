@@ -1,6 +1,6 @@
 # MQTT (Mosquitto trên Pi)
 
-Broker cổng 1883, bắt buộc user/mật khẩu; tường lửa chỉ mở cho mạng hotspot (10.42.0.0/24).
+Broker cổng 1883, bắt buộc user/mật khẩu; tường lửa chỉ mở cho mạng nội bộ (hiện tại Wi-Fi nhà 192.168.12.0/24).
 
 | Topic | Hướng | QoS | Nội dung |
 | --- | --- | --- | --- |
@@ -38,7 +38,7 @@ Broker cổng 1883, bắt buộc user/mật khẩu; tường lửa chỉ mở ch
 // har/har01/ack
 {"v":1, "id":"har01-1763060012345"}
 
-// har/har01/status (retained) — battery_v = null khi không đo được pin (chưa lắp cầu chia áp GPIO34)
+// har/har01/status (retained) — battery_v = null khi không đo được pin (mạch hiện tại không đo áp pin)
 {"v":1, "t":1763060010000, "online":true, "battery_v":3.92, "rssi":-58, "uptime_s":3600, "fw":"1.0.0",
  "heap":182000, "mpu_ok":true, "bmp_ok":true, "aht_ok":true, "pending_events":0, "dropped":0,
  "gyro_cal":"measured", "gyro_bias_dps":[13.69,4.21,0.44]}

@@ -1,6 +1,6 @@
 # Backend – VPS
 
-FastAPI + SQLModel + PostgreSQL 16, Caddy làm reverse proxy, tự cấp HTTPS và phục vụ web app; chạy bằng Docker Compose (`caddy`, `api`, `db`). Thiết kế ở kế hoạch, giai đoạn 6.
+FastAPI + SQLModel + PostgreSQL 16, Caddy làm reverse proxy, tự cấp HTTPS và phục vụ web app; chạy bằng Docker Compose (`caddy`, `api`, `db`). Kế hoạch: [`docs/ke-hoach.md`](../docs/ke-hoach.md).
 
 - API: [`../docs/api.md`](../docs/api.md) — tài liệu tự sinh ở `https://<tên miền>/api/docs`.
 - Bảng: [`../docs/data-schema.md`](../docs/data-schema.md), migration trong `api/alembic/`.

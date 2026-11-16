@@ -1,6 +1,6 @@
 # Edge – Raspberry Pi 4
 
-Raspberry Pi OS 64-bit (Bookworm), Python ≥ 3.11. Mỗi dịch vụ chạy bằng systemd. Thiết kế ở kế hoạch, giai đoạn 3 và 5.
+Raspberry Pi OS 64-bit (Bookworm), Python ≥ 3.11. Mỗi dịch vụ chạy bằng systemd. Kế hoạch: [`docs/ke-hoach.md`](../docs/ke-hoach.md).
 
 ```
 ESP32 ──MQTT──► Mosquitto ──► har-ingest ─► data/raw, data/sessions, SQLite(device_events) ─► ack về ESP32
@@ -13,7 +13,7 @@ ESP32 ──MQTT──► Mosquitto ──► har-ingest ─► data/raw, data/s
 
 | Dịch vụ | Module | Việc làm |
 | --- | --- | --- |
-| Mosquitto | `deploy/mosquitto-har.conf` | Broker MQTT 1883, bắt buộc user/mật khẩu; tường lửa chỉ mở cho mạng hotspot |
+| Mosquitto | `deploy/mosquitto-har.conf` | Broker MQTT 1883, bắt buộc user/mật khẩu; tường lửa chỉ mở cho mạng nội bộ |
 | chrony | `deploy/chrony-har.conf` | Máy chủ giờ cho ESP32 (vẫn chạy khi mất Internet) |
 | `har-ingest` | `har_edge/ingest.py` | Đổi đơn vị, đếm gói mất theo `seq`, ghi CSV liên tục + theo phiên thu, xác nhận sự kiện (`har/{dev}/ack`) |
 | `har-infer` | `har_edge/infer.py` | Cửa sổ 2,5 s mỗi 1 s, model (RF/TFLite/luật), làm mượt đa số 3, gộp đoạn, hợp nhất cảnh báo té, trạng thái mỗi 5 s |
@@ -42,7 +42,7 @@ sudo systemctl restart har-ingest har-infer har-uplink har-notify
 journalctl -fu har-infer
 ```
 
-Mạng khi demo (theo thứ tự ưu tiên): hotspot `wlan0` + Internet qua Ethernet/USB tethering → thêm USB Wi-Fi → ESP32 và Pi cùng bắt hotspot điện thoại, ESP32 tìm Pi qua `hargw.local`.
+Mạng đang dùng: Pi (`raspivn`, 192.168.12.19) và ESP32 cùng vào Wi-Fi nhà, ESP32 tìm Pi qua `raspivn.local`. `setup-pi.sh` hiện chỉ có chế độ hotspot (`wlan0` phát Wi-Fi, tên máy `hargw`), nên Pi đang chạy được cài tay theo các bước của script, bỏ phần hotspot và đổi tên máy, mở tường lửa cho dải mạng nhà và 5353/udp (mDNS). Chi tiết: [`../docs/firmware-integration.md`](../docs/firmware-integration.md) mục 1.
 
 ## Chạy và thử trên laptop (không cần ESP32)
 

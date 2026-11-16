@@ -1,6 +1,6 @@
 # Web app
 
-React 18 + Vite + TypeScript, React Router, Recharts. Build xong được Caddy phục vụ từ VPS (xem `backend/caddy.Dockerfile`). Thiết kế ở kế hoạch, giai đoạn 6.
+React 18 + Vite + TypeScript, React Router, Recharts. Build xong được Caddy phục vụ từ VPS (xem `backend/caddy.Dockerfile`). Kế hoạch: [`docs/ke-hoach.md`](../docs/ke-hoach.md).
 
 | Trang | Nội dung chính |
 | --- | --- |
