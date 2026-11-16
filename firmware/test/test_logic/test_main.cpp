@@ -4,6 +4,7 @@
 
 #include "button.h"
 #include "fall_detector.h"
+#include "gyro_cal.h"
 
 void setUp() {}
 void tearDown() {}
@@ -96,6 +97,73 @@ void test_button_debounce() {
   TEST_ASSERT_EQUAL(0, ev);
 }
 
+// --- Hiệu chỉnh con quay ---
+// Mẫu thô: Y chỉ xuống (ay = -4096 LSB = -1 g), con quay = bias + nhiễu đối xứng -noise/0/+noise
+// (trung bình đúng bằng 0 trên mỗi 3 mẫu, 75 mẫu chia hết cho 3)
+static GyroCal::Result feedCal(GyroCal& c, int n, int16_t gx, int16_t gy, int16_t gz, int noise = 3,
+                               int accWobble = 0) {
+  GyroCal::Result r = GyroCal::PENDING;
+  for (int i = 0; i < n; i++) {
+    const int e = ((i % 3) - 1) * noise;
+    const int16_t raw[6] = {0, (int16_t)(-4096 + ((i % 2) ? accWobble : -accWobble)), 0,
+                            (int16_t)(gx + e), (int16_t)(gy - e), (int16_t)(gz + e / 2)};
+    r = c.feed(raw);
+    if (r != GyroCal::PENDING) return r;
+  }
+  return r;
+}
+
+void test_gyro_cal_still() {
+  GyroCal c;
+  c.start();
+  // bias đo trên mạch thật: +13,8 / +4,2 / +0,4 °/s ≈ 904 / 275 / 26 LSB
+  TEST_ASSERT_EQUAL(GyroCal::OK, feedCal(c, 75, 904, 275, 26));
+  TEST_ASSERT_FALSE(c.active());
+  TEST_ASSERT_INT_WITHIN(2, 904, c.bias()[0]);
+  TEST_ASSERT_INT_WITHIN(2, 275, c.bias()[1]);
+  TEST_ASSERT_INT_WITHIN(2, 26, c.bias()[2]);
+  int16_t raw[6] = {0, -4096, 0, 904, 275, 26};
+  c.apply(raw);
+  TEST_ASSERT_INT_WITHIN(2, 0, raw[3]);
+  TEST_ASSERT_INT_WITHIN(2, 0, raw[4]);
+  TEST_ASSERT_INT_WITHIN(2, 0, raw[5]);
+}
+
+void test_gyro_cal_rejects_motion_then_retries() {
+  GyroCal c;
+  c.setBias(10, 20, 30);  // giá trị cũ từ NVS
+  c.start();
+  // đang cầm lắc: nhiễu con quay ±200 LSB (~3 °/s) -> bỏ cửa sổ, giữ bias cũ, vẫn chờ
+  TEST_ASSERT_EQUAL(GyroCal::MOVING, feedCal(c, 75, 904, 275, 26, 200));
+  TEST_ASSERT_TRUE(c.active());
+  TEST_ASSERT_EQUAL(10, c.bias()[0]);
+  // gia tốc dao động ±0,05 g dù con quay yên -> cũng bỏ
+  TEST_ASSERT_EQUAL(GyroCal::MOVING, feedCal(c, 75, 904, 275, 26, 3, 205));
+  TEST_ASSERT_EQUAL(20, c.bias()[1]);
+  // cửa sổ sau nằm yên -> nhận
+  TEST_ASSERT_EQUAL(GyroCal::OK, feedCal(c, 75, 904, 275, 26));
+  TEST_ASSERT_INT_WITHIN(2, 904, c.bias()[0]);
+}
+
+void test_gyro_cal_rejects_steady_rotation() {
+  GyroCal c;
+  c.start();
+  // quay đều 60 °/s (3930 LSB) quanh trục X: nhiễu nhỏ nhưng không phải bias
+  TEST_ASSERT_EQUAL(GyroCal::OUT_OF_RANGE, feedCal(c, 75, 3930, 0, 0));
+  TEST_ASSERT_EQUAL(0, c.bias()[0]);
+  TEST_ASSERT_TRUE(c.active());
+}
+
+void test_gyro_cal_apply_saturates() {
+  GyroCal c;
+  c.setBias(-1000, 1000, 0);
+  int16_t raw[6] = {0, 0, 0, 32000, -32000, 5};
+  c.apply(raw);
+  TEST_ASSERT_EQUAL(32767, raw[3]);
+  TEST_ASSERT_EQUAL(-32768, raw[4]);
+  TEST_ASSERT_EQUAL(5, raw[5]);
+}
+
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_fall_detected);
@@ -104,5 +172,9 @@ int main() {
   RUN_TEST(test_walking_never_triggers);
   RUN_TEST(test_button_single_double_long);
   RUN_TEST(test_button_debounce);
+  RUN_TEST(test_gyro_cal_still);
+  RUN_TEST(test_gyro_cal_rejects_motion_then_retries);
+  RUN_TEST(test_gyro_cal_rejects_steady_rotation);
+  RUN_TEST(test_gyro_cal_apply_saturates);
   return UNITY_END();
 }

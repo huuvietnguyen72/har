@@ -45,6 +45,9 @@ struct SharedState {
   bool mpuOk = false, bmpOk = false, ahtOk = false;
   uint32_t samples = 0;
   uint32_t imuMiss = 0;  // số lần không đọc được MPU6050 (bus bận > 8 ms hoặc lỗi I2C) — lặp mẫu trước
+  // Hiệu chỉnh con quay: 0 = chưa có (bias 0), 1 = dùng giá trị NVS lần trước, 2 = vừa đo lúc nằm yên
+  uint8_t gyroCalState = 0;
+  float gyroBiasDps[3] = {0, 0, 0};
   // cập nhật bởi netTask
   bool wifiUp = false, mqttUp = false, timeSynced = false;
   int rssi = 0;
@@ -76,6 +79,7 @@ bool timeValid();
 bool sensorsBegin();
 void samplerTask(void*);
 void slowTask(void*);
+void requestGyroCal();  // đo lại bias con quay (lệnh MQTT calibrate_gyro)
 
 // events.cpp — sự kiện lưu LittleFS đến khi Pi xác nhận
 bool eventsBegin();

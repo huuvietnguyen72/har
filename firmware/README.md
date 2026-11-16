@@ -27,6 +27,7 @@ PlatformIO + Arduino framework (espressif32 6.9.0). Thiết kế ở kế hoạc
 ## Hành vi
 
 - MPU6050 cấu hình bằng thanh ghi: ±8 g, ±500 °/s, DLPF 21 Hz; gửi giá trị thô int16.
+- Hiệu chỉnh con quay (`lib/gyro_cal`): sau khi khởi động, cửa sổ 1,5 s đầu tiên mà thiết bị nằm yên (std < 1 °/s, gia tốc dao động < 0,03 g) cho độ lệch từng trục; thử tối đa 60 s, không đạt thì dùng giá trị NVS lần trước. Mọi mẫu gửi đi và bộ phát hiện té đều dùng giá trị đã trừ độ lệch. Đo lại: `{"cmd":"calibrate_gyro"}`. Mạch hiện tại lệch gx ≈ +13,7 °/s nếu không hiệu chỉnh.
 - Chỉ đóng gói dữ liệu sau khi có giờ NTP từ Pi; phát hiện té chạy ngay từ lúc khởi động.
 - Mất mạng: vòng đệm 120 gói (60 s, ~37 KB). Có mạng lại thì gửi bù với `replay: true`; quá 60 s bỏ gói cũ nhất (đếm trong `dropped` của status).
 - Phát hiện té: rơi tự do (SVM < 0,4 g ≥ 80 ms) → va chạm (> 2,5 g trong 0,5 s) → bất động + tư thế đổi sau 2 s → `suspected`, còi ngắt quãng, LED đỏ nháy nhanh. 10 s không nhấn nút → `confirmed`, còi liên tục 30 s (nhấn để tắt còi). Nhấn trong 10 s → `cancelled`.
