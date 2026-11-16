@@ -2,15 +2,16 @@
 
 Đổi bất cứ thứ gì ở đây thì phải huấn luyện lại model.
 
-Quy ước đeo: hông phải, mũi tên Y của MPU6050 chỉ xuống đất. Khi đứng thẳng,
-gia tốc kế đọc ay ≈ -1 g, nên hướng "đứng thẳng" trong hệ trục cảm biến là UPRIGHT.
+Hệ trục = trục chip MPU6050 như đang hàn trên bộ đeo: đeo hông phải, đứng thẳng thì trục X
+chỉ xuống đất, gia tốc kế đọc ax ≈ -1 g (phiên đi bộ 17/11/2026: ax ≈ -0,97 g). Hướng "đứng thẳng"
+trong hệ trục cảm biến là UPRIGHT; firmware dùng cùng giá trị (FallParams::up_*).
 """
 import numpy as np
 
 from .units import PA_PER_METER
 
 FS = 50
-UPRIGHT = np.array([0.0, -1.0, 0.0])
+UPRIGHT = np.array([-1.0, 0.0, 0.0])
 
 _CHANNELS = ["ax", "ay", "az", "gx", "gy", "gz", "svm", "gmag"]
 _STATS = ["mean", "std", "min", "max", "rms", "skew", "kurt"]
@@ -46,16 +47,31 @@ def _corr(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.corrcoef(a, b)[0, 1])
 
 
-def tilt_deg(acc: np.ndarray) -> np.ndarray:
-    """Góc (độ) giữa vector gia tốc từng mẫu và hướng đứng thẳng."""
+def upright_vec(up=None) -> np.ndarray:
+    """Vector đơn vị "đứng thẳng": giá trị đã hiệu chỉnh theo người đeo (status/meta.json "upright")
+    nếu hợp lệ, không thì UPRIGHT mặc định."""
+    if up is None:
+        return UPRIGHT
+    try:
+        u = np.asarray(up, dtype=np.float64).reshape(-1)
+    except (TypeError, ValueError):  # dữ liệu hỏng từ status/meta.json
+        return UPRIGHT
+    n = float(np.linalg.norm(u)) if u.shape == (3,) else 0.0
+    return u / n if np.isfinite(n) and n > 1e-6 else UPRIGHT
+
+
+def tilt_deg(acc: np.ndarray, up=None) -> np.ndarray:
+    """Góc (độ) giữa vector gia tốc từng mẫu và hướng đứng thẳng (up: vector đã hiệu chỉnh hoặc None)."""
     norm = np.linalg.norm(acc, axis=1)
     norm[norm < 1e-6] = 1e-6
-    cos = (acc @ UPRIGHT) / norm
+    cos = (acc @ upright_vec(up)) / norm
     return np.degrees(np.arccos(np.clip(cos, -1, 1)))
 
 
-def extract_features(acc: np.ndarray, gyr: np.ndarray, pressure: np.ndarray | None = None, fs: int = FS) -> np.ndarray:
-    """acc (n,3) g, gyr (n,3) °/s, pressure (n,) Pa đã nội suy về fs hoặc None."""
+def extract_features(acc: np.ndarray, gyr: np.ndarray, pressure: np.ndarray | None = None, fs: int = FS,
+                     up=None) -> np.ndarray:
+    """acc (n,3) g, gyr (n,3) °/s, pressure (n,) Pa đã nội suy về fs hoặc None.
+    up: vector đứng thẳng đã hiệu chỉnh theo người đeo (None = UPRIGHT)."""
     acc = np.asarray(acc, dtype=np.float64)
     gyr = np.asarray(gyr, dtype=np.float64)
     svm = np.linalg.norm(acc, axis=1)
@@ -76,9 +92,9 @@ def extract_features(acc: np.ndarray, gyr: np.ndarray, pressure: np.ndarray | No
     band = lambda lo, hi: float(spec[(freqs >= lo) & (freqs < hi)].sum())  # noqa: E731
     f += [dom, band(0.3, 3), band(3, 6), band(6, 12), float(spec[1:].sum())]
 
-    tilt = tilt_deg(acc)
+    tilt = tilt_deg(acc, up)
     mean_vec = acc.mean(axis=0)
-    mean_tilt = float(tilt_deg(mean_vec[None, :])[0])
+    mean_tilt = float(tilt_deg(mean_vec[None, :], up)[0])
     f += [mean_tilt, float(tilt.std()), float(np.abs(np.diff(svm)).mean() * fs), float(svm.max() - svm.min())]
 
     if pressure is not None:

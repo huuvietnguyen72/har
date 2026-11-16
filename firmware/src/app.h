@@ -48,6 +48,12 @@ struct SharedState {
   // Hiệu chỉnh con quay: 0 = chưa có (bias 0), 1 = dùng giá trị NVS lần trước, 2 = vừa đo lúc nằm yên
   uint8_t gyroCalState = 0;
   float gyroBiasDps[3] = {0, 0, 0};
+  // Hướng đứng thẳng (vector đơn vị, trục chip) dùng cho bộ phát hiện té; gửi trong status
+  float upright[3] = {-1, 0, 0};
+  uint8_t uprightState = 0;      // 0 = mặc định (FallParams), 1 = NVS lần trước, 2 = vừa đo, 3 = đặt tay
+  uint64_t uprightT = 0;         // thời điểm đo (epoch ms), 0 nếu chưa đo từ lúc khởi động
+  char uprightReq[24] = "";      // id của lệnh calibrate_upright gần nhất
+  char uprightResult[12] = "none"; // none | pending | ok | moving | bad_gravity
   // Chẩn đoán nút GPIO32 (gửi trong status để xem từ Pi khi không cắm USB)
   uint32_t btnPresses = 0;  // số lần nhấn đã qua chống dội từ lúc khởi động
   bool btnLevel = true;     // mức GPIO32 hiện tại: true = HIGH (nhả), false = LOW (đang nhấn)
@@ -83,6 +89,8 @@ bool sensorsBegin();
 void samplerTask(void*);
 void slowTask(void*);
 void requestGyroCal();  // đo lại bias con quay (lệnh MQTT calibrate_gyro)
+void requestUprightCal(const char* id);  // đo hướng đứng thẳng (lệnh MQTT calibrate_upright)
+bool setUpright(const float u[3]);       // đặt tay (lệnh set_upright), ví dụ khôi phục giá trị cũ
 
 // events.cpp — sự kiện lưu LittleFS đến khi Pi xác nhận
 bool eventsBegin();

@@ -5,6 +5,7 @@
 #include "button.h"
 #include "fall_detector.h"
 #include "gyro_cal.h"
+#include "upright_cal.h"
 
 void setUp() {}
 void tearDown() {}
@@ -20,35 +21,35 @@ static int feed(FallDetector& d, uint64_t& t, Sample s, int n) {
 void test_fall_detected() {
   FallDetector d;
   uint64_t t = 1000;
-  int hits = feed(d, t, {0, -1, 0, 0, 0, 0}, 50);       // đứng 1 s (Y chỉ xuống)
-  hits += feed(d, t, {0.05f, -0.15f, 0.05f, 150, 80, 40}, 15);  // rơi tự do 0,3 s
-  hits += feed(d, t, {2.5f, -2.0f, 2.0f, 200, 100, 50}, 4);     // va chạm ~3,8 g
-  hits += feed(d, t, {1.0f, 0.05f, 0.05f, 1, 1, 1}, 150);       // nằm nghiêng 3 s
+  int hits = feed(d, t, {-1, 0, 0, 0, 0, 0}, 50);       // đứng 1 s (X chỉ xuống)
+  hits += feed(d, t, {-0.15f, -0.05f, 0.05f, 80, -150, 40}, 15);  // rơi tự do 0,3 s
+  hits += feed(d, t, {-2.0f, -2.5f, 2.0f, 100, -200, 50}, 4);     // va chạm ~3,8 g
+  hits += feed(d, t, {0.05f, -1.0f, 0.05f, 1, -1, 1}, 150);       // nằm nghiêng 3 s
   TEST_ASSERT_EQUAL(1, hits);
   TEST_ASSERT_TRUE(d.peakG() > 2.5f);
   TEST_ASSERT_TRUE(d.tiltDeg() > 80);
 }
 
 void test_no_fall_when_landing_upright() {
-  // ngồi phịch xuống ghế: có rơi + va chạm nhưng trục Y vẫn gần hướng xuống -> không báo
+  // ngồi phịch xuống ghế: có rơi + va chạm nhưng trục X vẫn gần hướng xuống -> không báo
   FallDetector d;
   uint64_t t = 1000;
-  int hits = feed(d, t, {0, -1, 0, 0, 0, 0}, 50);
-  hits += feed(d, t, {0, -0.2f, 0, 20, 0, 0}, 6);
-  hits += feed(d, t, {0, -2.8f, 0.4f, 30, 0, 0}, 3);
-  hits += feed(d, t, {0, -0.9f, 0.3f, 1, 1, 1}, 150);  // nghiêng ~18°
+  int hits = feed(d, t, {-1, 0, 0, 0, 0, 0}, 50);
+  hits += feed(d, t, {-0.2f, 0, 0, 0, -20, 0}, 6);
+  hits += feed(d, t, {-2.8f, 0, 0.4f, 0, -30, 0}, 3);
+  hits += feed(d, t, {-0.9f, 0, 0.3f, 1, -1, 1}, 150);  // nghiêng ~18°
   TEST_ASSERT_EQUAL(0, hits);
 }
 
 void test_no_fall_when_moving_after_impact() {
   FallDetector d;
   uint64_t t = 1000;
-  int hits = feed(d, t, {0, -1, 0, 0, 0, 0}, 50);
-  hits += feed(d, t, {0, -0.1f, 0, 0, 0, 0}, 10);
-  hits += feed(d, t, {3, 0, 0, 0, 0, 0}, 3);
+  int hits = feed(d, t, {-1, 0, 0, 0, 0, 0}, 50);
+  hits += feed(d, t, {-0.1f, 0, 0, 0, 0, 0}, 10);
+  hits += feed(d, t, {0, -3, 0, 0, 0, 0}, 3);
   for (int i = 0; i < 150; i++, t += 20) {  // đứng dậy đi tiếp: SVM dao động mạnh
     float s = 1.0f + 0.5f * sinf(i * 0.6f);
-    hits += d.update(t, s, 0, 0, 60, 20, 10);
+    hits += d.update(t, 0, -s, 0, 20, -60, 10);
   }
   TEST_ASSERT_EQUAL(0, hits);
 }
@@ -59,7 +60,7 @@ void test_walking_never_triggers() {
   int hits = 0;
   for (int i = 0; i < 3000; i++, t += 20) {
     float ph = 2 * 3.14159f * 1.9f * i / 50.0f;
-    hits += d.update(t, 0.1f * sinf(ph / 2), -1 + 0.35f * sinf(ph), 0.2f * sinf(ph + 1), 25 * sinf(ph), 10, 5);
+    hits += d.update(t, -1 + 0.35f * sinf(ph), -0.1f * sinf(ph / 2), 0.2f * sinf(ph + 1), 10, -25 * sinf(ph), 5);
   }
   TEST_ASSERT_EQUAL(0, hits);
 }
@@ -98,14 +99,14 @@ void test_button_debounce() {
 }
 
 // --- Hiệu chỉnh con quay ---
-// Mẫu thô: Y chỉ xuống (ay = -4096 LSB = -1 g), con quay = bias + nhiễu đối xứng -noise/0/+noise
+// Mẫu thô: X chỉ xuống (ax = -4096 LSB = -1 g), con quay = bias + nhiễu đối xứng -noise/0/+noise
 // (trung bình đúng bằng 0 trên mỗi 3 mẫu, 75 mẫu chia hết cho 3)
 static GyroCal::Result feedCal(GyroCal& c, int n, int16_t gx, int16_t gy, int16_t gz, int noise = 3,
                                int accWobble = 0) {
   GyroCal::Result r = GyroCal::PENDING;
   for (int i = 0; i < n; i++) {
     const int e = ((i % 3) - 1) * noise;
-    const int16_t raw[6] = {0, (int16_t)(-4096 + ((i % 2) ? accWobble : -accWobble)), 0,
+    const int16_t raw[6] = {(int16_t)(-4096 + ((i % 2) ? accWobble : -accWobble)), 0, 0,
                             (int16_t)(gx + e), (int16_t)(gy - e), (int16_t)(gz + e / 2)};
     r = c.feed(raw);
     if (r != GyroCal::PENDING) return r;
@@ -122,7 +123,7 @@ void test_gyro_cal_still() {
   TEST_ASSERT_INT_WITHIN(2, 904, c.bias()[0]);
   TEST_ASSERT_INT_WITHIN(2, 275, c.bias()[1]);
   TEST_ASSERT_INT_WITHIN(2, 26, c.bias()[2]);
-  int16_t raw[6] = {0, -4096, 0, 904, 275, 26};
+  int16_t raw[6] = {-4096, 0, 0, 904, 275, 26};
   c.apply(raw);
   TEST_ASSERT_INT_WITHIN(2, 0, raw[3]);
   TEST_ASSERT_INT_WITHIN(2, 0, raw[4]);
@@ -164,6 +165,71 @@ void test_gyro_cal_apply_saturates() {
   TEST_ASSERT_EQUAL(5, raw[5]);
 }
 
+// --- Hiệu chỉnh hướng đứng thẳng ---
+static UprightCal::Result feedUp(UprightCal& c, int n, float ax, float ay, float az, float wobble = 0.005f,
+                                 float gyro = 2.0f) {
+  UprightCal::Result r = UprightCal::PENDING;
+  for (int i = 0; i < n; i++) {
+    const float e = ((i % 3) - 1) * wobble;  // lắc nhẹ khi đứng
+    r = c.feed(ax + e, ay, az - e, gyro, -gyro, 0);
+    if (r != UprightCal::PENDING) return r;
+  }
+  return r;
+}
+
+void test_upright_tilted_wear() {
+  // hộp cài nghiêng 20° quanh trục Y: đứng thẳng đọc (-cos20, 0, -sin20)
+  UprightCal c;
+  c.start();
+  TEST_ASSERT_EQUAL(UprightCal::OK, feedUp(c, 100, -0.940f, 0, -0.342f));
+  TEST_ASSERT_FALSE(c.active());
+  const float def[3] = {-1, 0, 0};
+  TEST_ASSERT_FLOAT_WITHIN(1.0f, 20.0f, UprightCal::angleDeg(c.up(), def));
+  TEST_ASSERT_FLOAT_WITHIN(0.01f, -0.940f, c.up()[0]);
+}
+
+void test_upright_upside_down_accepted() {
+  // đeo ngược (X chỉ lên): thư viện vẫn nhận, record.py sẽ hỏi xác nhận vì lệch 180°
+  UprightCal c;
+  c.start();
+  TEST_ASSERT_EQUAL(UprightCal::OK, feedUp(c, 100, 1.0f, 0, 0));
+  const float def[3] = {-1, 0, 0};
+  TEST_ASSERT_FLOAT_WITHIN(1.0f, 180.0f, UprightCal::angleDeg(c.up(), def));
+}
+
+void test_upright_rejects_moving_and_bad_gravity() {
+  UprightCal c;
+  c.start();
+  TEST_ASSERT_EQUAL(UprightCal::MOVING, feedUp(c, 100, -1.0f, 0, 0, 0.15f));     // đi bộ: SVM dao động 0,3 g
+  TEST_ASSERT_EQUAL(UprightCal::MOVING, feedUp(c, 100, -1.0f, 0, 0, 0.005f, 40));  // xoay người
+  TEST_ASSERT_EQUAL(UprightCal::BAD_GRAVITY, feedUp(c, 100, -0.5f, 0, 0));       // không phải 1 g
+  TEST_ASSERT_TRUE(c.active());
+  TEST_ASSERT_EQUAL(UprightCal::OK, feedUp(c, 100, -1.0f, 0, 0));
+}
+
+void test_fall_uses_calibrated_upright() {
+  // Hộp đeo nghiêng 40°. Sau va chạm người đeo nằm yên ở tư thế lệch 15° so với lúc đứng (55° so với
+  // hướng mặc định). Theo hướng đã hiệu chỉnh: chưa đổi tư thế -> không báo. Theo mặc định: báo nhầm.
+  const float c40 = 0.766f, s40 = 0.643f, c55 = 0.574f, s55 = 0.819f;
+  int hits[2];
+  for (int k = 0; k < 2; k++) {
+    FallDetector d;
+    if (k == 0) {
+      d.params().up_x = -c40;
+      d.params().up_y = 0;
+      d.params().up_z = -s40;
+    }
+    uint64_t t = 1000;
+    int h = feed(d, t, {-c40, 0, -s40, 0, 0, 0}, 50);
+    h += feed(d, t, {-0.15f, -0.05f, 0.05f, 80, -150, 40}, 15);
+    h += feed(d, t, {-2.0f, -2.5f, 2.0f, 100, -200, 50}, 4);
+    h += feed(d, t, {-c55, 0, -s55, 1, -1, 1}, 150);
+    hits[k] = h;
+  }
+  TEST_ASSERT_EQUAL(0, hits[0]);
+  TEST_ASSERT_EQUAL(1, hits[1]);
+}
+
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_fall_detected);
@@ -176,5 +242,9 @@ int main() {
   RUN_TEST(test_gyro_cal_rejects_motion_then_retries);
   RUN_TEST(test_gyro_cal_rejects_steady_rotation);
   RUN_TEST(test_gyro_cal_apply_saturates);
+  RUN_TEST(test_upright_tilted_wear);
+  RUN_TEST(test_upright_upside_down_accepted);
+  RUN_TEST(test_upright_rejects_moving_and_bad_gravity);
+  RUN_TEST(test_fall_uses_calibrated_upright);
   return UNITY_END();
 }

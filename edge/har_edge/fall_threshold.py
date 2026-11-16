@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from .features import UPRIGHT
+from .features import upright_vec
 
 
 @dataclass
@@ -42,6 +42,7 @@ class FallThreshold:
     _n: int = 0
     _n_still: int = 0
     _sum: np.ndarray = field(default_factory=lambda: np.zeros(3))
+    up: np.ndarray | None = None  # vector đứng thẳng đã hiệu chỉnh (None = UPRIGHT)
 
     def reset(self) -> None:
         self.state = "idle"
@@ -86,7 +87,7 @@ class FallThreshold:
                 still = self._n > 0 and self._n_still / self._n >= p.still_ratio
                 mean = self._sum / max(self._n, 1)
                 norm = np.linalg.norm(mean) or 1.0
-                tilt = float(np.degrees(np.arccos(np.clip(mean @ UPRIGHT / norm, -1, 1))))
+                tilt = float(np.degrees(np.arccos(np.clip(mean @ upright_vec(self.up) / norm, -1, 1))))
                 result = {"t": self._impact_t, "peak_g": round(float(self._peak), 2), "tilt_deg": round(tilt, 1)}
                 self.reset()
                 if still and tilt > p.posture_deg:
@@ -94,9 +95,10 @@ class FallThreshold:
         return None
 
 
-def detect_all(t_ms: np.ndarray, acc: np.ndarray, gyr: np.ndarray, params: ThresholdParams | None = None) -> list[dict]:
+def detect_all(t_ms: np.ndarray, acc: np.ndarray, gyr: np.ndarray, params: ThresholdParams | None = None,
+               up=None) -> list[dict]:
     """Chạy bộ phát hiện trên cả một bản ghi; trả danh sách lần nghi té."""
-    det = FallThreshold(params or ThresholdParams())
+    det = FallThreshold(params or ThresholdParams(), up=up)
     out = []
     for i in range(len(t_ms)):
         r = det.update(int(t_ms[i]), acc[i], gyr[i])

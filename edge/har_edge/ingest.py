@@ -178,7 +178,10 @@ class Ingest:
         if action == "start":
             sid = msg.get("id") or f"{dev}_{msg.get('subject', 'S00')}_{msg.get('activity', 'x')}_{now}"
             meta = {"id": sid, "dev": dev, "subject": msg.get("subject"), "activity": msg.get("activity"),
-                    "note": msg.get("note"), "start": now, "end": None, "orientation": "hông phải, Y chỉ xuống đất"}
+                    "note": msg.get("note"), "start": now, "end": None, "orientation": "hông phải, X chỉ xuống đất",
+                    # vector đứng thẳng đo lúc bắt đầu phiên (record.py), dùng khi huấn luyện
+                    "upright": msg.get("upright"), "upright_source": msg.get("upright_source"),
+                    "upright_angle_deg": msg.get("upright_angle_deg")}
             s = Session(self.data_dir / "sessions", meta)
             self.sessions[dev] = s
             self.conn.execute(

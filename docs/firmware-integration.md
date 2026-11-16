@@ -26,6 +26,9 @@ Ghi lại các vấn đề gặp khi nạp firmware và chạy cùng Pi 4 lần 
 | 9 | mDNS thỉnh thoảng không trả lời | Thấp | Đã có đường vòng, nên đặt IP cố định |
 | 10 | AHT20 đọc nóng (43 °C), gia tốc tĩnh 0,94 g | Thấp | Chưa sửa, do lắp ráp và hiệu chỉnh |
 | 11 | Nút cắm GPIO19 thay vì GPIO32: không hủy được cảnh báo té | Cao | Đã sửa (`PIN_BUTTON 19`) |
+| 12 | Pi khởi động lại sai giờ 12,3 s, ESP32 giữ giờ sai tới 1 giờ | Trung bình | Đã sửa (`NTP_SYNC_MS 60000`) |
+| 13 | MPU6050 hàn xoay 90°: trục X chỉ xuống, không phải Y | Cao | Đã sửa: code theo phần cứng (`UPRIGHT = [-1, 0, 0]`) |
+| 14 | Mỗi người đeo cài hộp khác nhau (nghiêng, ngược) | Cao | Đã thêm hiệu chỉnh hướng đứng thẳng (`calibrate_upright`) |
 
 ## 1. Mạng: không dùng được hotspot trên Pi
 
@@ -188,6 +191,51 @@ Thỉnh thoảng `MDNS.queryHost("raspivn")` không trả lời trong 2 s, và f
 Còi kêu ngắt quãng khi nghi té và bíp khi nhấn; LED xanh và đỏ hoạt động đúng (người dùng xác nhận).
 
 **Bài học.** Mạch lắp theo một chương trình thử cũ nên chân khác `docs/pinout.md` (OLED ở bus 1, nút ở GPIO19). Khi nhận mạch mới, nên chạy chương trình dò chân và dò I2C trước khi nạp firmware.
+
+## 12. Pi sai giờ sau khi khởi động lại
+
+**Hiện tượng.** Phiên thu thử `har01_S00_walk_20261117-005924` có dấu thời gian mẫu sớm hơn `start` của phiên 12,35 s.
+
+**Nguyên nhân.** Pi 4 không có RTC. Sau khi khởi động lại lúc 00:49:52, giờ Pi sai 12,3 s; chrony chỉnh lúc 00:50:25 (`System clock was stepped by 12.337301 seconds`). ESP32 đã lấy giờ từ Pi lúc 00:50:03, trước khi Pi được chỉnh, và mặc định ESP-IDF 1 giờ mới hỏi giờ lại.
+
+**Sửa.** `sntp_set_sync_interval(NTP_SYNC_MS)` trước `configTime`, `NTP_SYNC_MS 60000` trong `config.h`.
+
+**Kiểm chứng.** `chronyc clients` cho thấy ESP32 hỏi giờ khoảng mỗi 60 s. Lệch đồng hồ ESP32 so với Pi (mẫu cuối của gói so với lúc Pi nhận, 20 gói) có trung vị −20 ms, tức chỉ là độ trễ đóng gói và mạng.
+
+**Còn lại.** Nếu demo không có Internet, giờ Pi lấy từ lần tắt trước và có thể lệch nhiều; cần module RTC cho Pi hoặc chia sẻ Internet từ điện thoại.
+
+## 13. Hướng trục MPU6050: theo phần cứng
+
+**Hiện tượng.** Phiên đi bộ thử: gia tốc trung bình `ax ≈ -0,97 g, ay ≈ -0,01 g, az ≈ -0,12 g`. Kế hoạch và code giả định đứng thẳng thì `ay ≈ -1 g` (Y chỉ xuống), nhưng module đã hàn xoay 90° nên **trục X chỉ xuống**. Hậu quả với quy ước cũ: luật nhận dạng trên Pi đoán 44/58 cửa sổ là `walk`, còn lại `lie`, `stairs_*`; bộ phát hiện té coi người đeo luôn "đã đổi tư thế" (nghiêng 90°), dễ báo nhầm khi ngồi phịch xuống ghế.
+
+**Quyết định.** Phần cứng đã hàn, khó đổi. Code và tài liệu theo phần cứng, không đổi trục để giống kế hoạch.
+
+**Sửa.**
+- Firmware: dữ liệu gửi đi là trục chip, không đổi trục. `FallParams::up = (-1, 0, 0)`. Test native viết lại theo hệ X chỉ xuống.
+- Pi: `features.UPRIGHT = [-1, 0, 0]` (dùng cho góc nghiêng, luật nhận dạng, ngưỡng té trên Pi). `synth.py` sinh dữ liệu giả lập theo cùng hệ trục. Metadata phiên ghi `"hông phải, X chỉ xuống đất"`.
+
+**Kiểm chứng.** Phiên đi bộ thật với quy ước mới: góc nghiêng trung bình 6,4°, luật nhận dạng đoán đúng **58/58** cửa sổ là `walk`. Dữ liệu giả lập: đứng 0,2°, ngồi 48°, nằm 89,8°. Test: firmware 10/10, edge 17/17.
+
+**Lưu ý.** Hình 3 trong `hardware/So_do_lap_bo_deo_HAR.html` vẫn vẽ trục Y chỉ xuống theo thiết kế ban đầu; mạch thật khác hình này.
+
+## 14. Hiệu chỉnh hướng đứng thẳng theo người đeo
+
+**Vấn đề.** Hướng "đứng thẳng" cố định (`[-1, 0, 0]`) chỉ đúng khi hộp được cài đúng tư thế. Người đeo khác có thể cài nghiêng 15–30° (đai lệch, dáng người) hoặc đeo ngược. Nghiêng 40° thì khi đứng, góc nghiêng đã là 40°: luật nhận dạng ra `sit`, bộ phát hiện té coi là "đã đổi tư thế".
+
+**Cách làm (lớp 1).** Người đeo đứng thẳng yên ~2 s, bộ đeo lấy trung bình gia tốc làm vector đứng thẳng.
+- Firmware: `lib/upright_cal` (C++ thuần). Cửa sổ 2 s được nhận khi SVM dao động < 0,08 g, |con quay| trung bình < 15 °/s và |gia tốc| trong 0,85–1,15 g; thử tối đa 4 lần (`UPRIGHT_CAL_TRIES`). Kết quả đặt vào `FallParams::up_*`, lưu NVS (`imu/upx,upy,upz`), gửi trong `status`.
+- Lệnh: `{"cmd":"calibrate_upright","id":"..."}` (đo) và `{"cmd":"set_upright","up":[x,y,z]}` (đặt tay, ví dụ khôi phục).
+- `record.py`: trước khi đếm ngược, yêu cầu người đeo đứng thẳng và gửi `calibrate_upright`, chờ `status` có cùng `upright_req`. Lệch hơn 45° so với mặc định thì hỏi xác nhận; từ chối thì khôi phục hướng cũ bằng `set_upright`. Bộ đeo không trả lời, hoặc người đeo cử động, thì dùng hướng đang có và ghi rõ nguồn. Ghi `upright`, `upright_source`, `upright_angle_deg` vào `meta.json`. Có `--no-upright-cal` để bỏ qua.
+- Pi: `features.upright_vec()`; `extract_features`, `tilt_deg`, các model, `FallThreshold`/`detect_all` nhận tham số `up`. `har-infer` dùng `upright` trong `status` của thiết bị. Dữ liệu `upright` hỏng thì quay về `UPRIGHT`.
+- `ml/`: `Recording.upright` đọc từ `meta.json`, `Windows.up` theo từng cửa sổ; `train_rf.py`, `eval_fall.py` truyền `up` vào đặc trưng và bộ ngưỡng. 1D-CNN vẫn dùng trục thô (lớp 3: xoay ngẫu nhiên khi huấn luyện).
+
+**Giới hạn.** Bộ đeo không biết người đeo có thật sự đứng hay đang nằm yên; vì vậy chỉ hiệu chỉnh khi được yêu cầu (`record.py` nhắc đứng thẳng và hỏi xác nhận khi lệch nhiều). Tự hiệu chỉnh khi đi bộ (lớp 2) để làm sau.
+
+**Kiểm chứng.**
+- Firmware 14/14 test, gồm: hộp nghiêng 20° → vector đúng; đeo ngược → nhận (lệch 180°); đang đi/xoay → `MOVING`; gia tốc 0,5 g → `BAD_GRAVITY`; hộp nghiêng 40° rồi nằm lệch 15° → với hướng đã hiệu chỉnh **không báo té**, với hướng mặc định **báo nhầm**.
+- Edge 18/18 test, gồm: đứng với hộp nghiêng 40° → luật đơn giản ra `sit` theo mặc định, `stand` theo hướng đã hiệu chỉnh.
+- `ml/`: 150 phiên giả lập, `make_windows` và `featurize` chạy đúng với `meta.json` có/không có `upright`.
+- Trên mạch: `calibrate_upright` có kết quả sau 2,1 s (`[-0.993, -0.019, -0.12]`, `upright_cal: measured`); `set_upright [-1,0,0]` khôi phục ngay (`manual`).
 
 ## Đối chiếu tiêu chí trong kế hoạch
 

@@ -31,14 +31,15 @@ def stream(rec, clf, use_baro: bool, window_s: float, params: FusionParams):
     """Trả (thresh_alerts, model_alerts, combined_alerts) – danh sách thời điểm (ms)."""
     w = int(window_s * FS)
     t = rec.t.astype(np.int64)
-    det = detect_all(t, rec.acc, rec.gyr)
+    det = detect_all(t, rec.acc, rec.gyr, up=rec.upright)
     p_full = rec.pressure if rec.pressure is not None else np.zeros(len(t))
 
     timeline = []  # (thời điểm, loại, dữ liệu)
     sm = Smoother()
     for end in range(w, len(t) + 1, FS):
         s = end - w
-        f = extract_features(rec.acc[s:end], rec.gyr[s:end], p_full[s:end] if use_baro else None)[None, :]
+        f = extract_features(rec.acc[s:end], rec.gyr[s:end], p_full[s:end] if use_baro else None,
+                             up=rec.upright)[None, :]
         proba = clf.predict_proba(np.nan_to_num(f))[0]
         probs = {LABELS[int(c)]: p for c, p in zip(clf.classes_, proba)}
         raw = max(probs, key=probs.get)
