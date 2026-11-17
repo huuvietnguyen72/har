@@ -145,5 +145,7 @@ def make_windows(recs: list[Recording], window_s: float = 2.5) -> Windows:
 
 
 def summary(win: Windows) -> pd.DataFrame:
-    df = pd.DataFrame({"label": [LABELS[i] for i in win.y], "subject": win.groups})
+    # gộp người của dataset ngoài thành một cột cho dễ đọc
+    subj = ["SisFall" if str(g).startswith("SisFall_") else g for g in win.groups]
+    df = pd.DataFrame({"label": [LABELS[i] for i in win.y], "subject": subj})
     return df.pivot_table(index="label", columns="subject", aggfunc="size", fill_value=0)

@@ -95,3 +95,19 @@ def test_sessions_load_and_windows(tmp_path):
     for i in fall_rows:
         svm = np.linalg.norm(win.acc[i], axis=1)
         assert svm.max() > 4.0, "cửa sổ té phải chứa va chạm 6 g, không phải bước chạy 2,6 g"
+
+
+def test_subject_splits_score_only_own_subjects():
+    from har_ml.evaluate import cv_description, subject_splits
+
+    groups = np.array(["S01"] * 3 + ["SisFall_SA01"] * 4 + ["S02"] * 2 + ["SisFall_SE06"] * 2 + ["S03"] * 2)
+    splits, ev = subject_splits(groups)
+    assert len(splits) == 3  # một lượt cho mỗi người tự thu
+    assert ev.tolist() == [not g.startswith("SisFall_") for g in groups]
+    for tr, te in splits:
+        assert len(set(groups[te])) == 1 and not groups[te][0].startswith("SisFall_")
+        assert not set(tr) & set(te)
+        assert {"SisFall_SA01", "SisFall_SE06"} <= set(groups[tr])  # SisFall luôn ở tập huấn luyện
+    assert "3 người tự thu" in cv_description(groups) and "SisFall (2 người" in cv_description(groups)
+    with pytest.raises(ValueError):
+        subject_splits(np.array(["S01", "SisFall_SA01"]))

@@ -22,7 +22,7 @@ from sklearn.metrics import f1_score
 from har_edge import LABELS
 from har_edge.features import extract_features, feature_names
 from har_ml.dataset import load_recordings, make_windows, summary
-from har_ml.evaluate import group_folds, print_report, report, save
+from har_ml.evaluate import cv_description, external_info, print_report, report, save, subject_splits
 
 HERE = Path(__file__).resolve().parent
 GRID = [(200, None), (200, 20), (400, None), (100, 12)]
@@ -60,15 +60,15 @@ def main() -> None:
     print(summary(win))
     X = featurize(win, a.baro)
     y, groups = win.y, win.groups
-    cv = group_folds(groups)
+    splits, ev = subject_splits(groups)
 
     best, best_f1, best_pred = None, -1.0, None
     for n_est, depth in GRID:
-        pred = np.empty_like(y)
-        for tr, te in cv.split(X, y, groups):
+        pred = np.full_like(y, -1)
+        for tr, te in splits:
             clf = make_clf(n_est, depth).fit(X[tr], y[tr])
             pred[te] = clf.predict(X[te])
-        f1 = f1_score(y, pred, average="macro")
+        f1 = f1_score(y[ev], pred[ev], average="macro")
         print(f"  n_estimators={n_est:<4} max_depth={str(depth):<5} macro-F1={f1:.3f}")
         if f1 > best_f1:
             best, best_f1, best_pred = (n_est, depth), f1, pred
@@ -86,8 +86,8 @@ def main() -> None:
 
     names = feature_names(a.baro)
     imp = sorted(zip(names, final.feature_importances_), key=lambda kv: -kv[1])[:15]
-    rep = report(a.experiment, name, feats, a.window, y, best_pred, win.n_subjects, extra={
-        "cv": f"GroupKFold k={cv.n_splits} theo người, dự đoán out-of-fold",
+    rep = report(a.experiment, name, feats, a.window, y[ev], best_pred[ev], len(splits), extra={
+        "cv": cv_description(groups), "external": external_info(groups),
         "params": {"n_estimators": best[0], "max_depth": best[1]},
         "infer_ms_train_machine": round(infer_ms, 2),
         "feature_importance": {k: round(float(v), 4) for k, v in imp},

@@ -5,7 +5,8 @@
 
 Kiến trúc: 3 khối Conv1D (32, 64, 64 bộ lọc, kernel 5, BatchNorm, ReLU, MaxPool)
 → GlobalAveragePooling → Dense 64 + Dropout 0,3 → Softmax 7 lớp.
-Chuẩn hóa theo tập huấn luyện, class weight, early stopping. Đánh giá GroupKFold theo người.
+Chuẩn hóa theo tập huấn luyện, class weight, early stopping. Đánh giá leave-one-subject-out trên người tự thu
+(dataset ngoài như SisFall chỉ dùng để huấn luyện).
 """
 import argparse
 import json
@@ -17,7 +18,7 @@ import numpy as np
 from har_edge import LABELS
 from har_edge.features import cnn_input
 from har_ml.dataset import load_recordings, make_windows, summary
-from har_ml.evaluate import group_folds, print_report, report, save
+from har_ml.evaluate import cv_description, external_info, print_report, report, save, subject_splits
 
 HERE = Path(__file__).resolve().parent
 
@@ -58,6 +59,10 @@ def fit(X, y, epochs: int, seed: int = 42):
     import tensorflow as tf
 
     tf.keras.utils.set_random_seed(seed)
+    # validation_split của Keras lấy 15 % CUỐI mảng trước khi xáo trộn; cửa sổ đang xếp theo thư mục/người
+    # (dataset ngoài trước, dữ liệu tự thu sau) nên phải xáo trước, nếu không tập học có thể thiếu hẳn vài nhãn
+    order = np.random.default_rng(seed).permutation(len(X))
+    X, y = X[order], y[order]
     mean = X.reshape(-1, X.shape[-1]).mean(axis=0)
     std = X.reshape(-1, X.shape[-1]).std(axis=0) + 1e-6
     Xn = (X - mean) / std
@@ -112,17 +117,17 @@ def main() -> None:
     print(summary(win))
     X = build_inputs(win, a.baro)
     y, groups = win.y, win.groups
-    cv = group_folds(groups)
+    splits, ev = subject_splits(groups)
 
-    pred = np.empty_like(y)
-    for k, (tr, te) in enumerate(cv.split(X, y, groups)):
+    pred = np.full_like(y, -1)
+    for k, (tr, te) in enumerate(splits):
         model, mean, std = fit(X[tr], y[tr], a.epochs, seed=42 + k)
         pred[te] = model.predict((X[te] - mean) / std, verbose=0).argmax(axis=1)
-        print(f"  fold {k + 1}/{cv.n_splits}: người kiểm tra {sorted(set(groups[te]))}")
+        print(f"  fold {k + 1}/{len(splits)}: người kiểm tra {sorted(set(groups[te]))}")
 
     feats = "imu+baro" if a.baro else "imu"
     name = f"cnn-{feats}-{a.window:g}s-{a.version}"
-    extra = {"cv": f"GroupKFold k={cv.n_splits} theo người, dự đoán out-of-fold", "epochs_max": a.epochs,
+    extra = {"cv": cv_description(groups), "external": external_info(groups), "epochs_max": a.epochs,
              "synthetic": synthetic}
 
     if a.export:
@@ -150,7 +155,7 @@ def main() -> None:
             target.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"Đã xuất model -> {d}  (meta.json dùng bản int8; đổi tên meta_float.json để dùng bản float)")
 
-    rep = report(a.experiment, name, feats, a.window, y, pred, win.n_subjects, extra=extra)
+    rep = report(a.experiment, name, feats, a.window, y[ev], pred[ev], len(splits), extra=extra)
     print_report(rep)
     print("Đã lưu", save(rep, a.out))
 
