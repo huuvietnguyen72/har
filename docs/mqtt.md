@@ -51,8 +51,8 @@ Broker cổng 1883, bắt buộc user/mật khẩu; tường lửa chỉ mở ch
 // har/har01/cmd
 {"cmd":"beep", "ms":200}
 {"cmd":"display", "mode":"record", "activity":"walk"}      // mode: monitor | record
-{"cmd":"set_threshold", "freefall_g":0.4, "freefall_ms":80, "impact_g":2.5,
- "impact_window_ms":500, "still_gyro_dps":30, "posture_deg":50}   // lưu NVS
+{"cmd":"set_threshold", "freefall_g":0.6, "freefall_ms":60, "impact_g":2.5,
+ "impact_window_ms":500, "still_delay_ms":3000, "still_gyro_dps":30, "posture_deg":50}   // lưu NVS
 {"cmd":"test_alarm"}
 {"cmd":"calibrate_gyro"}                                  // đặt nằm yên ≥ 1,5 s; lưu NVS
 {"cmd":"calibrate_upright", "id":"rec-1763060000"}        // người đeo đứng thẳng yên ~2 s; lưu NVS

@@ -10,11 +10,13 @@
 #include <stdint.h>
 
 struct FallParams {
-  float freefall_g = 0.4f;
-  uint32_t freefall_ms = 80;
+  // Chỉnh theo cú ngã thật 17/11/2026 (ngã trước lên nệm: SVM < 0,4 g chỉ ~40 ms vì người đổ xoay,
+  // còn nảy/chỉnh ~1,5 s sau va chạm). Giá trị cũ 0,4 g / 80 ms / 2000 ms bỏ lọt cú ngã đó.
+  float freefall_g = 0.6f;
+  uint32_t freefall_ms = 60;
   float impact_g = 2.5f;
   uint32_t impact_window_ms = 500;
-  uint32_t still_delay_ms = 2000;
+  uint32_t still_delay_ms = 3000;  // xét bất động ở giây 2–3 sau va chạm
   uint32_t still_check_ms = 1000;
   float still_lo = 0.8f;
   float still_hi = 1.2f;
