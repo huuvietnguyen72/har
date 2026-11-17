@@ -68,9 +68,10 @@ python fake_device.py --script "walk:20,sit:15,fall:8,lie:10"
 ```bash
 python record.py --subject S01 --activity walk --duration 180   # ghi data/sessions/<id>/
 python replay.py data/sessions/<id> --speed 2                    # phát lại lên MQTT để thử toàn tuyến
+python rebuild_sessions.py --all --dry-run                       # cắt lại phiên từ data/raw theo thời điểm đo
 ```
 
-Mỗi phiên có `imu.csv` (t, ax, ay, az [g], gx, gy, gz [°/s]), `env.csv` (t, p_pa), `events.csv` (mốc `marker` khi nhấn đúp nút) và `meta.json` (người, nhãn, số gói, số gói mất). Chép thư mục `data/sessions/` sang `ml/data/raw/` để huấn luyện.
+Mỗi phiên có `imu.csv` (t, ax, ay, az [g], gx, gy, gz [°/s]), `env.csv` (t, p_pa), `events.csv` (mốc `marker` khi nhấn đúp nút) và `meta.json` (người, nhãn, số gói, số gói mất, số mẫu, vector đứng thẳng). Mẫu thuộc phiên theo thời điểm đo (`start ≤ t ≤ end`); sau lệnh dừng `har-ingest` chờ 15 s nhận gói tới trễ rồi mới đóng phiên. Chép thư mục `data/sessions/` (không chép `data/sessions_backup/`) sang `ml/data/raw/` để huấn luyện.
 
 ## Đưa model mới lên Pi
 
