@@ -23,7 +23,9 @@ from . import store
 from .config import load_config
 from .units import env_packet_to_array, imu_packet_to_array
 
-SESSION_GRACE_MS = 15_000  # chờ gói tới trễ sau khi dừng phiên (ở cầu thang đo được trễ ~7 s)
+# Chờ gói tới trễ sau khi dừng phiên: ESP32 giữ 60 s dữ liệu khi mất kết nối (RING_PACKETS) và cần ~25 s để
+# kết nối lại (cầu thang S02 17/11: đứt 10:14:39, nối lại 10:15:02, gửi bù sau khi phiên 15 s đã đóng).
+SESSION_GRACE_MS = 90_000
 
 log = logging.getLogger("har-ingest")
 
