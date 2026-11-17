@@ -2,6 +2,7 @@
 #include <math.h>
 #include <unity.h>
 
+#include "alarm_fsm.h"
 #include "button.h"
 #include "fall_detector.h"
 #include "gyro_cal.h"
@@ -258,9 +259,52 @@ void test_fall_uses_calibrated_upright() {
   TEST_ASSERT_EQUAL(1, hits[1]);
 }
 
+// --- Máy trạng thái cảnh báo ---
+void test_alarm_fsm_cancel_window() {
+  AlarmFsm a(10000, 30000);
+  TEST_ASSERT_TRUE(a.start(1000));
+  TEST_ASSERT_EQUAL(AlarmFsm::NONE, a.update(10999, false, false));
+  TEST_ASSERT_EQUAL(AlarmFsm::CANCELLED, a.update(11000 - 1, true, false));  // nhấn trong 10 s
+  TEST_ASSERT_EQUAL(AlarmFsm::IDLE, a.state());
+  TEST_ASSERT_TRUE(a.start(20000));
+  TEST_ASSERT_EQUAL(AlarmFsm::CONFIRMED_EVT, a.update(30000, false, false));
+  TEST_ASSERT_FALSE(a.start(30500));  // đang xác nhận: bỏ qua cú ngã mới
+  a.update(31000, true, false);
+  TEST_ASSERT_TRUE(a.silenced());
+  TEST_ASSERT_EQUAL(AlarmFsm::NONE, a.update(60000, false, false));  // hết 30 s
+  TEST_ASSERT_EQUAL(AlarmFsm::IDLE, a.state());
+}
+
+void test_alarm_fsm_no_instant_confirm_when_since_is_newer() {
+  // Lỗi cũ: mốc bắt đầu (millis() mới) lớn hơn `now` của vòng lặp 1 ms -> now - since (không dấu) tràn
+  // thành số rất lớn -> xác nhận té ngay, không cho hủy.
+  AlarmFsm a(10000, 30000);
+  a.start(5001);
+  TEST_ASSERT_EQUAL(AlarmFsm::NONE, a.update(5000, false, false));
+  TEST_ASSERT_EQUAL(AlarmFsm::SUSPECTED, a.state());
+  TEST_ASSERT_EQUAL(AlarmFsm::NONE, a.update(15000, false, false));
+  TEST_ASSERT_EQUAL(AlarmFsm::CONFIRMED_EVT, a.update(15001, false, false));
+}
+
+void test_alarm_fsm_cancel_command() {
+  AlarmFsm a(10000, 30000);
+  a.start(0);
+  TEST_ASSERT_EQUAL(AlarmFsm::AUTO_CANCELLED, a.update(9000, false, true));  // record.py hủy khi hết phiên
+  TEST_ASSERT_EQUAL(AlarmFsm::IDLE, a.state());
+  a.start(20000);
+  a.update(30000, false, false);  // đã xác nhận
+  TEST_ASSERT_EQUAL(AlarmFsm::CONFIRMED, a.state());
+  TEST_ASSERT_EQUAL(AlarmFsm::NONE, a.update(31000, false, true));  // lệnh hủy: về bình thường, không phát gì
+  TEST_ASSERT_EQUAL(AlarmFsm::IDLE, a.state());
+  TEST_ASSERT_TRUE(a.start(31010));  // phiên té kế tiếp không bị chặn
+}
+
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_fall_detected);
+  RUN_TEST(test_alarm_fsm_cancel_window);
+  RUN_TEST(test_alarm_fsm_no_instant_confirm_when_since_is_newer);
+  RUN_TEST(test_alarm_fsm_cancel_command);
   RUN_TEST(test_real_forward_fall_detected);
   RUN_TEST(test_no_fall_when_landing_upright);
   RUN_TEST(test_no_fall_when_moving_after_impact);

@@ -54,6 +54,7 @@ Broker cổng 1883, bắt buộc user/mật khẩu; tường lửa chỉ mở ch
 {"cmd":"set_threshold", "freefall_g":0.6, "freefall_ms":60, "impact_g":2.5,
  "impact_window_ms":500, "still_delay_ms":3000, "still_gyro_dps":30, "posture_deg":50}   // lưu NVS
 {"cmd":"test_alarm"}
+{"cmd":"cancel_alarm"}                                    // hủy cảnh báo đang chạy; record.py gửi khi hết phiên
 {"cmd":"calibrate_gyro"}                                  // đặt nằm yên ≥ 1,5 s; lưu NVS
 {"cmd":"calibrate_upright", "id":"rec-1763060000"}        // người đeo đứng thẳng yên ~2 s; lưu NVS
 {"cmd":"set_upright", "up":[-1,0,0]}                      // đặt tay vector đứng thẳng; lưu NVS

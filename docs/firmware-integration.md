@@ -32,6 +32,7 @@ Ghi lại các vấn đề gặp khi nạp firmware và chạy cùng Pi 4 lần 
 | 15 | Bộ phát hiện té bỏ lọt cú ngã thật (3,5 g) | Cao | Đã chỉnh ngưỡng theo dữ liệu thật; chốt lại khi đủ 20 cú ngã |
 | 16 | Loa báo té làm rung gia tốc kế (~0,15 g ở 2 Hz) | Cao | Đã sửa: khi đang thu dataset, cảnh báo không dùng loa |
 | 17 | `har-ingest` gán gói vào phiên theo lúc gói tới, gói trễ lọt sang phiên sau | Cao | Đã sửa: gán theo thời điểm đo; tạo lại phiên cũ từ `data/raw` |
+| 18 | Cảnh báo té xác nhận ngay không cho hủy (lỗi thời gian); cảnh báo cũ chặn phiên té sau | Cao | Đã sửa: `lib/alarm_fsm`, lệnh `cancel_alarm` |
 
 ## 1. Mạng: ESP32 và Pi cùng vào Wi-Fi nhà
 
@@ -291,6 +292,25 @@ Tần số 2,0 Hz trùng nhịp loa khi nghi té (kêu 200 ms, nghỉ 300 ms). G
 **Kiểm chứng.** Test: gói tới sớm 250 ms và tới trễ 3 s vào đúng phiên, phiên kế tiếp không nhận gói trễ, sự kiện trễ vào đúng phiên; tạo lại phiên từ dữ liệu thô cắt đúng `[start, end]`. Edge 20/20.
 
 **Lưu ý.** `data/sessions_backup/` chứa `meta.json` của bản cũ: khi chép dữ liệu sang `ml/`, chỉ chép `data/sessions/`.
+
+## 18. Máy trạng thái cảnh báo té
+
+**Hiện tượng** (thu té S01 ngày 18/11):
+1. Phiên "ngã sau, lần 3" (01:35:41): cảnh báo chuyển `confirmed` chỉ 3 s sau va chạm, tức ngay lúc bộ đeo bắt đầu nghi té, không có 10 s để hủy.
+2. Phiên "ngã sau, lần 3" (01:34:25): bộ đeo không báo dù bản Python cùng ngưỡng bắt được.
+3. Các lần 3–5 ngã trước và ngã sau đều thành `confirmed` vì người đeo không kịp nhấn hủy (chỉ còn ~3 s sau bíp dài): đèn báo té nháy 30 s, Pi lưu cảnh báo té giả.
+
+**Nguyên nhân.**
+1. `uiTask` lấy `now = millis()` đầu vòng lặp, còn `startAlarm` đặt mốc `since = millis()` (mới hơn). Nếu millis() kịp tăng 1 ms, `now - since` (kiểu không dấu) tràn thành số rất lớn ≥ 10 000 → xác nhận té ngay. **Khi dùng thật, người đeo không thể hủy cảnh báo giả.**
+2. Cú ngã lần 3 xảy ra khi cảnh báo `confirmed` của lần 2 còn trong 30 s; firmware bỏ qua va chạm mới khi đang cảnh báo.
+
+**Sửa.**
+- `lib/alarm_fsm/alarm_fsm.h` (C++ thuần): máy trạng thái IDLE → SUSPECTED → CONFIRMED nhận một `now` duy nhất từ người gọi, phép trừ thời gian tính có dấu. `ui.cpp` dùng thư viện này.
+- Lệnh `{"cmd":"cancel_alarm"}`: nghi té → `cancelled` kèm `"by":"record"`; đã xác nhận → về bình thường. `record.py` gửi lệnh này khi kết thúc mọi phiên, trước khi rời chế độ thu: người đeo không phải nhấn nút, không sinh `confirmed` giả, phiên sau không bị cảnh báo cũ chặn. Sự kiện `suspected` vẫn ghi lại để đo bộ đeo có phát hiện té không.
+
+**Kiểm chứng.** 3 test native mới (cửa sổ hủy, mốc mới hơn `now` không xác nhận ngay, lệnh hủy); firmware 18/18, edge 20/20. Trên mạch: chế độ thu + `test_alarm` → `suspected` (+0,5 s), `cancel_alarm` → `cancelled` `by=record` (+4,5 s), không có `confirmed` sau 18 s.
+
+**Dữ liệu.** 9 cảnh báo `confirmed` giả trong lúc thu té S01 ngày 18/11 (01:23–01:37) còn trong bảng `alerts`/`device_events` của Pi; các phiên thu té không bị ảnh hưởng.
 
 ## Kết quả kiểm tra
 

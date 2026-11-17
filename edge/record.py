@@ -119,6 +119,9 @@ def main() -> None:
     except KeyboardInterrupt:
         print()
     publish_json(client, f"har/{a.dev}/session", {"action": "stop", "id": sid}, qos=1)
+    # Hủy cảnh báo té còn đang chạy (phiên té, hoặc báo nhầm khi thu) TRƯỚC khi rời chế độ thu: người đeo
+    # không phải nhấn nút, không sinh cảnh báo "confirmed" giả, phiên kế tiếp không bị cảnh báo cũ chặn.
+    publish_json(client, f"har/{a.dev}/cmd", {"cmd": "cancel_alarm"}, qos=1)
     publish_json(client, f"har/{a.dev}/cmd", {"cmd": "display", "mode": "monitor"}, qos=1)
     publish_json(client, f"har/{a.dev}/cmd", {"cmd": "beep", "ms": 400}, qos=1)
     time.sleep(0.5)
