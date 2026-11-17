@@ -63,10 +63,14 @@ class Segmenter:
 @dataclass
 class FusionParams:
     p_confirm: float = 0.5  # model ≥ ngưỡng này khi ESP32 đã báo -> mức cao
-    p_model_only: float = 0.8  # model tự báo khi ESP32 không kích hoạt
+    # model tự báo khi ESP32 không kích hoạt. 0,5 chọn theo thí nghiệm D 18/11: RF (tự thu + SisFall) cho
+    # P(té) 0,50–0,70 ở cả 23 cú té S01, nên 0,8 không bao giờ kích hoạt (xem docs/firmware-integration.md mục 19)
+    p_model_only: float = 0.5
     lie_after_s: float = 5.0  # ... và sau đó nằm ít nhất ngần này giây
     window_ms: int = 3000  # ±3 s quanh va chạm
     pending_timeout_ms: int = 15000  # suspected mà không thấy confirmed/cancelled -> coi như confirmed
+    # model không tự báo nếu ngay trước đó đang nằm (trở mình trên giường không phải té)
+    skip_if_lying: bool = True
 
 
 class FallFusion:
@@ -134,7 +138,8 @@ class FallFusion:
         self.preds.append((t, p_fall, label))
         out: list[dict] = []
         near_incident = any(abs(i["t"] - t) <= 5000 for i in self.incidents.values())
-        if self.candidate is None and p_fall >= self.p.p_model_only and not near_incident:
+        lying_before = self.p.skip_if_lying and self._prev_label(t) == "lie"
+        if self.candidate is None and p_fall >= self.p.p_model_only and not near_incident and not lying_before:
             self.candidate = {"t": t, "p": p_fall, "lie_start": None}
         elif self.candidate is not None:
             c = self.candidate

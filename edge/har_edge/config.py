@@ -28,7 +28,7 @@ class Config:
     webapp_url: str = ""
     # Ngưỡng hợp nhất cảnh báo té (chọn lại theo thí nghiệm D)
     fall_p_confirm: float = 0.5
-    fall_p_model_only: float = 0.8
+    fall_p_model_only: float = 0.5
     fall_lie_after_s: float = 5.0
     low_battery_v: float = 3.4
     offline_alert_s: float = 120.0
@@ -63,7 +63,7 @@ def load_config(env_file: str | os.PathLike | None = None) -> Config:
         telegram_chat_id=os.getenv("TELEGRAM_CHAT_ID", ""),
         webapp_url=os.getenv("WEBAPP_URL", "").rstrip("/"),
         fall_p_confirm=_f("FALL_P_CONFIRM", 0.5),
-        fall_p_model_only=_f("FALL_P_MODEL_ONLY", 0.8),
+        fall_p_model_only=_f("FALL_P_MODEL_ONLY", 0.5),
         fall_lie_after_s=_f("FALL_LIE_AFTER_S", 5.0),
         low_battery_v=_f("LOW_BATTERY_V", 3.4),
         offline_alert_s=_f("OFFLINE_ALERT_S", 120.0),

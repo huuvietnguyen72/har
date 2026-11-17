@@ -312,6 +312,26 @@ Tần số 2,0 Hz trùng nhịp loa khi nghi té (kêu 200 ms, nghỉ 300 ms). G
 
 **Dữ liệu.** 9 cảnh báo `confirmed` giả trong lúc thu té S01 ngày 18/11 (01:23–01:37) còn trong bảng `alerts`/`device_events` của Pi; các phiên thu té không bị ảnh hưởng.
 
+## 19. Model đầu tiên trên Pi và quy tắc "model tự báo té"
+
+**Bối cảnh.** Trước ngày 18/11, Pi chưa có model (`models/current` trống) nên `har-infer` dùng heuristic. Chỉ S01 thu té (23 cú). S02–S04 không thu té; thay vào đó, 1.798 cú ngã của SisFall được dùng khi huấn luyện (xem `ml/README.md`).
+
+**Model.** A2 = Random Forest, đặc trưng IMU + BMP280, cửa sổ 2,5 s, học trên S01–S04 cộng SisFall. Macro-F1 leave-one-subject-out trên S01–S04 là 0,910 (chỉ dữ liệu tự thu: 0,717). Đặt ở `edge/models/current/` (`rf-imu+baro-2.5s-v1`, 612 KB, scikit-learn 1.9.1 trên cả laptop và Pi).
+
+**Vấn đề.** Phát lại 23 cú té của S01 bằng model chưa học S01: model gán nhãn `fall` cho cả 23 cú, nhưng P(té) chỉ đạt 0,50–0,70. Quy tắc "model tự báo khi ESP32 không kích hoạt" đòi P ≥ 0,8, nên không bao giờ chạy; chỉ ngưỡng ESP32 bắt được 18/23.
+
+**Sửa** (`har_edge/logic.py`, `FALL_P_MODEL_ONLY` trong `.env`):
+- `p_model_only` từ 0,8 xuống 0,5.
+- Thêm điều kiện: model không tự báo nếu nhãn ngay trước đó là `lie`. Phần lớn báo giả trên SisFall là D14 (đang nằm ngửa thì trở mình sang nghiêng).
+
+| Cấu hình | Té S01 bắt được (ngưỡng + model) | Phiên ADL SisFall bị báo giả (2.626 phiên, 12,3 giờ) |
+| --- | --- | --- |
+| 0,8 (cũ) | 18/23 (78 %) | 14 (0,5 %) |
+| 0,5 | 22/23 (96 %) | 38 (1,4 %) |
+| **0,5 + điều kiện đang nằm** | **22/23 (96 %)** | **26 (1,0 %)**, nhiều nhất là D14, D11 (ngồi phịch), D13, D17 |
+
+Báo giả trên hoạt động tự thu (1,1 giờ) bằng 0 ở mọi cấu hình. **Hạn chế:** ngưỡng 0,5 được chọn trên chính 23 cú té của một người, và nằm sát bờ (ở 0,55 model chỉ còn bắt 6/23), nên 96 % là con số lạc quan. Cần kiểm tra lại khi có thêm người té thật.
+
 ## Kết quả kiểm tra
 
 | Phép thử | Kết quả |
