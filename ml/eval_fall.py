@@ -21,7 +21,7 @@ from har_edge.fall_threshold import detect_all
 from har_edge.features import extract_features
 from har_edge.logic import FallFusion, FusionParams, Smoother
 from har_ml.dataset import FS, find_fall_peaks, load_recordings, make_windows
-from har_ml.evaluate import save
+from har_ml.evaluate import is_external, save
 from train_rf import featurize, make_clf
 
 HERE = Path(__file__).resolve().parent
@@ -77,7 +77,9 @@ def main() -> None:
 
     recs = load_recordings(a.data)
     params = FusionParams(p_confirm=a.p_confirm, p_model_only=a.p_model_only)
-    subjects = sorted({r.subject for r in recs})
+    # chỉ "phát lại" người tự thu; người của dataset ngoài (SisFall) luôn nằm trong tập huấn luyện
+    subjects = sorted({r.subject for r in recs if not is_external(r.subject)})
+    n_ext = len({r.subject for r in recs if is_external(r.subject)})
     stats = {m: {"tp": 0, "falls": 0, "fa": 0, "adl_recs": 0, "adl_clean": 0, "delays": []}
              for m in ("threshold", "model", "combined")}
     adl_hours = 0.0
@@ -121,7 +123,8 @@ def main() -> None:
         "window_s": a.window, "accuracy": None, "macro_f1": None, "f1_per_class": None, "confusion": None,
         "n_windows": None, "n_subjects": len(subjects),
         "extra": {"methods": methods, "adl_hours": round(adl_hours, 3), "p_model_only": a.p_model_only,
-                  "p_confirm": a.p_confirm, "cv": "leave-one-subject-out",
+                  "p_confirm": a.p_confirm,
+                  "cv": "leave-one-subject-out trên người tự thu" + (f"; huấn luyện thêm SisFall ({n_ext} người)" if n_ext else ""),
                   "synthetic": any(r.synthetic for r in recs),
                   "note": "Thời gian chờ hủy 10 s của ESP32 không tính vào độ trễ phát hiện."},
     }

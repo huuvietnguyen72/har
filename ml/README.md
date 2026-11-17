@@ -16,7 +16,7 @@ pip install -e ../edge -r requirements.txt
 - Chép thư mục `edge/data/sessions/` từ Pi vào `ml/data/raw/` (đã nằm trong `.gitignore`; bản gốc để ở Google Drive của nhóm).
 - Mỗi phiên: `imu.csv`, `env.csv`, `meta.json` (`subject`, `activity`) — do `record.py` + `har-ingest` tạo.
 - Làm sạch (`har_ml/dataset.py`): cắt 2 s đầu/cuối; phiên té tìm đỉnh SVM, đoạn quanh đỉnh là `fall`, phần nằm yên sau đó là `lie`; áp suất nội suy lên 50 Hz rồi lọc thông thấp; cửa sổ 2,5 s chồng lấn 50 %.
-- **Chia tập theo người** (GroupKFold); không bao giờ chia ngẫu nhiên theo cửa sổ.
+- **Chia tập theo người** (leave-one-subject-out); không bao giờ chia ngẫu nhiên theo cửa sổ.
 
 ### Dataset ngoài: SisFall
 
@@ -31,7 +31,7 @@ python train_rf.py --experiment A1 --no-baro --data "data/raw,data/external/sisf
 
 `import_sisfall.py` (`har_ml/sisfall.py`): gia tốc MMA8451Q (±8 g như MPU6050), con quay ITG3200 cắt ±500 °/s; lọc + lấy mẫu 200 → 50 Hz; mỗi người xoay để trọng lực khi đi bộ (D01) trùng `UPRIGHT` (X chỉ xuống). Nhãn: D01, D02 → `walk`; F01–F15 → `fall` (chỉ đoạn quanh đỉnh lớn nhất, `fall_lie: false`); hoạt động khác → `adl` (không dùng huấn luyện, để đo báo động giả). Không có áp suất: thí nghiệm có BMP280 chỉ dùng dữ liệu tự thu. Hướng quanh trục đứng (trước/sau) không căn được. `data/external/` nằm trong `.gitignore`.
 
-**Lưu ý đánh giá:** các script hiện chia GroupKFold trên *mọi* người, kể cả `SisFall_*`. Kết quả cho báo cáo phải chấm điểm trên người tự thu (S01…) — cần thêm tùy chọn "huấn luyện trên tất cả, chỉ chấm điểm người tự thu" ở bước huấn luyện (chưa làm).
+**Đánh giá khi có SisFall** (`har_ml/evaluate.py: subject_splits`): leave-one-subject-out **chỉ trên người tự thu** (S01…). Mỗi lượt để riêng một người tự thu làm tập kiểm tra, huấn luyện trên mọi người còn lại *cộng toàn bộ* SisFall; điểm số chỉ tính trên người tự thu, nên phản ánh người đeo bộ har01 thật. `eval_fall.py` cũng chỉ "phát lại" người tự thu. Để so sánh, chạy cùng thí nghiệm với `--data data/raw --out results_own`.
 
 ## Thí nghiệm
 
@@ -44,6 +44,18 @@ python train_rf.py --experiment A1 --no-baro --data "data/raw,data/external/sisf
 | `python train_rf.py --experiment C --baro --window 2.0` | Cửa sổ 2,0 s (so với A2 2,5 s) |
 | `python eval_fall.py --baro` | D: ngưỡng ESP32 vs model vs kết hợp (leave-one-subject-out) |
 | `python run_experiments.py` | Chạy tất cả |
+
+### Kết quả 2026-11-18 (S01–S04, leave-one-subject-out, macro-F1 7 lớp)
+
+| Thí nghiệm | Chỉ tự thu | Tự thu + SisFall |
+| --- | --- | --- |
+| A1 RF chỉ IMU | 0,715 | 0,822 |
+| A2 RF IMU + BMP280 | 0,717 | **0,910** |
+| B1 CNN chỉ IMU | 0,717 | 0,881 |
+| B2 CNN IMU + BMP280 | 0,697 | 0,904 |
+| C RF IMU + BMP280, cửa sổ 2,0 s | 0,734 | 0,909 |
+
+Chỉ S01 thu té, nên khi để riêng S01 làm tập kiểm tra, cột "chỉ tự thu" không có cú té nào để học (F1 té = 0). Với SisFall, F1 té trên S01 là 0,99–1,00 (RF) và 0,91 (CNN). Chỉ có 4 người nên số liệu còn dao động. Với RF, siêu tham số được chọn trên chính các dự đoán out-of-fold, nên kết quả hơi lạc quan.
 
 Mỗi thí nghiệm ghi `results/<thí nghiệm>/metrics.json` (accuracy, macro-F1, F1 từng lớp, ma trận nhầm lẫn, số cửa sổ, số người, phiên bản model). Đẩy lên VPS để trang **Đánh giá model** hiển thị:
 

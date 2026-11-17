@@ -10,6 +10,46 @@ from sklearn.model_selection import GroupKFold
 from har_edge import LABELS
 
 
+EXTERNAL_PREFIX = "SisFall_"  # người của dataset ngoài (xem har_ml/sisfall.py)
+
+
+def is_external(subject) -> bool:
+    return str(subject).startswith(EXTERNAL_PREFIX)
+
+
+def subject_splits(groups: np.ndarray) -> tuple[list[tuple[np.ndarray, np.ndarray]], np.ndarray]:
+    """Leave-one-subject-out chỉ trên người tự thu; người của dataset ngoài luôn nằm trong tập huấn luyện.
+
+    Trả (các cặp (chỉ số huấn luyện, chỉ số kiểm tra), mặt nạ cửa sổ được chấm điểm).
+    Mỗi lượt kiểm tra một người tự thu, huấn luyện trên mọi người còn lại (kể cả SisFall),
+    nên điểm số chỉ phản ánh người đeo bộ har01 thật.
+    """
+    groups = np.asarray(groups)
+    ext = np.array([is_external(g) for g in groups], dtype=bool)
+    own = sorted(set(groups[~ext].tolist()))
+    if len(own) < 2:
+        raise ValueError("Cần ít nhất 2 người tự thu để chia tập theo người")
+    splits = [(np.where(groups != s)[0], np.where(groups == s)[0]) for s in own]
+    return splits, ~ext
+
+
+def cv_description(groups: np.ndarray) -> str:
+    groups = np.asarray(groups)
+    ext = np.array([is_external(g) for g in groups], dtype=bool)
+    own = len(set(groups[~ext].tolist()))
+    s = f"leave-one-subject-out trên {own} người tự thu, dự đoán out-of-fold"
+    if ext.any():
+        s += (f"; mỗi lượt huấn luyện thêm SisFall ({len(set(groups[ext].tolist()))} người, "
+              f"{int(ext.sum())} cửa sổ), không chấm điểm trên SisFall")
+    return s
+
+
+def external_info(groups: np.ndarray) -> dict:
+    groups = np.asarray(groups)
+    ext = np.array([is_external(g) for g in groups], dtype=bool)
+    return {"SisFall": {"subjects": len(set(groups[ext].tolist())), "windows": int(ext.sum())}} if ext.any() else {}
+
+
 def group_folds(groups: np.ndarray, max_splits: int = 5) -> GroupKFold:
     """Chia theo người: không bao giờ để cửa sổ của cùng một người vừa ở tập huấn luyện vừa ở tập kiểm tra."""
     k = min(max_splits, len(set(groups)))
