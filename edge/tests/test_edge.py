@@ -162,6 +162,16 @@ def test_fusion_model_only_requires_lying():
     assert _preds(fu2, T0, ["walk", "fall", "stand", "walk", "walk", "walk", "walk", "walk"], p_fall=0.9) == []
 
 
+def test_fusion_model_only_threshold_and_lying_gate():
+    # P(té) 0,55: đủ ngưỡng mặc định 0,5 (S01 thật cho 0,50–0,70)
+    fu = FallFusion("har01")
+    out = _preds(fu, T0, ["walk", "walk", "fall", "lie", "lie", "lie", "lie", "lie", "lie", "lie"], p_fall=0.55)
+    assert len(out) == 1 and out[0]["source"] == "model"
+    # đang nằm rồi trở mình (giống SisFall D14): không báo
+    fu2 = FallFusion("har01")
+    assert _preds(fu2, T0, ["lie", "lie", "lie", "fall", "lie", "lie", "lie", "lie", "lie", "lie", "lie"], p_fall=0.9) == []
+
+
 def test_fusion_sos():
     out = FallFusion("har01").on_device_event({"id": "s", "type": "sos", "t": T0}, T0)
     assert out[0]["type"] == "sos" and out[0]["severity"] == "high"

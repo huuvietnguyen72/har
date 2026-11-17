@@ -5,7 +5,7 @@
 Với mỗi người (leave-one-subject-out): huấn luyện RF trên những người còn lại, rồi
 "phát lại" từng phiên của người đó như thời gian thực:
 - ngưỡng   : bộ phát hiện giống firmware (har_edge.fall_threshold)
-- model    : quy tắc chỉ-model của har-infer (P(té) ≥ 0,8 rồi nằm ≥ 5 s)
+- model    : quy tắc chỉ-model của har-infer (P(té) ≥ 0,5, trước đó không nằm, rồi nằm ≥ 5 s)
 - kết hợp  : đúng logic FallFusion trên Pi (ngưỡng xác nhận + chỉ-model)
 
 Chỉ số: độ nhạy (té được báo trong ±3 s quanh đỉnh), báo động giả/giờ trên phiên
@@ -70,7 +70,7 @@ def main() -> None:
     ap.add_argument("--no-baro", dest="baro", action="store_false")
     ap.set_defaults(baro=True)
     ap.add_argument("--window", type=float, default=2.5)
-    ap.add_argument("--p-model-only", type=float, default=0.8)
+    ap.add_argument("--p-model-only", type=float, default=0.5)
     ap.add_argument("--p-confirm", type=float, default=0.5)
     ap.add_argument("--out", default=str(HERE / "results"))
     a = ap.parse_args()
