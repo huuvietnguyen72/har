@@ -30,6 +30,7 @@ Ghi lại các vấn đề gặp khi nạp firmware và chạy cùng Pi 4 lần 
 | 13 | MPU6050 hàn xoay 90°: trục X chỉ xuống, không phải Y | Cao | Đã sửa: code theo phần cứng (`UPRIGHT = [-1, 0, 0]`) |
 | 14 | Mỗi người đeo cài hộp khác nhau (nghiêng, ngược) | Cao | Đã thêm hiệu chỉnh hướng đứng thẳng (`calibrate_upright`) |
 | 15 | Bộ phát hiện té bỏ lọt cú ngã thật (3,5 g) | Cao | Đã chỉnh ngưỡng theo dữ liệu thật; chốt lại khi đủ 20 cú ngã |
+| 16 | Loa báo té làm rung gia tốc kế (~0,15 g ở 2 Hz) | Cao | Đã sửa: khi đang thu dataset, cảnh báo không dùng loa |
 
 ## 1. Mạng: ESP32 và Pi cùng vào Wi-Fi nhà
 
@@ -255,6 +256,25 @@ Còi kêu ngắt quãng khi nghi té và bíp khi nhấn; LED xanh và đỏ ho�
 | **0,6 g / 60 ms / 3 s (mới)** | **1/1** | **0** | 1 — bộ đeo bị đánh rơi lúc 23:57:50 ngày 16/11 (rơi tự do 0,15 g, va chạm 5,5 g, nằm úp), không phân biệt được với té |
 
 **Còn lại.** Mới dựa trên 1 cú ngã. Khi đủ 20 cú ngã (4 hướng × 5 lần), chạy lại phép thử để chốt ngưỡng (thí nghiệm D).
+
+## 16. Loa báo té làm rung gia tốc kế
+
+**Hiện tượng.** Trong các phiên té, đoạn nằm sau té chỉ yên trước khi bộ đeo báo; từ lúc loa kêu (khoảng 3 s sau va chạm) gia tốc dao động mạnh dù người đeo nằm yên (con quay 0,5–3 °/s ở các phiên ngã sau).
+
+| 12 phiên té ngày 17/11 | Trước khi loa kêu | Khi loa kêu |
+| --- | --- | --- |
+| Có cảnh báo (9 phiên) | SVM std 0,005–0,06 g | **0,11–0,20 g**, tần số trội **2,0 Hz** |
+| Không cảnh báo (3 phiên) | 0,004–0,011 g | 0,002 g |
+
+Tần số 2,0 Hz trùng nhịp loa khi nghi té (kêu 200 ms, nghỉ 300 ms). Gia tốc bị ảnh hưởng còn con quay gần như không: nhiều khả năng loa rung cơ học cả hộp.
+
+**Ảnh hưởng.** Phát hiện té trên bộ đeo không bị ảnh hưởng (xét bất động ở giây 2–3, trước khi loa kêu). Dữ liệu huấn luyện bị ảnh hưởng: đoạn "nằm sau té" chứa dao động giả 2 Hz.
+
+**Sửa.** Khi đang thu dataset (`display mode=record` do `record.py` gửi), cảnh báo nghi té/xác nhận không bật loa; LED đỏ nháy nhanh và OLED vẫn báo, sự kiện vẫn gửi lên Pi. Chế độ im lặng tự hết sau `RECORD_QUIET_MAX_MS` (15 phút) nếu `record.py` bị tắt ngang mà không gửi lệnh kết thúc. Tiếng bíp bắt đầu/kết thúc phiên giữ nguyên (nằm trong 2 s bị cắt ở đầu/cuối phiên).
+
+**Kiểm chứng trên mạch.** Chế độ thu + `test_alarm`: SVM std 0,0011 g trước cảnh báo, 0,0020 g khi đang cảnh báo; Pi vẫn nhận `suspected`.
+
+**Dữ liệu.** 9 phiên té có tiếng loa đã xóa để thu lại; giữ "ngã trước, lần 1" và "ngã trái, lần 1" (không có loa, dữ liệu sạch).
 
 ## Kết quả kiểm tra
 

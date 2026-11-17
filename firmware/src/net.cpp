@@ -148,6 +148,7 @@ void onMessage(char* topic, byte* payload, unsigned int len) {
       xSemaphoreTake(stateMutex, portMAX_DELAY);
       strlcpy(g.mode, doc["mode"] | "monitor", sizeof(g.mode));
       strlcpy(g.activity, doc["activity"] | "", sizeof(g.activity));
+      g.recordSinceMs = !strcmp(g.mode, "record") ? (millis() | 1) : 0;  // | 1: khác 0 cả khi millis() = 0
       xSemaphoreGive(stateMutex);
       displayWake();
     } else if (!strcmp(cmd, "set_threshold")) {
