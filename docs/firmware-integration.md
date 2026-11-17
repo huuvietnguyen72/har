@@ -285,7 +285,7 @@ Tần số 2,0 Hz trùng nhịp loa khi nghi té (kêu 200 ms, nghỉ 300 ms). G
 
 **Sửa.**
 - Mẫu được gán vào phiên theo thời điểm đo: chỉ ghi các dòng có `start ≤ t ≤ end` (đồng hồ ESP32 lệch Pi ~40 ms). Sự kiện gán theo `t` của sự kiện.
-- Sau lệnh dừng, phiên chờ `SESSION_GRACE_MS` = 15 s để nhận gói tới trễ rồi mới đóng (sắp lại theo `t`, ghi `samples` vào `meta.json`); phiên kế tiếp bắt đầu ngay được và không nhận gói trễ của phiên trước. Khóa luồng giữa luồng MQTT và luồng chính.
+- Sau lệnh dừng, phiên chờ `SESSION_GRACE_MS` để nhận gói tới trễ rồi mới đóng. Ban đầu 15 s; tăng lên **90 s** sau khi ở cầu thang S02 ESP32 đứt MQTT (10:14:39–10:15:02) và gửi bù sau khi phiên đã đóng, làm 3 phiên thiếu dữ liệu (đã tạo lại từ `data/raw`). 90 s ≥ vòng đệm 60 s của ESP32 + ~25 s kết nối lại (sắp lại theo `t`, ghi `samples` vào `meta.json`); phiên kế tiếp bắt đầu ngay được và không nhận gói trễ của phiên trước. Khóa luồng giữa luồng MQTT và luồng chính.
 - `rebuild_sessions.py` (`har_edge/rebuild.py`): cắt lại `imu.csv`, `env.csv`, `events.csv` của phiên đã thu từ `data/raw` (ghi theo thời điểm đo), sao lưu bản cũ vào `data/sessions_backup/<thời điểm>/`.
 
 **Kiểm chứng.** Test: gói tới sớm 250 ms và tới trễ 3 s vào đúng phiên, phiên kế tiếp không nhận gói trễ, sự kiện trễ vào đúng phiên; tạo lại phiên từ dữ liệu thô cắt đúng `[start, end]`. Edge 20/20.
