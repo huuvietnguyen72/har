@@ -149,8 +149,11 @@ void uiTask(void*) {
 
     // --- còi ---
     bool buzz = now < buzzUntil;
-    if (al.state == ALARM_SUSPECTED) buzz = buzz || (now % 500) < 200;  // ngắt quãng
-    if (al.state == ALARM_CONFIRMED && !al.silenced) buzz = true;   // liên tục 30 s
+    // Đang thu dataset: cảnh báo không dùng loa (loa rung làm nhiễu gia tốc kế), LED đỏ + OLED vẫn báo
+    const uint32_t rec = g.recordSinceMs;
+    const bool quiet = rec != 0 && now - rec < RECORD_QUIET_MAX_MS;
+    if (!quiet && al.state == ALARM_SUSPECTED) buzz = buzz || (now % 500) < 200;  // ngắt quãng
+    if (!quiet && al.state == ALARM_CONFIRMED && !al.silenced) buzz = true;   // liên tục 30 s
     buzzer(buzz);
 
     // --- LED ---

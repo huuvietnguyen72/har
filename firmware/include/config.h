@@ -36,6 +36,10 @@
 
 // --- Cảnh báo, nút ---
 #define CANCEL_WINDOW_MS 10000  // thời gian người đeo được nhấn hủy
+// Đang thu dataset (record.py, màn REC): cảnh báo té chỉ bằng LED đỏ + OLED, không dùng loa — loa làm rung
+// gia tốc kế ~0,15 g ở 2 Hz (đo 17/11/2026), làm bẩn đoạn nằm sau té. Hết hạn sau N ms nếu record.py
+// không gửi lệnh kết thúc (bị tắt ngang), để bộ đeo không im lặng mãi khi dùng thật.
+#define RECORD_QUIET_MAX_MS 900000  // 15 phút
 #define CONFIRMED_BUZZ_MS 30000 // loa kêu liên tục sau khi xác nhận
 #define LONG_PRESS_MS 3000      // giữ 3 s = SOS
 #define DOUBLE_PRESS_MS 400

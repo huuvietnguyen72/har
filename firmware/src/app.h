@@ -70,6 +70,7 @@ struct SharedState {
   AlarmState alarm = ALARM_IDLE;
   uint32_t alarmUntilMs = 0;
   uint32_t displayWakeMs = 0;
+  uint32_t recordSinceMs = 0;  // millis() lúc nhận display mode=record; 0 = không thu
 };
 
 extern SharedState g;
