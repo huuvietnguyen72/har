@@ -112,6 +112,7 @@ void requestStatusNow();
 void uiBegin();
 void uiTask(void*);
 void buzzerPulse(uint32_t ms);
+void requestAlarmCancel();  // lệnh MQTT cancel_alarm (record.py gửi khi hết phiên thu)
 
 // display.cpp
 void displayBegin();

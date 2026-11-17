@@ -162,6 +162,8 @@ void onMessage(char* topic, byte* payload, unsigned int len) {
       fp.still_delay_ms = doc["still_delay_ms"] | fp.still_delay_ms;
       saveThresholds();
       loadThresholds();
+    } else if (!strcmp(cmd, "cancel_alarm")) {
+      requestAlarmCancel();  // nghi té -> cancelled (by=record); đã xác nhận -> về bình thường
     } else if (!strcmp(cmd, "test_alarm")) {
       FallTrigger ft{epochMs(), 0.0f};
       xQueueSend(fallQueue, &ft, 0);

@@ -4,6 +4,7 @@
 //        bình thường  : nhấn 1 lần = bật màn hình, nhấn đúp = marker, giữ 3 s = SOS
 // LED xanh: sáng = đã kết nối MQTT, nháy chậm = đang kết nối
 // LED đỏ  : nháy nhanh = đang cảnh báo, sáng = lỗi cảm biến, nháy chậm = pin < 3,4 V
+#include "alarm_fsm.h"
 #include "app.h"
 #include "button.h"
 #include "pins.h"
@@ -14,13 +15,13 @@ namespace {
 Button button(30, DOUBLE_PRESS_MS, LONG_PRESS_MS);
 uint32_t buzzUntil = 0;  // còi kêu liên tục đến thời điểm này (buzzerPulse)
 
+AlarmFsm fsm(CANCEL_WINDOW_MS, CONFIRMED_BUZZ_MS);  // lib/alarm_fsm: trạng thái + thời gian
+volatile bool alarmCancelRequest = false;          // netTask (lệnh cancel_alarm) -> uiTask
+
 struct Alarm {
-  AlarmState state = ALARM_IDLE;
   String id;  // id sự kiện suspected
   uint64_t impactT = 0;
   float peak = 0;
-  uint32_t since = 0;
-  bool silenced = false;
 } al;
 
 void buzzer(bool on) {
@@ -50,13 +51,10 @@ void emitSimple(const char* type) {
   eventSave(id, eventJson(id, type, epochMs()));
 }
 
-void startAlarm(const FallTrigger& ft) {
-  if (al.state != ALARM_IDLE) return;  // đang cảnh báo: bỏ qua va chạm tiếp theo
-  al.state = ALARM_SUSPECTED;
+void startAlarm(const FallTrigger& ft, uint32_t now) {
+  if (!fsm.start(now)) return;  // đang cảnh báo: bỏ qua va chạm tiếp theo
   al.impactT = ft.t;
   al.peak = ft.peak_g;
-  al.since = millis();
-  al.silenced = false;
   char id[40];
   snprintf(id, sizeof(id), "%s-%llu", DEVICE_ID, (unsigned long long)ft.t);
   al.id = id;
@@ -66,16 +64,20 @@ void startAlarm(const FallTrigger& ft) {
   displayWake();
 }
 
-void finishAlarm(const char* type) {
+// by: nguồn kết thúc cảnh báo ("record" = record.py hủy khi hết phiên thu), nullptr = người đeo / hết giờ
+void finishAlarm(const char* type, const char* by = nullptr) {
   String id = newEventId();
-  char extra[96];
-  snprintf(extra, sizeof(extra), ",\"ref\":\"%s\",\"peak_g\":%.2f", al.id.c_str(), al.peak);
+  char extra[112];
+  snprintf(extra, sizeof(extra), ",\"ref\":\"%s\",\"peak_g\":%.2f%s%s%s", al.id.c_str(), al.peak,
+           by ? ",\"by\":\"" : "", by ? by : "", by ? "\"" : "");
   eventSave(id, eventJson(id, type, epochMs(), extra));
 }
 
 }  // namespace
 
 void buzzerPulse(uint32_t ms) { buzzUntil = millis() + ms; }
+
+void requestAlarmCancel() { alarmCancelRequest = true; }
 
 void uiBegin() {
   pinMode(PIN_LED_GREEN, OUTPUT);
@@ -112,48 +114,49 @@ void uiTask(void*) {
     }
 
     FallTrigger ft;
-    if (xQueueReceive(fallQueue, &ft, 0) == pdTRUE) startAlarm(ft);
+    if (xQueueReceive(fallQueue, &ft, 0) == pdTRUE) startAlarm(ft, now);
 
-    // --- máy trạng thái cảnh báo ---
-    switch (al.state) {
-      case ALARM_SUSPECTED:
-        if (ev & Button::PRESS) {  // người đeo vẫn ổn
-          finishAlarm("cancelled");
-          al.state = ALARM_IDLE;
-          buzzerPulse(80);
-        } else if (now - al.since >= CANCEL_WINDOW_MS) {
-          finishAlarm("confirmed");
-          al.state = ALARM_CONFIRMED;
-          al.since = now;
-        }
+    // --- máy trạng thái cảnh báo (lib/alarm_fsm) ---
+    const bool wasIdle = fsm.state() == AlarmFsm::IDLE;
+    const bool cancelReq = alarmCancelRequest;
+    if (cancelReq) alarmCancelRequest = false;
+    switch (fsm.update(now, ev & Button::PRESS, cancelReq)) {
+      case AlarmFsm::CANCELLED:  // người đeo nhấn nút: vẫn ổn
+        finishAlarm("cancelled");
+        buzzerPulse(80);
         break;
-      case ALARM_CONFIRMED:
-        if (ev & Button::PRESS) al.silenced = true;  // tắt còi; cảnh báo đã gửi đi
-        if (now - al.since >= CONFIRMED_BUZZ_MS) al.state = ALARM_IDLE;
+      case AlarmFsm::AUTO_CANCELLED:  // record.py hủy khi hết phiên thu té
+        finishAlarm("cancelled", "record");
         break;
-      case ALARM_IDLE:
-        if (ev & Button::LONG) {
-          emitSimple("sos");
-          buzzerPulse(1000);
-          displayWake();
-        } else if (ev & Button::DOUBLE) {
-          emitSimple("marker");
-          buzzerPulse(60);
-        } else if (ev & Button::SINGLE) {
-          displayWake();
-        }
+      case AlarmFsm::CONFIRMED_EVT:
+        finishAlarm("confirmed");
+        break;
+      default:
         break;
     }
-    g.alarm = al.state;
-    g.alarmUntilMs = al.state == ALARM_SUSPECTED ? al.since + CANCEL_WINDOW_MS : 0;
+    if (wasIdle) {
+      if (ev & Button::LONG) {
+        emitSimple("sos");
+        buzzerPulse(1000);
+        displayWake();
+      } else if (ev & Button::DOUBLE) {
+        emitSimple("marker");
+        buzzerPulse(60);
+      } else if (ev & Button::SINGLE) {
+        displayWake();
+      }
+    }
+    const AlarmState st = (AlarmState)fsm.state();
+    g.alarm = st;
+    g.alarmUntilMs = st == ALARM_SUSPECTED ? fsm.since() + CANCEL_WINDOW_MS : 0;
 
     // --- còi ---
     bool buzz = now < buzzUntil;
     // Đang thu dataset: cảnh báo không dùng loa (loa rung làm nhiễu gia tốc kế), LED đỏ + OLED vẫn báo
     const uint32_t rec = g.recordSinceMs;
     const bool quiet = rec != 0 && now - rec < RECORD_QUIET_MAX_MS;
-    if (!quiet && al.state == ALARM_SUSPECTED) buzz = buzz || (now % 500) < 200;  // ngắt quãng
-    if (!quiet && al.state == ALARM_CONFIRMED && !al.silenced) buzz = true;   // liên tục 30 s
+    if (!quiet && st == ALARM_SUSPECTED) buzz = buzz || (now % 500) < 200;  // ngắt quãng
+    if (!quiet && st == ALARM_CONFIRMED && !fsm.silenced()) buzz = true;  // liên tục 30 s
     buzzer(buzz);
 
     // --- LED ---
@@ -161,7 +164,7 @@ void uiTask(void*) {
     const bool fast = (now % 200) < 100;
     digitalWrite(PIN_LED_GREEN, g.mqttUp ? HIGH : slow);
     bool red;
-    if (al.state != ALARM_IDLE) red = fast;
+    if (st != ALARM_IDLE) red = fast;
     else if (!g.mpuOk) red = true;
     else if (!isnan(g.battery_v) && g.battery_v > 1.0f && g.battery_v < LOW_BATTERY_V) red = slow;
     else red = false;
