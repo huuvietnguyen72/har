@@ -10,7 +10,8 @@ from har_edge.fall_threshold import detect_all
 from har_edge.features import (FEATURE_NAMES_BARO, FEATURE_NAMES_IMU, UPRIGHT, cnn_input, extract_features,
                                upright_vec)
 from har_edge.infer import Infer
-from har_edge.ingest import Ingest
+from har_edge.ingest import SESSION_GRACE_MS, Ingest
+from har_edge.rebuild import rebuild_session
 from har_edge.logic import FallFusion, Segmenter, Smoother, TechMonitor
 from har_edge.model import HeuristicModel
 from har_edge.notify import Notifier, format_message
@@ -241,6 +242,59 @@ def test_ingest_session_seq_and_ack(tmp_path, conn):
     ing.flush_counts(T0, force=True)
     assert conn.execute("SELECT SUM(lost) FROM link_counts").fetchone()[0] == 1
     ing.close()
+
+
+def _imu_rows(path):
+    lines = path.read_text().strip().splitlines()[1:]
+    return [int(l.split(",")[0]) for l in lines]
+
+
+def test_ingest_session_by_sample_time(tmp_path, conn):
+    """Gói tới sớm/trễ vẫn vào đúng phiên theo thời điểm đo; phiên kế tiếp không nhận gói trễ của phiên trước."""
+    ing = Ingest(tmp_path, conn)
+    acc, gyr, p = generate("walk", 4, RNG)
+    pk = [x for x in packets(acc, gyr, p) if x[0].endswith("/imu")]  # gói i: t0 = T0 + 500 i
+    ing.handle("har/har01/session", {"action": "start", "id": "a", "subject": "S01", "activity": "stairs_down"}, T0 + 250)
+    for k in range(3):                                     # gói 0 bắt đầu trước start 250 ms
+        ing.handle(*pk[k], T0 + 600 + k * 500)
+    ing.handle("har/har01/event", {"id": "e1", "type": "marker", "t": T0 + 900}, T0 + 1000)
+    ing.handle("har/har01/session", {"action": "stop"}, T0 + 2000)
+    ing.handle("har/har01/session", {"action": "start", "id": "b", "subject": "S01", "activity": "stairs_up"}, T0 + 2100)
+    ing.handle(*pk[3], T0 + 5000)                          # tới trễ 3 s, đo trong phiên a
+    ing.handle(*pk[4], T0 + 5100)                          # 2000..2480: mẫu 2000 thuộc a, từ 2100 thuộc b
+    ing.handle("har/har01/event", {"id": "e2", "type": "marker", "t": T0 + 1500}, T0 + 5200)  # sự kiện trễ của a
+    ing.tick(T0 + 2000 + SESSION_GRACE_MS)
+    a = tmp_path / "sessions" / "a"
+    t_a = _imu_rows(a / "imu.csv")
+    assert t_a[0] == T0 + 260 and t_a[-1] == T0 + 2000 and t_a == sorted(t_a)
+    assert len(t_a) == 12 + 25 + 25 + 25 + 1
+    meta = json.loads((a / "meta.json").read_text(encoding="utf-8"))
+    assert meta["samples"] == len(t_a) and meta["end"] == T0 + 2000
+    assert [l.split(",")[2] for l in (a / "events.csv").read_text().strip().splitlines()[1:]] == ["e1", "e2"]
+    ing.handle("har/har01/session", {"action": "stop"}, T0 + 3000)
+    ing.close()
+    t_b = _imu_rows(tmp_path / "sessions" / "b" / "imu.csv")
+    assert t_b[0] == T0 + 2100 and t_b[-1] == T0 + 2480 and len(t_b) == 20
+
+
+def test_rebuild_session_from_raw(tmp_path, conn):
+    """Phiên ghi theo lúc gói tới (bản cũ) được cắt lại đúng khoảng [start, end] từ data/raw."""
+    ing = Ingest(tmp_path, conn)
+    acc, gyr, p = generate("walk", 6, RNG)
+    for topic, msg in packets(acc, gyr, p):
+        ing.handle(topic, msg, msg["t0"] + 520)            # chỉ ghi luồng thô, không có phiên
+    ing.close()
+    sdir = tmp_path / "sessions" / "old"
+    sdir.mkdir(parents=True)
+    (sdir / "meta.json").write_text(json.dumps({"id": "old", "dev": "har01", "start": T0 + 1000, "end": T0 + 4000}))
+    (sdir / "imu.csv").write_text("t,ax,ay,az,gx,gy,gz\n" + "".join(f"{T0 + 500 + i * 20},0,0,0,0,0,0\n" for i in range(10)))
+    dry = rebuild_session(tmp_path, conn, sdir, dry_run=True)
+    assert dry["old_samples"] == 10 and dry["old_offset_ms"] == -500 and dry["new_samples"] == 151
+    r = rebuild_session(tmp_path, conn, sdir, backup_root=tmp_path / "bk")
+    t = _imu_rows(sdir / "imu.csv")
+    assert t[0] == T0 + 1000 and t[-1] == T0 + 4000 and len(t) == 151 and r["new_offset_ms"] == 0
+    assert (tmp_path / "bk" / "old" / "imu.csv").exists()
+    assert json.loads((sdir / "meta.json").read_text())["samples"] == 151
 
 
 # ---------- infer: toàn tuyến không cần broker ----------

@@ -31,6 +31,7 @@ Ghi lại các vấn đề gặp khi nạp firmware và chạy cùng Pi 4 lần 
 | 14 | Mỗi người đeo cài hộp khác nhau (nghiêng, ngược) | Cao | Đã thêm hiệu chỉnh hướng đứng thẳng (`calibrate_upright`) |
 | 15 | Bộ phát hiện té bỏ lọt cú ngã thật (3,5 g) | Cao | Đã chỉnh ngưỡng theo dữ liệu thật; chốt lại khi đủ 20 cú ngã |
 | 16 | Loa báo té làm rung gia tốc kế (~0,15 g ở 2 Hz) | Cao | Đã sửa: khi đang thu dataset, cảnh báo không dùng loa |
+| 17 | `har-ingest` gán gói vào phiên theo lúc gói tới, gói trễ lọt sang phiên sau | Cao | Đã sửa: gán theo thời điểm đo; tạo lại phiên cũ từ `data/raw` |
 
 ## 1. Mạng: ESP32 và Pi cùng vào Wi-Fi nhà
 
@@ -275,6 +276,21 @@ Tần số 2,0 Hz trùng nhịp loa khi nghi té (kêu 200 ms, nghỉ 300 ms). G
 **Kiểm chứng trên mạch.** Chế độ thu + `test_alarm`: SVM std 0,0011 g trước cảnh báo, 0,0020 g khi đang cảnh báo; Pi vẫn nhận `suspected`.
 
 **Dữ liệu.** 9 phiên té có tiếng loa đã xóa để thu lại; giữ "ngã trước, lần 1" và "ngã trái, lần 1" (không có loa, dữ liệu sạch).
+
+## 17. Gói tới trễ lọt sang phiên sau
+
+**Hiện tượng.** Phiên `har01_S02_stairs_up_…-094906` dài 26,3 s nhưng có 1.650 mẫu (33 s): 319 mẫu (6,4 s) đo trước lúc bắt đầu phiên, lúc người đeo đứng chờ và quay người ở chân cầu thang. ESP32 không mất kết nối; ở cầu thang sóng yếu nên gói tới Pi trễ ~7 s.
+
+**Nguyên nhân.** `har-ingest` ghi gói vào phiên đang mở lúc gói TỚI Pi. Gói tới trễ rơi vào phiên sau; gói tới sau lệnh dừng bị bỏ. Độ lệch đầu phiên −0,2 đến −0,5 s ở mọi phiên trước đó cũng do cách này.
+
+**Sửa.**
+- Mẫu được gán vào phiên theo thời điểm đo: chỉ ghi các dòng có `start ≤ t ≤ end` (đồng hồ ESP32 lệch Pi ~40 ms). Sự kiện gán theo `t` của sự kiện.
+- Sau lệnh dừng, phiên chờ `SESSION_GRACE_MS` = 15 s để nhận gói tới trễ rồi mới đóng (sắp lại theo `t`, ghi `samples` vào `meta.json`); phiên kế tiếp bắt đầu ngay được và không nhận gói trễ của phiên trước. Khóa luồng giữa luồng MQTT và luồng chính.
+- `rebuild_sessions.py` (`har_edge/rebuild.py`): cắt lại `imu.csv`, `env.csv`, `events.csv` của phiên đã thu từ `data/raw` (ghi theo thời điểm đo), sao lưu bản cũ vào `data/sessions_backup/<thời điểm>/`.
+
+**Kiểm chứng.** Test: gói tới sớm 250 ms và tới trễ 3 s vào đúng phiên, phiên kế tiếp không nhận gói trễ, sự kiện trễ vào đúng phiên; tạo lại phiên từ dữ liệu thô cắt đúng `[start, end]`. Edge 20/20.
+
+**Lưu ý.** `data/sessions_backup/` chứa `meta.json` của bản cũ: khi chép dữ liệu sang `ml/`, chỉ chép `data/sessions/`.
 
 ## Kết quả kiểm tra
 
