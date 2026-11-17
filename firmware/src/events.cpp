@@ -110,9 +110,10 @@ void loadThresholds() {
   fp.impact_window_ms = p.getUInt("imp_win", fp.impact_window_ms);
   fp.still_gyro_dps = p.getFloat("still_gyro", fp.still_gyro_dps);
   fp.posture_deg = p.getFloat("posture", fp.posture_deg);
+  fp.still_delay_ms = p.getUInt("still_dly", fp.still_delay_ms);
   p.end();
-  Serial.printf("[fall] rơi<%.2fg %ums, va chạm>%.2fg, tư thế>%.0f°\n", fp.freefall_g, (unsigned)fp.freefall_ms,
-                fp.impact_g, fp.posture_deg);
+  Serial.printf("[fall] rơi<%.2fg %ums, va chạm>%.2fg, xét yên tới %ums, tư thế>%.0f°\n", fp.freefall_g,
+                (unsigned)fp.freefall_ms, fp.impact_g, (unsigned)fp.still_delay_ms, fp.posture_deg);
 }
 
 void saveThresholds() {
@@ -125,5 +126,6 @@ void saveThresholds() {
   p.putUInt("imp_win", fp.impact_window_ms);
   p.putFloat("still_gyro", fp.still_gyro_dps);
   p.putFloat("posture", fp.posture_deg);
+  p.putUInt("still_dly", fp.still_delay_ms);
   p.end();
 }

@@ -18,11 +18,12 @@ from .features import upright_vec
 
 @dataclass
 class ThresholdParams:
-    freefall_g: float = 0.4
-    freefall_ms: int = 80
+    # giống firmware FallParams (chỉnh theo cú ngã thật 17/11/2026)
+    freefall_g: float = 0.6
+    freefall_ms: int = 60
     impact_g: float = 2.5
     impact_window_ms: int = 500
-    still_delay_ms: int = 2000
+    still_delay_ms: int = 3000
     still_check_ms: int = 1000
     still_lo: float = 0.8
     still_hi: float = 1.2

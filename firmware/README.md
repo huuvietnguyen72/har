@@ -30,7 +30,7 @@ PlatformIO + Arduino framework (espressif32 6.9.0). Chân: [`include/pins.h`](in
 - Hiệu chỉnh con quay (`lib/gyro_cal`): sau khi khởi động, cửa sổ 1,5 s đầu tiên mà thiết bị nằm yên (std < 1 °/s, gia tốc dao động < 0,03 g) cho độ lệch từng trục; thử tối đa 60 s, không đạt thì dùng giá trị NVS lần trước. Mọi mẫu gửi đi và bộ phát hiện té đều dùng giá trị đã trừ độ lệch. Đo lại: `{"cmd":"calibrate_gyro"}`. Mạch hiện tại lệch gx ≈ +13,6 °/s nếu không hiệu chỉnh.
 - Chỉ đóng gói dữ liệu sau khi có giờ NTP từ Pi; phát hiện té chạy ngay từ lúc khởi động.
 - Mất mạng: vòng đệm 120 gói (60 s, ~37 KB). Có mạng lại thì gửi bù với `replay: true`; quá 60 s bỏ gói cũ nhất (đếm trong `dropped` của status).
-- Phát hiện té: rơi tự do (SVM < 0,4 g ≥ 80 ms) → va chạm (> 2,5 g trong 0,5 s) → bất động + tư thế đổi sau 2 s → `suspected`, loa kêu ngắt quãng, LED đỏ nháy nhanh. 10 s không nhấn nút → `confirmed`, loa kêu liên tục 30 s (nhấn để tắt). Nhấn trong 10 s → `cancelled`.
+- Phát hiện té: rơi (SVM < 0,6 g ≥ 60 ms) → va chạm (> 2,5 g trong 0,5 s) → bất động ở giây 2–3 + tư thế đổi > 50° so với hướng đứng thẳng → `suspected` (khoảng 3 s sau va chạm), loa kêu ngắt quãng, LED đỏ nháy nhanh. 10 s không nhấn nút → `confirmed`, loa kêu liên tục 30 s (nhấn để tắt). Nhấn trong 10 s → `cancelled`.
 - Pin: mạch không đo áp pin, `status` gửi `battery_v: null`, OLED hiện giờ thay cho %.
 - Ngưỡng đổi lúc chạy: `mosquitto_pub -t har/har01/cmd -m '{"cmd":"set_threshold","impact_g":2.2}'` (lưu NVS). Thử loa/cảnh báo: `{"cmd":"beep","ms":300}`, `{"cmd":"test_alarm"}`.
 

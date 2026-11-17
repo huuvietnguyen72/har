@@ -30,6 +30,34 @@ void test_fall_detected() {
   TEST_ASSERT_TRUE(d.tiltDeg() > 80);
 }
 
+// Cú ngã trước thật (17/11/2026): người đổ xoay nên SVM < 0,4 g chỉ 2 mẫu (~40 ms), dưới 0,6 g 5 mẫu;
+// va chạm 3,5 g; còn nảy/chỉnh ~1,5 s (con quay ~80 °/s) rồi mới nằm yên. Ngưỡng cũ (0,4 g / 80 ms / xét yên
+// ở giây 1–2) bỏ lọt; ngưỡng mặc định hiện tại phải bắt được.
+static int realForwardFall(FallDetector& d) {
+  uint64_t t = 1000;
+  int h = feed(d, t, {-1, 0, 0, 0, 0, 0}, 50);                    // đứng
+  h += feed(d, t, {-0.75f, 0.1f, -0.2f, 10, 60, 30}, 10);         // bắt đầu đổ người
+  h += feed(d, t, {-0.5f, 0.1f, -0.2f, 10, 80, 30}, 3);           // ~0,55 g
+  h += feed(d, t, {-0.15f, 0.1f, -0.15f, 20, 80, 30}, 2);         // ~0,23 g, 40 ms
+  h += feed(d, t, {-0.3f, 0.3f, 0.9f, 50, 300, 100}, 5);          // xoay người ~1 g
+  h += feed(d, t, {0.5f, 0.6f, 3.4f, 100, 300, 100}, 4);          // va chạm ~3,5 g
+  h += feed(d, t, {0.2f, 0.3f, 1.3f, 20, 80, 40}, 40);            // nảy, chỉnh trên nệm 0,8 s
+  for (int i = 0; i < 35; i++, t += 20)                           // còn cử động ~0,7 s (70% yên)
+    h += d.update(t, 0.1f, 0.25f, (i % 3) ? 1.0f : 1.25f, 5, (i % 3) ? 10.0f : 80.0f, 5);
+  h += feed(d, t, {0.1f, 0.25f, 1.0f, 1, 1, 1}, 150);             // nằm sấp yên 3 s
+  return h;
+}
+
+void test_real_forward_fall_detected() {
+  FallDetector d;
+  TEST_ASSERT_EQUAL(1, realForwardFall(d));
+  FallDetector old;
+  old.params().freefall_g = 0.4f;
+  old.params().freefall_ms = 80;
+  old.params().still_delay_ms = 2000;
+  TEST_ASSERT_EQUAL(0, realForwardFall(old));
+}
+
 void test_no_fall_when_landing_upright() {
   // ngồi phịch xuống ghế: có rơi + va chạm nhưng trục X vẫn gần hướng xuống -> không báo
   FallDetector d;
@@ -233,6 +261,7 @@ void test_fall_uses_calibrated_upright() {
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_fall_detected);
+  RUN_TEST(test_real_forward_fall_detected);
   RUN_TEST(test_no_fall_when_landing_upright);
   RUN_TEST(test_no_fall_when_moving_after_impact);
   RUN_TEST(test_walking_never_triggers);

@@ -158,6 +158,7 @@ void onMessage(char* topic, byte* payload, unsigned int len) {
       fp.impact_window_ms = doc["impact_window_ms"] | fp.impact_window_ms;
       fp.still_gyro_dps = doc["still_gyro_dps"] | fp.still_gyro_dps;
       fp.posture_deg = doc["posture_deg"] | fp.posture_deg;
+      fp.still_delay_ms = doc["still_delay_ms"] | fp.still_delay_ms;
       saveThresholds();
       loadThresholds();
     } else if (!strcmp(cmd, "test_alarm")) {

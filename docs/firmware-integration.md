@@ -29,6 +29,7 @@ Ghi lại các vấn đề gặp khi nạp firmware và chạy cùng Pi 4 lần 
 | 12 | Pi khởi động lại sai giờ 12,3 s, ESP32 giữ giờ sai tới 1 giờ | Trung bình | Đã sửa (`NTP_SYNC_MS 60000`) |
 | 13 | MPU6050 hàn xoay 90°: trục X chỉ xuống, không phải Y | Cao | Đã sửa: code theo phần cứng (`UPRIGHT = [-1, 0, 0]`) |
 | 14 | Mỗi người đeo cài hộp khác nhau (nghiêng, ngược) | Cao | Đã thêm hiệu chỉnh hướng đứng thẳng (`calibrate_upright`) |
+| 15 | Bộ phát hiện té bỏ lọt cú ngã thật (3,5 g) | Cao | Đã chỉnh ngưỡng theo dữ liệu thật; chốt lại khi đủ 20 cú ngã |
 
 ## 1. Mạng: ESP32 và Pi cùng vào Wi-Fi nhà
 
@@ -235,6 +236,25 @@ Còi kêu ngắt quãng khi nghi té và bíp khi nhấn; LED xanh và đỏ ho�
 - Edge 18/18 test, gồm: đứng với hộp nghiêng 40° → luật đơn giản ra `sit` theo mặc định, `stand` theo hướng đã hiệu chỉnh.
 - `ml/`: 150 phiên giả lập, `make_windows` và `featurize` chạy đúng với `meta.json` có/không có `upright`.
 - Trên mạch: `calibrate_upright` có kết quả sau 2,1 s (`[-0.993, -0.019, -0.12]`, `upright_cal: measured`); `set_upright [-1,0,0]` khôi phục ngay (`manual`).
+
+## 15. Ngưỡng té chỉnh theo cú ngã thật
+
+**Hiện tượng.** Phiên `har01_S01_fall_20261117-071548` (ngã trước lên nệm): đỉnh va chạm 3,52 g, tư thế đổi từ 22° lên 117°, nằm yên 9,6 s, nhưng bộ đeo không báo `suspected`. (Lần thu trước đó chỉ đạt 1,77 g, đã xóa.)
+
+**Nguyên nhân.** Hai điều kiện quá chặt so với té thật:
+1. Rơi tự do: SVM < 0,4 g chỉ có 2 mẫu (~40 ms), ngưỡng cần 80 ms. Người đổ xoay quanh bàn chân, hộp ở hông không rơi tự do lâu.
+2. Bất động: xét ở giây 1–2 sau va chạm chỉ 70% mẫu yên (cần 90%) vì người còn nảy, chỉnh trên nệm (con quay tới 82 °/s); từ giây 1,5 trở đi yên 100%.
+
+**Sửa.** `freefall_g` 0,4 → **0,6**, `freefall_ms` 80 → **60**, `still_delay_ms` 2000 → **3000** (xét yên ở giây 2–3), ở cả `FallParams` (firmware) và `ThresholdParams` (edge, dùng cho đánh giá). `set_threshold` đổi được thêm `still_delay_ms`, lưu NVS (`fall/still_dly`). Bộ đeo báo nghi té chậm hơn khoảng 1 s.
+
+**Kiểm chứng** (bản Python giống firmware, trên 10 phiên và 3,2 giờ dữ liệu thô):
+
+| Ngưỡng | Bắt cú ngã | Báo nhầm ở phiên đứng/ngồi/nằm/đi | Báo nhầm dữ liệu thô |
+| --- | --- | --- | --- |
+| 0,4 g / 80 ms / 2 s (cũ) | 0/1 | 0 | 0 |
+| **0,6 g / 60 ms / 3 s (mới)** | **1/1** | **0** | 1 — bộ đeo bị đánh rơi lúc 23:57:50 ngày 16/11 (rơi tự do 0,15 g, va chạm 5,5 g, nằm úp), không phân biệt được với té |
+
+**Còn lại.** Mới dựa trên 1 cú ngã. Khi đủ 20 cú ngã (4 hướng × 5 lần), chạy lại phép thử để chốt ngưỡng (thí nghiệm D).
 
 ## Kết quả kiểm tra
 
