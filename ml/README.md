@@ -18,6 +18,21 @@ pip install -e ../edge -r requirements.txt
 - Làm sạch (`har_ml/dataset.py`): cắt 2 s đầu/cuối; phiên té tìm đỉnh SVM, đoạn quanh đỉnh là `fall`, phần nằm yên sau đó là `lie`; áp suất nội suy lên 50 Hz rồi lọc thông thấp; cửa sổ 2,5 s chồng lấn 50 %.
 - **Chia tập theo người** (GroupKFold); không bao giờ chia ngẫu nhiên theo cửa sổ.
 
+### Dataset ngoài: SisFall
+
+Bổ sung té (và đi bộ) từ SisFall — Sucerquia, López, Vargas-Bonilla, *SisFall: A Fall and Movement Dataset*, Sensors 17(1):198, 2017, doi:[10.3390/s17010198](https://doi.org/10.3390/s17010198). **Phải trích dẫn bài báo này trong báo cáo.** 38 người (SA01–SA23 19–30 tuổi, SE01–SE15 60–75 tuổi; người cao tuổi chỉ thu hoạt động thường ngày, trừ SE06), thiết bị ở thắt lưng, 200 Hz.
+
+```bash
+# trang gốc (sistemic.udea.edu.co) không truy cập được lúc tải; dùng bản sao .npy (giữ nguyên số đo thô + Readme gốc)
+git clone --depth 1 https://gitee.com/yuxiqin/imu-fall-database.git data/external/SisFall
+python import_sisfall.py                  # -> data/external/sisfall_sessions/ (~4.500 phiên)
+python train_rf.py --experiment A1 --no-baro --data "data/raw,data/external/sisfall_sessions"
+```
+
+`import_sisfall.py` (`har_ml/sisfall.py`): gia tốc MMA8451Q (±8 g như MPU6050), con quay ITG3200 cắt ±500 °/s; lọc + lấy mẫu 200 → 50 Hz; mỗi người xoay để trọng lực khi đi bộ (D01) trùng `UPRIGHT` (X chỉ xuống). Nhãn: D01, D02 → `walk`; F01–F15 → `fall` (chỉ đoạn quanh đỉnh lớn nhất, `fall_lie: false`); hoạt động khác → `adl` (không dùng huấn luyện, để đo báo động giả). Không có áp suất: thí nghiệm có BMP280 chỉ dùng dữ liệu tự thu. Hướng quanh trục đứng (trước/sau) không căn được. `data/external/` nằm trong `.gitignore`.
+
+**Lưu ý đánh giá:** các script hiện chia GroupKFold trên *mọi* người, kể cả `SisFall_*`. Kết quả cho báo cáo phải chấm điểm trên người tự thu (S01…) — cần thêm tùy chọn "huấn luyện trên tất cả, chỉ chấm điểm người tự thu" ở bước huấn luyện (chưa làm).
+
 ## Thí nghiệm
 
 | Lệnh | Thí nghiệm |

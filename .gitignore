@@ -48,4 +48,6 @@ edge/models/*/
 # ML: model xuất ra, dữ liệu giả lập
 ml/models/
 ml/data/synthetic/
+# Dataset công khai tải về (SisFall...), không đưa lên Git
+ml/data/external/
 *.tsbuildinfo

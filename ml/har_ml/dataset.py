@@ -34,6 +34,9 @@ class Recording:
     pressure: np.ndarray | None  # (n,) Pa, đã nội suy + lọc
     synthetic: bool = False
     upright: np.ndarray | None = None  # vector đứng thẳng của phiên (meta.json), None = UPRIGHT
+    # False: phiên té từ dataset ngoài (SisFall) — đúng một cú ngã/lượt, không gán "lie" cho phần sau té
+    fall_lie: bool = True
+    source: str = "har01"
 
 
 @dataclass
@@ -56,8 +59,11 @@ class Windows:
 
 
 def load_recordings(root: str | Path) -> list[Recording]:
+    """root: một thư mục, hoặc nhiều thư mục ngăn bằng dấu phẩy (vd "data/raw,data/external/sisfall_sessions")."""
+    roots = [Path(r.strip()) for r in str(root).split(",") if r.strip()] if not isinstance(root, Path) else [root]
+    metas = sorted(m for r in roots for m in r.rglob("meta.json"))
     recs = []
-    for meta_path in sorted(Path(root).rglob("meta.json")):
+    for meta_path in metas:
         d = meta_path.parent
         meta = json.loads(meta_path.read_text(encoding="utf-8"))
         if meta.get("activity") not in LABELS or not (d / "imu.csv").exists():
@@ -76,6 +82,7 @@ def load_recordings(root: str | Path) -> list[Recording]:
             t=t, acc=imu[["ax", "ay", "az"]].to_numpy(), gyr=imu[["gx", "gy", "gz"]].to_numpy(),
             pressure=pressure, synthetic=bool(meta.get("synthetic", False)),
             upright=np.asarray(meta["upright"], dtype=np.float64) if meta.get("upright") else None,
+            fall_lie=bool(meta.get("fall_lie", True)), source=str(meta.get("source", "har01")),
         ))
     return recs
 
@@ -100,11 +107,17 @@ def _segments(rec: Recording, window_s: float) -> list[tuple[int, int, str, int]
         return [(trim, n - trim, rec.activity, w // 2)]
     out = []
     peaks = find_fall_peaks(rec.acc)
+    if not rec.fall_lie and peaks:
+        # dataset ngoài: đúng một cú ngã mỗi lượt -> chỉ đỉnh lớn nhất (bước chạy trước khi ngã cũng có thể > 2 g)
+        svm = np.linalg.norm(rec.acc, axis=1)
+        peaks = [max(peaks, key=lambda i: svm[i])]
     for k, p in enumerate(peaks):
         # cửa sổ té: chứa đỉnh, đỉnh cách hai mép ít nhất ~0,5 s (bước 0,1 s)
         lo = max(0, p - w + int(0.5 * FS))
         hi = min(n, p + w - int(0.5 * FS))
         out.append((lo, hi, "fall", int(0.1 * FS)))
+        if not rec.fall_lie:
+            continue
         # phần nằm yên sau té -> lie (đến đỉnh kế tiếp hoặc cuối phiên)
         end = peaks[k + 1] - int(2 * FS) if k + 1 < len(peaks) else n - trim
         out.append((p + int(1.0 * FS), end, "lie", w // 2))
