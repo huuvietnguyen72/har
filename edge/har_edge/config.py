@@ -25,6 +25,7 @@ class Config:
     vps_device_key: str = ""
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
+    telegram_allowed_ids: str = ""  # thêm chat được ra lệnh cho har-bot, ngăn bằng dấu phẩy
     webapp_url: str = ""
     # Ngưỡng hợp nhất cảnh báo té (chọn lại theo thí nghiệm D)
     fall_p_confirm: float = 0.5
@@ -61,6 +62,7 @@ def load_config(env_file: str | os.PathLike | None = None) -> Config:
         vps_device_key=os.getenv("VPS_DEVICE_KEY", ""),
         telegram_bot_token=os.getenv("TELEGRAM_BOT_TOKEN", ""),
         telegram_chat_id=os.getenv("TELEGRAM_CHAT_ID", ""),
+        telegram_allowed_ids=os.getenv("TELEGRAM_ALLOWED_IDS", ""),
         webapp_url=os.getenv("WEBAPP_URL", "").rstrip("/"),
         fall_p_confirm=_f("FALL_P_CONFIRM", 0.5),
         fall_p_model_only=_f("FALL_P_MODEL_ONLY", 0.5),

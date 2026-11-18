@@ -51,12 +51,12 @@ ufw --force enable
 sudo -u "$RUN_USER" python3 -m venv "$EDGE_DIR/.venv"
 sudo -u "$RUN_USER" "$EDGE_DIR/.venv/bin/pip" install -q -e "$EDGE_DIR"
 [ -f "$EDGE_DIR/.env" ] || sudo -u "$RUN_USER" cp "$EDGE_DIR/.env.example" "$EDGE_DIR/.env"
-for s in ingest infer uplink notify; do
+for s in ingest infer uplink notify bot; do
   sed "s#/home/pi/har/edge#$EDGE_DIR#g; s#User=pi#User=$RUN_USER#" "$EDGE_DIR/deploy/har-$s.service" > /etc/systemd/system/har-$s.service
 done
 systemctl daemon-reload
-systemctl enable har-ingest har-infer har-uplink har-notify
+systemctl enable har-ingest har-infer har-uplink har-notify har-bot
 echo
 echo "Xong. Sửa $EDGE_DIR/.env (MQTT_PASSWORD của har-edge, VPS_*, TELEGRAM_*), rồi:"
-echo "  sudo systemctl restart har-ingest har-infer har-uplink har-notify"
+echo "  sudo systemctl restart har-ingest har-infer har-uplink har-notify har-bot"
 echo "  journalctl -fu har-infer"
