@@ -19,12 +19,13 @@ import numpy as np
 from har_edge import LABELS
 from har_edge.fall_threshold import detect_all
 from har_edge.features import extract_features
-from har_edge.logic import FallFusion, FusionParams, Smoother
+from har_edge.logic import FallFusion, FusionParams, Smoother, altitude_change_m, stairs_gate
 from har_ml.dataset import FS, find_fall_peaks, load_recordings, make_windows
 from har_ml.evaluate import is_external, save
 from train_rf import featurize, make_clf
 
 HERE = Path(__file__).resolve().parent
+STAIRS_MIN_ALT_M = 0.3  # = STAIRS_MIN_ALT_M của har-infer
 
 
 def stream(rec, clf, use_baro: bool, window_s: float, params: FusionParams):
@@ -39,9 +40,12 @@ def stream(rec, clf, use_baro: bool, window_s: float, params: FusionParams):
     for end in range(w, len(t) + 1, FS):
         s = end - w
         f = extract_features(rec.acc[s:end], rec.gyr[s:end], p_full[s:end] if use_baro else None,
-                             up=rec.upright)[None, :]
+                             up=rec.upright, align=True)[None, :]
         proba = clf.predict_proba(np.nan_to_num(f))[0]
         probs = {LABELS[int(c)]: p for c, p in zip(clf.classes_, proba)}
+        if rec.pressure is not None:  # giống har-infer: bỏ cầu thang khi độ cao không đổi trong 10 s
+            alt = altitude_change_m(np.column_stack([t[:end], rec.pressure[:end]]), float(t[end - 1]))
+            probs = stairs_gate(probs, alt, STAIRS_MIN_ALT_M)
         raw = max(probs, key=probs.get)
         timeline.append((int(t[end - 1]), "pred", (probs.get("fall", 0.0), sm.update(raw))))
     for k, d in enumerate(det):

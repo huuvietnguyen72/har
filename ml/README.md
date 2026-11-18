@@ -55,6 +55,16 @@ python train_rf.py --experiment A1 --no-baro --data "data/raw,data/external/sisf
 | B2 CNN IMU + BMP280 | 0,697 | 0,904 |
 | C RF IMU + BMP280, cửa sổ 2,0 s | 0,734 | 0,909 |
 
+**Xoay tín hiệu về hướng đứng (từ 19/11, mặc định):** `extract_features(..., align=True)` xoay gia tốc và con quay sao cho hướng đứng đã hiệu chỉnh trùng X chỉ xuống, trước khi tính đặc trưng. Đặc trưng theo từng trục khi đó không phụ thuộc người đeo nghiêng hộp bao nhiêu. Model ghi `"align_upright": true` trong `meta.json`; `--no-align` để chạy cách cũ.
+
+| Thí nghiệm (tự thu + SisFall) | Trục chip | Xoay về hướng đứng |
+| --- | --- | --- |
+| A1 RF chỉ IMU | 0,822 | 0,885 |
+| A2 RF IMU + BMP280 | 0,910 | **0,929** |
+| C RF IMU + BMP280, 2,0 s | 0,909 | 0,937 |
+
+Lý do: thử trực tiếp 19/11, người đeo đứng 2 phút nhưng model cũ đoán "lên cầu thang" 72 % thời gian (hộp nghiêng 26° so với X). Model xoay: 67 % đứng. Thêm bộ chặn của `har-infer` (bỏ nhãn cầu thang khi |Δcao 10 s| < 0,3 m; đứng/đi 0,09–0,11 m, cầu thang 1,5–1,7 m): còn 1 % cầu thang. Luồng 1 s trên phiên tự thu: đứng đúng 0,75 → 0,97, lên cầu thang 0,80 → 0,75.
+
 Chỉ S01 thu té, nên khi để riêng S01 làm tập kiểm tra, cột "chỉ tự thu" không có cú té nào để học (F1 té = 0). Với SisFall, F1 té trên S01 là 0,99–1,00 (RF) và 0,91 (CNN). Chỉ có 4 người nên số liệu còn dao động. Với RF, siêu tham số được chọn trên chính các dự đoán out-of-fold, nên kết quả hơi lạc quan.
 
 Mỗi thí nghiệm ghi `results/<thí nghiệm>/metrics.json` (accuracy, macro-F1, F1 từng lớp, ma trận nhầm lẫn, số cửa sổ, số người, phiên bản model). Đẩy lên VPS để trang **Đánh giá model** hiển thị:

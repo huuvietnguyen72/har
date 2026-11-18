@@ -340,8 +340,10 @@ class Bot:
             chat, src = self.cfg.telegram_chat_id, "bằng <b>nút trên bộ đeo</b> (nhấn 3 lần)"
         else:
             return  # record.py (thu dữ liệu) hoặc lệnh khác: không báo
+        who = "bộ đeo" if req.startswith("btn-") else (pend or {}).get("who", "")
         if res != "ok":
             why = CAL_FAIL.get(res, res)
+            self.record(who, f"calibrate_fail:{res}", req)
             self.reply(chat, f"❌ Hiệu chỉnh hướng đứng {src} <b>chưa đạt</b> ({escape(str(why))}). Giữ hướng cũ.\n"
                              "Thử lại: người đeo đứng thẳng yên rồi gõ /hieuchinh, hoặc nhấn nút 3 lần.")
             return
@@ -360,7 +362,7 @@ class Bot:
         if change is not None and change > UPRIGHT_WARN_DEG:
             lines.append(f"⚠️ Đổi hơn {UPRIGHT_WARN_DEG}°: nếu lúc đo người đeo không đứng thẳng (đang ngồi, nằm, cúi), "
                          "bấm Khôi phục rồi hiệu chỉnh lại.")
-        self.record("bộ đeo" if req.startswith("btn-") else (pend or {}).get("who", ""), "calibrated", req)
+        self.record(who, "calibrated", req)
         self.reply(chat, "\n".join(lines), **markup)
 
     def check_timeouts(self) -> None:

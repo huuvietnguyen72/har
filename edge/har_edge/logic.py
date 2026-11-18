@@ -1,5 +1,6 @@
 """Logic thuần (không MQTT, không I/O) của har-infer — có unit test.
 
+- stairs_gate: bỏ nhãn cầu thang khi độ cao không đổi trong ~10 s (áp suất BMP280)
 - Smoother   : đa số 3 dự đoán gần nhất, nhãn té không làm mượt
 - Segmenter  : gộp dự đoán thành đoạn hoạt động (start, end, label, conf_avg)
 - FallFusion : hợp nhất cảnh báo té giữa ngưỡng trên ESP32 và model trên Pi
@@ -9,6 +10,43 @@ Mọi hàm nhận thời gian qua tham số (epoch ms) để test được.
 """
 from collections import Counter, deque
 from dataclasses import dataclass, field
+
+import numpy as np
+
+from .features import PA_PER_METER
+
+
+STAIRS = ("stairs_up", "stairs_down")
+
+
+def stairs_gate(probs: dict[str, float], alt_change_m: float | None, min_m: float) -> dict[str, float]:
+    """Không cho nhãn cầu thang khi độ cao gần như không đổi trong ~10 s (|Δ| < min_m).
+
+    Đứng/đi trên mặt phẳng: |Δcao 10 s| trung vị 0,09–0,11 m; leo cầu thang: 1,5–1,7 m (dataset S02–S04). Chỉ đặt
+    xác suất cầu thang về 0, KHÔNG chia lại tỉ lệ, để P(té) không bị đẩy lên giả tạo. None (chưa đủ 10 s áp suất)
+    hoặc min_m <= 0: giữ nguyên.
+    """
+    if alt_change_m is None or min_m <= 0 or abs(alt_change_m) >= min_m:
+        return probs
+    if max(probs, key=probs.get) not in STAIRS:
+        return probs
+    return {k: (0.0 if k in STAIRS else v) for k, v in probs.items()}
+
+
+def altitude_change_m(p: np.ndarray, t_end: float, span_ms: int = 10_000, avg_ms: int = 1_000) -> float | None:
+    """Độ cao thay đổi (m, dương = lên) trong span_ms kết thúc ở t_end, từ mảng (t, Pa); trung bình 1 s ở hai đầu
+    để bớt nhiễu. None nếu chưa có đủ dữ liệu."""
+    if p is None or len(p) < 4:
+        return None
+    t, pa = p[:, 0], p[:, 1]
+    start = t_end - span_ms
+    if t[0] > start + 2000:
+        return None
+    first = pa[(t >= start) & (t < start + avg_ms)]
+    last = pa[(t > t_end - avg_ms) & (t <= t_end)]
+    if len(first) == 0 or len(last) == 0:
+        return None
+    return float((first.mean() - last.mean()) / PA_PER_METER)
 
 
 class Smoother:

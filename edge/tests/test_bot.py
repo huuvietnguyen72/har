@@ -221,6 +221,7 @@ def test_button_calibration_reported_and_failures(env):
     # người đeo nhấn nút 3 lần nhưng đang cử động
     bot.on_status("har/har01/status", {"online": True, "upright": [-1, 0, 0], "upright_req": "btn-100", "upright_result": "moving"})
     assert "nút trên bộ đeo" in sent_texts(calls)[-1] and "chưa đạt" in sent_texts(calls)[-1]
+    assert conn.execute("SELECT who, action, ref FROM bot_actions").fetchall()[-1][:] == ("bộ đeo", "calibrate_fail:moving", "btn-100")
     # lần sau đạt, nhưng đổi > 45° (vd đang nằm): cảnh báo
     bot.on_status("har/har01/status", {"online": True, "upright": [0, 0, -1], "upright_req": "btn-200", "upright_result": "ok"})
     t = sent_texts(calls)[-1]

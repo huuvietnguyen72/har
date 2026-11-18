@@ -51,10 +51,12 @@ class RFModel(BaseModel):
         self.use_baro = bool(meta.get("use_baro"))
         self.window_s = float(meta.get("window_s", 2.5))
         self.fs = int(meta.get("fs", 50))
+        # model huấn luyện với tín hiệu đã xoay về hướng đứng (features.align_to_upright); model cũ: False
+        self.align = bool(meta.get("align_upright", False))
         self._classes = [self.labels[int(c)] if not isinstance(c, str) else c for c in self.clf.classes_]
 
     def predict_proba(self, acc, gyr, pressure, up=None):
-        x = extract_features(acc, gyr, pressure if self.use_baro else None, self.fs, up)[None, :]
+        x = extract_features(acc, gyr, pressure if self.use_baro else None, self.fs, up, align=self.align)[None, :]
         x = np.nan_to_num(x)
         p = self.clf.predict_proba(x)[0]
         out = {lbl: 0.0 for lbl in self.labels}

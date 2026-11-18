@@ -23,7 +23,7 @@ from pathlib import Path
 import numpy as np
 from scipy.signal import resample_poly
 
-from har_edge.features import FS, UPRIGHT
+from har_edge.features import FS, UPRIGHT, rotation_to  # noqa: F401 (rotation_to dùng lại ở test)
 
 FS_SRC = 200
 K_GYRO = 2 * 2000 / 2**16  # °/s mỗi bit (ITG3200)
@@ -84,24 +84,6 @@ def to_units(raw: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
 def resample_50hz(x: np.ndarray) -> np.ndarray:
     """200 Hz -> 50 Hz có lọc chống răng cưa."""
     return resample_poly(x, 1, FS_SRC // FS, axis=0)
-
-
-def rotation_to(a: np.ndarray, b: np.ndarray) -> np.ndarray:
-    """Ma trận xoay R (3x3) đưa hướng a về hướng b: R @ a/|a| = b/|b|."""
-    a = np.asarray(a, float) / np.linalg.norm(a)
-    b = np.asarray(b, float) / np.linalg.norm(b)
-    v = np.cross(a, b)
-    c = float(a @ b)
-    if np.linalg.norm(v) < 1e-9:
-        if c > 0:
-            return np.eye(3)
-        # ngược chiều: xoay 180° quanh một trục vuông góc với a
-        p = np.array([1.0, 0, 0]) if abs(a[0]) < 0.9 else np.array([0, 1.0, 0])
-        u = np.cross(a, p)
-        u /= np.linalg.norm(u)
-        return 2 * np.outer(u, u) - np.eye(3)
-    vx = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
-    return np.eye(3) + vx + vx @ vx * (1 / (1 + c))
 
 
 def convert(raw: np.ndarray, rot: np.ndarray) -> tuple[np.ndarray, np.ndarray]:

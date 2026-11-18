@@ -343,6 +343,28 @@ Báo giả trên hoạt động tự thu (1,1 giờ) bằng 0 ở mọi cấu h�
 
 **Kiểm chứng.** Firmware native 21/21 (thêm: nhấn 3 lần, nhấn đúp chờ lần thứ 3, luồng đếm ngược–đo–kết quả, hết giờ, mốc thời gian đảo). Edge 34/34 (thêm: `/hieuchinh` → kết quả → khôi phục, báo lần nhấn nút, không báo lại status lặp, không báo `record.py`, hết giờ chờ).
 
+## 21. Đứng bị nhận thành "lên cầu thang" khi đổi cách đeo
+
+**Hiện tượng** (thử trực tiếp 19/11, 02:45–02:48): người đeo đứng khoảng 2 phút sau khi hiệu chỉnh, nhưng model đoán "lên cầu thang" 72 % thời gian. Áp suất phẳng (±0,25 m trong 2,5 s, mức nhiễu), chuyển động nhẹ (SVM dao động 0,005–0,05 g).
+
+**Nguyên nhân.**
+1. Model A2 dùng nhiều đặc trưng theo trục chip (`ax_mean`, `ay_mean`, `az_max` nằm trong nhóm quan trọng nhất). Hộp lần này nghiêng 26° so với X; phát lại với hướng hiệu chỉnh cũ hay mới đều cho cùng kết quả, nên nguyên nhân không phải ở bước hiệu chỉnh mà ở đặc trưng phụ thuộc cách đeo.
+2. Trong 2,5 s, độ cao đổi khi leo cầu thang (~0,5 m) ngang mức nhiễu áp suất, nên đặc trưng áp suất của model không phân biệt được đứng với leo.
+
+**Sửa.**
+- `features.extract_features(..., align=True)`: xoay gia tốc và con quay về hướng đứng đã hiệu chỉnh trước khi tính đặc trưng. Model ghi `"align_upright": true` trong `meta.json`; model cũ không có cờ này vẫn chạy như trước.
+- `logic.stairs_gate` trong `har-infer` (`STAIRS_MIN_ALT_M`, mặc định 0,3 m): bỏ nhãn cầu thang khi |Δcao 10 s| < 0,3 m. Đứng/đi: trung vị 0,09–0,11 m; leo cầu thang: 1,5–1,7 m. Chỉ đặt xác suất cầu thang về 0, không chia lại tỉ lệ, để P(té) không tăng giả tạo.
+
+| | Model cũ (v1) | v2 (xoay) + chặn |
+| --- | --- | --- |
+| Macro-F1 A2 (S01–S04, cửa sổ) | 0,910 | 0,929 |
+| Luồng 1 s: đứng / lên cầu thang / đi đúng | 0,75 / 0,80 / 0,96 | 0,97 / 0,75 / 0,99 |
+| Đoạn đứng thật 02:45:45–02:47:52 | 3 % đứng, 72 % cầu thang | 67 % đứng, 1 % cầu thang |
+| Té S01 bắt được (ngưỡng + model) | 22/23 | 23/23 |
+| Phiên ADL SisFall bị báo giả | 26 / 2.626 | 21 / 2.626 |
+
+**Đánh đổi:** lên cầu thang đúng giảm từ 0,80 xuống 0,75, vì những đoạn leo chậm hoặc vừa bắt đầu leo có độ cao đổi chưa tới 0,3 m. Hạ `STAIRS_MIN_ALT_M` thì nhận cầu thang tốt hơn nhưng lại để lọt lỗi đứng bị nhận thành cầu thang.
+
 ## Kết quả kiểm tra
 
 | Phép thử | Kết quả |
