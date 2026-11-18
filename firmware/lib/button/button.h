@@ -1,14 +1,15 @@
 // Nhận dạng thao tác nút — C++ thuần, test được trên máy tính.
 //   PRESS  : ngay khi nhấn (đã chống dội) — dùng để hủy cảnh báo tức thì
 //   SINGLE : nhấn 1 lần (phát sau khi hết thời gian chờ nhấn đúp)
-//   DOUBLE : nhấn đúp
+//   DOUBLE : nhấn đúp (phát sau khi hết thời gian chờ lần nhấn thứ 3)
+//   TRIPLE : nhấn 3 lần liên tiếp (phát ngay khi nhả lần thứ 3)
 //   LONG   : giữ ≥ long_ms (phát ngay khi đủ thời gian, không chờ nhả)
 #pragma once
 #include <stdint.h>
 
 class Button {
  public:
-  enum Event : uint8_t { NONE = 0, PRESS = 1, SINGLE = 2, DOUBLE = 4, LONG = 8 };
+  enum Event : uint8_t { NONE = 0, PRESS = 1, SINGLE = 2, DOUBLE = 4, LONG = 8, TRIPLE = 16 };
 
   explicit Button(uint32_t debounce_ms = 30, uint32_t double_ms = 400, uint32_t long_ms = 3000)
       : debounce_(debounce_ms), double_(double_ms), long_(long_ms) {}
@@ -38,11 +39,11 @@ class Button {
       ev |= LONG;
     }
     if (!stable_ && clicks_ > 0) {
-      if (clicks_ >= 2) {
-        ev |= DOUBLE;
+      if (clicks_ >= 3) {
+        ev |= TRIPLE;
         clicks_ = 0;
       } else if (now - releaseAt_ >= double_) {
-        ev |= SINGLE;
+        ev |= clicks_ == 2 ? DOUBLE : SINGLE;
         clicks_ = 0;
       }
     }

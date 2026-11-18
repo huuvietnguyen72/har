@@ -54,7 +54,7 @@ def calibrate_upright(client, dev: str, status: dict, skip: bool, timeout_s: flo
         print("  ! Bộ đeo không trả lời (firmware cũ hoặc mất kết nối) — dùng hướng mặc định.")
         return list(map(float, UPRIGHT)), "default"
     if st.get("upright_result") != "ok":
-        why = {"moving": "đang cử động", "bad_gravity": "gia tốc không phải 1 g"}.get(st["upright_result"], "")
+        why = {"moving": "đang cử động", "bad_gravity": "gia tốc không phải 1 g"}.get(st["upright_result"], st["upright_result"])
         print(f"  ! Không hiệu chỉnh được ({why}) — giữ hướng đang dùng: {st.get('upright')} ({st.get('upright_cal')})")
         return st.get("upright"), st.get("upright_cal", "unknown")
 

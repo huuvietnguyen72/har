@@ -187,3 +187,52 @@ def test_logs_never_contain_bot_token(capsys):
         log.exception("Lỗi vòng bot")
     err = capsys.readouterr().err
     assert tok not in err and "bot<token-ẩn>" in err and "HTTP Request" not in err
+
+
+def test_hieuchinh_command_result_and_restore(env):
+    bot, conn, calls, published, clock = env
+    old = [-0.924, -0.201, -0.327]
+    bot.on_status("har/har01/status", {"online": True, "upright": old, "upright_req": "rec-1", "upright_result": "ok"})
+    assert calls == []  # status giữ lại lúc bot vừa chạy: không báo
+    bot.handle_update(msg("/hieuchinh"))
+    req = published[-1][1]["id"]
+    assert published[-1] == ("har/har01/cmd", {"cmd": "calibrate_upright", "id": req}) and req.startswith("tg-")
+    assert "đứng thẳng" in sent_texts(calls)[-1]
+    new = [-0.99, 0.0, -0.14]
+    st = {"online": True, "upright": new, "upright_req": req, "upright_result": "ok"}
+    bot.on_status("har/har01/status", st)
+    bot.on_status("har/har01/status", st)  # status lặp lại mỗi 10 s: không báo hai lần
+    texts = [t for t in sent_texts(calls) if "Đã hiệu chỉnh" in t]
+    assert len(texts) == 1 and "theo lệnh của <b>Viet</b>" in texts[0] and "Nghiêng 8°" in texts[0]
+    body = [b for m, b in calls if m == "sendMessage"][-1]
+    assert body["reply_markup"]["inline_keyboard"][0][0]["callback_data"] == f"uprestore:{req}"
+    cq = {"id": "q", "data": f"uprestore:{req}", "from": {"first_name": "Viet"},
+          "message": {"message_id": 5, "chat": {"id": int(CHAT)}}}
+    bot.handle_update({"update_id": 9, "callback_query": cq})
+    assert published[-1] == ("har/har01/cmd", {"cmd": "set_upright", "up": old})
+    bot.handle_update({"update_id": 10, "callback_query": cq})  # bấm lần hai: không gửi lại
+    assert published[-1][1]["cmd"] == "set_upright" and len([p for p in published if p[1]["cmd"] == "set_upright"]) == 1
+
+
+def test_button_calibration_reported_and_failures(env):
+    bot, conn, calls, published, clock = env
+    bot.on_status("har/har01/status", {"online": True, "upright": [-1, 0, 0], "upright_req": "", "upright_result": "none"})
+    bot.on_status("har/har01/status", {"online": True, "upright": [-1, 0, 0], "upright_req": "x", "upright_result": "none"})
+    # người đeo nhấn nút 3 lần nhưng đang cử động
+    bot.on_status("har/har01/status", {"online": True, "upright": [-1, 0, 0], "upright_req": "btn-100", "upright_result": "moving"})
+    assert "nút trên bộ đeo" in sent_texts(calls)[-1] and "chưa đạt" in sent_texts(calls)[-1]
+    # lần sau đạt, nhưng đổi > 45° (vd đang nằm): cảnh báo
+    bot.on_status("har/har01/status", {"online": True, "upright": [0, 0, -1], "upright_req": "btn-200", "upright_result": "ok"})
+    t = sent_texts(calls)[-1]
+    assert "Đã hiệu chỉnh" in t and "đổi 90°" in t and "⚠️" in t
+    n = len(calls)
+    bot.on_status("har/har01/status", {"online": True, "upright": [-1, 0, 0], "upright_req": "rec-5", "upright_result": "ok"})
+    assert len(calls) == n  # record.py: không báo
+
+
+def test_hieuchinh_timeout(env):
+    bot, conn, calls, published, clock = env
+    bot.handle_update(msg("/hieuchinh"))
+    clock["now"] = NOW + 30_000
+    bot.check_timeouts()
+    assert "Không nhận được kết quả" in sent_texts(calls)[-1] and bot.cal_pending == {}

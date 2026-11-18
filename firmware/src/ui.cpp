@@ -1,12 +1,14 @@
 // Task giao diện (10 ms): nút, máy trạng thái cảnh báo té, LED, còi.
 //
 // Nút:   đang cảnh báo: nhấn 1 lần = hủy (hoặc tắt còi sau khi đã xác nhận)
-//        bình thường  : nhấn 1 lần = bật màn hình, nhấn đúp = marker, giữ 3 s = SOS
+//        bình thường  : nhấn 1 lần = bật màn hình, nhấn đúp = marker, nhấn 3 lần = hiệu chỉnh hướng đứng
+//                       thẳng (đứng thẳng yên ~4 s), giữ 3 s = SOS
 // LED xanh: sáng = đã kết nối MQTT, nháy chậm = đang kết nối
 // LED đỏ  : nháy nhanh = đang cảnh báo, sáng = lỗi cảm biến, nháy chậm = pin < 3,4 V
 #include "alarm_fsm.h"
 #include "app.h"
 #include "button.h"
+#include "cal_flow.h"
 #include "pins.h"
 #include "secrets.h"
 
@@ -17,6 +19,29 @@ uint32_t buzzUntil = 0;  // còi kêu liên tục đến thời điểm này (bu
 
 AlarmFsm fsm(CANCEL_WINDOW_MS, CONFIRMED_BUZZ_MS);  // lib/alarm_fsm: trạng thái + thời gian
 volatile bool alarmCancelRequest = false;          // netTask (lệnh cancel_alarm) -> uiTask
+
+// Hiệu chỉnh hướng đứng thẳng bằng nút (lib/cal_flow)
+CalFlow cal(CAL_COUNTDOWN_MS, CAL_TIMEOUT_MS, CAL_SHOW_MS);
+char calId[24] = "";
+// Chuỗi tiếng bíp: n lần, mỗi lần on ms, nghỉ off ms
+uint8_t beepsLeft = 0;
+uint16_t beepOn = 0, beepOff = 0;
+uint32_t beepNextAt = 0;
+
+void buzzerBeeps(uint8_t n, uint16_t on, uint16_t off) {
+  beepsLeft = n;
+  beepOn = on;
+  beepOff = off;
+  beepNextAt = millis();
+}
+
+// Kết quả lần đo của chính luồng nút: 0 = chưa có, 1 = ok, 2 = không đạt (lệnh khác chen vào cũng tính là không đạt)
+int calResult() {
+  if (strcmp(g.uprightReq, calId) != 0) return 2;
+  if (!strcmp(g.uprightResult, "ok")) return 1;
+  if (!strcmp(g.uprightResult, "pending")) return 0;
+  return 2;
+}
 
 struct Alarm {
   String id;  // id sự kiện suspected
@@ -142,9 +167,43 @@ void uiTask(void*) {
       } else if (ev & Button::DOUBLE) {
         emitSimple("marker");
         buzzerPulse(60);
+      } else if (ev & Button::TRIPLE) {
+        if (cal.start(now)) {
+          buzzerBeeps(2, 80, 80);
+          displayWake();
+          Serial.println("[upright] nút: đứng thẳng, giữ yên — bắt đầu đo sau 2 s");
+        }
       } else if (ev & Button::SINGLE) {
         displayWake();
       }
+    }
+
+    // --- hiệu chỉnh hướng đứng thẳng bằng nút ---
+    if (fsm.state() != AlarmFsm::IDLE && cal.busy()) cal.abort();  // cảnh báo té được ưu tiên
+    switch (cal.update(now, cal.phase() == CalFlow::MEASURING ? calResult() : 0)) {
+      case CalFlow::BEGIN_MEASURE:
+        snprintf(calId, sizeof(calId), "btn-%llu", (unsigned long long)(timeValid() ? epochMs() / 1000 : now / 1000));
+        requestUprightCal(calId);
+        buzzerBeeps(1, 80, 0);
+        break;
+      case CalFlow::DONE_OK:
+        buzzerBeeps(1, 600, 0);
+        displayWake();
+        break;
+      case CalFlow::DONE_FAIL:
+        buzzerBeeps(3, 120, 120);
+        displayWake();
+        Serial.printf("[upright] nút: không đạt (%s)\n", g.uprightResult);
+        break;
+      default:
+        break;
+    }
+    g.calPhase = cal.phase();
+    g.calLeftS = cal.leftS(now);
+    if (beepsLeft && (int32_t)(now - beepNextAt) >= 0) {
+      buzzerPulse(beepOn);
+      beepNextAt = now + beepOn + beepOff;
+      beepsLeft--;
     }
     const AlarmState st = (AlarmState)fsm.state();
     g.alarm = st;

@@ -55,11 +55,13 @@ Tạo bot bằng @BotFather, điền `TELEGRAM_BOT_TOKEN` trong `.env`, bấm **
 | `/homnay` | Thời gian từng hoạt động hôm nay (theo model), số cảnh báo té, té đã hủy, SOS, mất kết nối |
 | `/coi` | Chọn bật còi 5 / 30 / 60 giây (hoặc `/coi 20`, tối đa 60 s); tin trả lời có nút **Dừng còi** |
 | `/tatcoi` | Dừng còi `/coi`, hoặc tắt còi cảnh báo sau khi té đã xác nhận |
+| `/hieuchinh` | Hiệu chỉnh hướng đứng thẳng khi đổi người đeo hoặc cách đeo: người đeo đứng thẳng yên ~4 s |
 | Nút **Tắt còi**, **Đã kiểm tra, ổn** | Gắn dưới tin cảnh báo té và SOS |
 
 - Chỉ nhận lệnh từ `TELEGRAM_CHAT_ID` và `TELEGRAM_ALLOWED_IDS`. Lệnh gửi lúc bot đang tắt mà cũ hơn 2 phút thì bỏ qua.
 - **Không tắt còi trong 10 s chờ hủy:** firmware coi `cancel_alarm` lúc đó là người đeo tự hủy, nên cú ngã sẽ không được báo. Trong 10 s đó chỉ người đeo được hủy bằng nút.
 - Mọi thao tác ghi vào bảng `bot_actions` (ai, lúc nào, việc gì).
+- Hiệu chỉnh hướng đứng (`/hieuchinh` hoặc người đeo **nhấn nút 3 lần**): bot báo kết quả kèm góc nghiêng so với cách đeo chuẩn và góc đổi so với hướng trước, có nút **Khôi phục hướng cũ**. Đổi hơn 45° thì nhắc kiểm tra (có thể lúc đo người đeo đang ngồi hay nằm). Hiệu chỉnh của `record.py` không báo.
 - Còi `/coi` dừng bằng lệnh `beep` 0 ms, không đụng tới cảnh báo té. Nút trên bộ đeo không tắt được còi này (firmware chỉ dùng nút khi đang cảnh báo). Loa rung làm nhiễu gia tốc kế, nên trong lúc còi kêu dài, nhãn dự đoán có thể sai.
 
 ## Chạy và thử trên laptop (không cần ESP32)

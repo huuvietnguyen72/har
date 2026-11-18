@@ -45,7 +45,8 @@ Broker cổng 1883, bắt buộc user/mật khẩu; tường lửa chỉ mở ch
 // gyro_cal: measured = vừa đo lúc nằm yên | nvs = dùng giá trị lần trước | none = chưa hiệu chỉnh
 // chẩn đoán nút: "btn_presses":12 (số lần nhấn từ lúc khởi động), "btn_level":1 (1 = nhả, 0 = đang nhấn)
 // hướng đứng thẳng: "upright":[-0.993,-0.019,-0.12], "upright_cal":"measured" (measured | nvs | manual | default),
-//   "upright_t": thời điểm đo (epoch ms, 0 nếu chưa đo từ lúc khởi động), "upright_req": id lệnh gần nhất,
+//   "upright_t": thời điểm đo (epoch ms, 0 nếu chưa đo từ lúc khởi động), "upright_req": id lệnh gần nhất
+//   (rec-… = record.py, tg-… = /hieuchinh của har-bot, btn-… = người đeo nhấn nút 3 lần),
 //   "upright_result": none | pending | ok | moving | bad_gravity
 
 // har/har01/cmd
