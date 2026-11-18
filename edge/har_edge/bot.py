@@ -28,6 +28,7 @@ import httpx
 
 from . import store
 from .config import Config, load_config
+from .logutil import setup_logging
 from .mqtt import make_client, publish_json, topic_parts
 
 log = logging.getLogger("har-bot")
@@ -359,7 +360,7 @@ def _plain(html_text: str) -> str:
 
 
 def main() -> None:
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
+    setup_logging()  # che token Telegram, tắt log từng request của httpx
     cfg = load_config()
     if not cfg.telegram_bot_token or not cfg.telegram_chat_id:
         log.error("Chưa cấu hình TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID — har-bot không chạy")

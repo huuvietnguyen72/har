@@ -17,6 +17,7 @@ import numpy as np
 
 from . import store
 from .config import load_config
+from .logutil import setup_logging
 from .publisher import Publisher, PublishError, RejectedError, make_publisher
 
 log = logging.getLogger("har-uplink")
@@ -135,7 +136,7 @@ def compute_system_metrics(conn, day: datetime | None = None) -> list[dict]:
 
 
 def main() -> None:
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
+    setup_logging()  # che token Telegram, tắt log từng request của httpx
     cfg = load_config()
     conn = store.connect(cfg.db_path)
     up = Uplink(conn, make_publisher(cfg))

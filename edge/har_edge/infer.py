@@ -18,6 +18,7 @@ import numpy as np
 
 from . import store
 from .config import Config, load_config
+from .logutil import setup_logging
 from .features import smooth_pressure
 from .logic import FallFusion, FusionParams, Segmenter, Smoother, TechMonitor
 from .model import BaseModel, load_model
@@ -199,7 +200,7 @@ class Infer:
 def main() -> None:
     from .mqtt import make_client, publish_json
 
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
+    setup_logging()  # che token Telegram, tắt log từng request của httpx
     cfg = load_config()
     conn = store.connect(cfg.db_path)
     inf = Infer(cfg, conn, load_model(cfg.model_dir))

@@ -19,6 +19,7 @@ import httpx
 from . import store
 from .bot import fall_buttons
 from .config import Config, load_config
+from .logutil import setup_logging
 
 log = logging.getLogger("har-notify")
 
@@ -113,7 +114,7 @@ class Notifier:
 
 
 def main() -> None:
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
+    setup_logging()  # che token Telegram, tắt log từng request của httpx
     cfg = load_config()
     n = Notifier(cfg, store.connect(cfg.db_path))
     stop = threading.Event()

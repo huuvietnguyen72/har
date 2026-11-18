@@ -21,6 +21,7 @@ from pathlib import Path
 
 from . import store
 from .config import load_config
+from .logutil import setup_logging
 from .units import env_packet_to_array, imu_packet_to_array
 
 # Chờ gói tới trễ sau khi dừng phiên: ESP32 giữ 60 s dữ liệu khi mất kết nối (RING_PACKETS) và cần ~25 s để
@@ -277,7 +278,7 @@ class Ingest:
 def main() -> None:
     from .mqtt import make_client, publish_json
 
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
+    setup_logging()  # che token Telegram, tắt log từng request của httpx
     cfg = load_config()
     conn = store.connect(cfg.db_path)
     ing = Ingest(cfg.data_dir, conn)
