@@ -8,6 +8,7 @@ Bảng:
 - predictions : dự đoán mỗi 1 s (để đối chiếu sau)
 - latency     : mẫu đo độ trễ từng chặng
 - link_counts : số gói nhận/mất theo phút
+- bot_actions : thao tác qua Telegram (bật/tắt còi, xác nhận ổn) do har-bot ghi
 """
 import json
 import sqlite3
@@ -80,6 +81,14 @@ CREATE TABLE IF NOT EXISTS latency (
     ms REAL NOT NULL
 );
 CREATE INDEX IF NOT EXISTS ix_latency ON latency (stage, t);
+
+CREATE TABLE IF NOT EXISTS bot_actions (
+    id INTEGER PRIMARY KEY,
+    t INTEGER NOT NULL,
+    who TEXT,
+    action TEXT NOT NULL,
+    ref TEXT
+);
 
 CREATE TABLE IF NOT EXISTS link_counts (
     dev TEXT NOT NULL,

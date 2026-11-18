@@ -17,6 +17,7 @@ from html import escape
 import httpx
 
 from . import store
+from .bot import fall_buttons
 from .config import Config, load_config
 
 log = logging.getLogger("har-notify")
@@ -65,15 +66,15 @@ class Notifier:
         if not self.enabled:
             log.warning("Chưa cấu hình TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID — chỉ in ra màn hình")
 
-    def send(self, text: str) -> None:
+    def send(self, text: str, reply_markup: dict | None = None) -> None:
         if not self.enabled:
             print(text, flush=True)
             return
-        r = self.client.post(
-            f"https://api.telegram.org/bot{self.cfg.telegram_bot_token}/sendMessage",
-            json={"chat_id": self.cfg.telegram_chat_id, "text": text, "parse_mode": "HTML",
-                  "disable_web_page_preview": True},
-        )
+        body = {"chat_id": self.cfg.telegram_chat_id, "text": text, "parse_mode": "HTML",
+                "disable_web_page_preview": True}
+        if reply_markup:
+            body["reply_markup"] = reply_markup
+        r = self.client.post(f"https://api.telegram.org/bot{self.cfg.telegram_bot_token}/sendMessage", json=body)
         r.raise_for_status()
 
     def step(self, now: int | None = None) -> int:
@@ -94,7 +95,9 @@ class Notifier:
                 self._mark(r["id"], now, 3)
                 continue
             try:
-                self.send(format_message(a, now, self.cfg.webapp_url))
+                # nút "Tắt còi" / "Đã kiểm tra, ổn" do har-bot xử lý
+                buttons = fall_buttons(r["id"]) if a.get("type") in ("fall", "sos") else None
+                self.send(format_message(a, now, self.cfg.webapp_url), buttons)
             except httpx.HTTPError as e:
                 self.conn.execute("UPDATE alerts SET attempts = attempts + 1 WHERE id = ?", (r["id"],))
                 log.warning("Gửi Telegram lỗi (%s), sẽ thử lại", e)
