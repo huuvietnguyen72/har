@@ -6,6 +6,9 @@ Lệnh (chỉ nhận từ chat trong TELEGRAM_CHAT_ID / TELEGRAM_ALLOWED_IDS):
 - /coi       : chọn bật còi 5 / 30 / 60 giây (hoặc /coi 20, tối đa 60 s) để tìm bộ đeo hoặc gọi người đeo;
                tin trả lời có nút "Dừng còi" (nút trên bộ đeo không tắt được còi này)
 - /tatcoi    : dừng còi /coi, hoặc tắt còi cảnh báo sau khi té đã xác nhận
+- /hieuchinh : hiệu chỉnh hướng đứng thẳng (người đeo đứng thẳng yên ~4 s); người đeo cũng tự làm được
+               bằng cách nhấn nút 3 lần. Kết quả mọi lần hiệu chỉnh (Telegram hoặc nút) được báo kèm góc lệch
+               so với hướng cũ và nút "Khôi phục hướng cũ".
 Nút dưới tin cảnh báo té (har-notify gắn): "Tắt còi" và "Đã kiểm tra, ổn".
 
 An toàn: firmware xử lý cancel_alarm trong 10 s chờ hủy như người đeo tự hủy (cú ngã không được báo nữa),
@@ -18,6 +21,7 @@ Chạy: python -m har_edge.bot
 """
 import json
 import logging
+import math
 import re
 import signal
 import threading
@@ -38,6 +42,7 @@ VI = {"stand": "Đứng", "sit": "Ngồi", "lie": "Nằm", "walk": "Đi bộ", "
 ORDER = ["stand", "sit", "lie", "walk", "stairs_up", "stairs_down", "fall"]
 COMMANDS = [("trangthai", "Người đeo đang làm gì"), ("homnay", "Thống kê hôm nay"),
             ("coi", "Bật còi 5 / 30 / 60 giây"), ("tatcoi", "Dừng còi đang kêu"),
+            ("hieuchinh", "Hiệu chỉnh hướng đứng thẳng (đổi người/cách đeo)"),
             ("help", "Danh sách lệnh")]
 CANCEL_WINDOW_MS = 10_000  # firmware/include/config.h
 CONFIRMED_BUZZ_MS = 30_000
@@ -48,6 +53,10 @@ ONLINE_MS = 15_000
 BEEP_OPTIONS_S = (5, 30, 60)
 MAX_BEEP_S = 60
 STOP_BEEP = {"inline_keyboard": [[{"text": "⏹ Dừng còi", "callback_data": "beepstop"}]]}
+UPRIGHT_DEFAULT = (-1.0, 0.0, 0.0)  # cách đeo chuẩn: trục X chỉ xuống đất (firmware/include/config.h)
+UPRIGHT_WARN_DEG = 45  # đổi nhiều hơn mức này: nhắc kiểm tra (giống record.py)
+CAL_TIMEOUT_MS = 25_000
+CAL_FAIL = {"moving": "người đeo đang cử động", "bad_gravity": "gia tốc đo được không phải 1 g"}
 
 
 def fall_buttons(alert_id: str) -> dict:
@@ -58,6 +67,17 @@ def fall_buttons(alert_id: str) -> dict:
 
 def beep_menu() -> dict:
     return {"inline_keyboard": [[{"text": f"🔔 {s} giây", "callback_data": f"beep:{s}"} for s in BEEP_OPTIONS_S]]}
+
+
+def angle_deg(a, b) -> float | None:
+    """Góc (độ) giữa hai vector 3 chiều; None nếu thiếu."""
+    try:
+        na = sum(x * x for x in a) ** 0.5
+        nb = sum(x * x for x in b) ** 0.5
+        c = sum(x * y for x, y in zip(a, b)) / (na * nb)
+    except (TypeError, ZeroDivisionError):
+        return None
+    return math.degrees(math.acos(max(-1.0, min(1.0, c))))
 
 
 def _hm(t_ms: int) -> str:
@@ -101,6 +121,10 @@ class Bot:
         self.allowed = {i.strip() for i in ids if i.strip()}
         self.status: dict[str, dict] = {}  # dev -> status mới nhất (retained từ ESP32)
         self.beep_until: dict[str, int] = {}  # dev -> lúc còi /coi tự dừng
+        self.cal_pending: dict[str, dict] = {}  # id lệnh /hieuchinh -> {chat, who, dev, t}
+        self.cal_done: dict[str, tuple] = {}  # dev -> (upright_req, upright_result) đã báo
+        self.restore: dict[str, tuple] = {}  # id lần hiệu chỉnh -> (dev, hướng cũ)
+        self.lock = threading.Lock()  # on_status chạy trên luồng MQTT
         self.offset = 0
 
     # ---------- Telegram ----------
@@ -157,6 +181,8 @@ class Bot:
                 self.reply(chat, text, **({"reply_markup": STOP_BEEP} if ok else {}))
         elif cmd == "tatcoi":
             self.reply(chat, self.silence(who))
+        elif cmd == "hieuchinh":
+            self.reply(chat, self.calibrate(chat, who))
         elif cmd in ("start", "help"):
             self.reply(chat, "<b>Bộ đeo HAR</b>\n" + "\n".join(f"/{c} – {d}" for c, d in COMMANDS))
         else:
@@ -180,6 +206,12 @@ class Bot:
             self.reply(chat, text, **({"reply_markup": STOP_BEEP} if ok else {}))
         elif action == "beepstop":
             text = self.stop_beep(who) or "Còi đã dừng rồi."
+            self.api("answerCallbackQuery", callback_query_id=cq["id"], text=_plain(text)[:190])
+            self.api("editMessageReplyMarkup", chat_id=chat, message_id=msg.get("message_id"),
+                     reply_markup={"inline_keyboard": []})
+            self.reply(chat, text, reply_to_message_id=msg.get("message_id"))
+        elif action == "uprestore":
+            text = self.restore_upright(ref, who)
             self.api("answerCallbackQuery", callback_query_id=cq["id"], text=_plain(text)[:190])
             self.api("editMessageReplyMarkup", chat_id=chat, message_id=msg.get("message_id"),
                      reply_markup={"inline_keyboard": []})
@@ -273,9 +305,77 @@ class Bot:
         return (f"🔕 <b>{escape(who)}</b> đã tắt còi lúc {_hms(self.now())}. "
                 "Cảnh báo té vẫn được lưu; hãy liên lạc với người đeo.")
 
+    def calibrate(self, chat: str, who: str) -> str:
+        dev = self.dev()
+        if self.online(dev) is False:
+            return f"📴 Bộ đeo <code>{escape(dev)}</code> đang offline, không hiệu chỉnh được."
+        if self.alarm_state(dev)[0] != "idle":
+            return "⚠️ Bộ đeo đang cảnh báo té, chưa hiệu chỉnh lúc này."
+        req = f"tg-{self.now() // 1000}"
+        with self.lock:
+            self.cal_pending[req] = {"chat": chat, "who": who, "dev": dev, "t": self.now()}
+        self.publish(f"har/{dev}/cmd", {"cmd": "calibrate_upright", "id": req})
+        self.record(who, "calibrate", req)
+        return ("🧍 Người đeo hãy <b>đứng thẳng như bình thường và giữ yên khoảng 4 giây</b>. "
+                "Bộ đeo đang đo, kết quả sẽ gửi về đây.")
+
+    def restore_upright(self, ref: str, who: str) -> str:
+        with self.lock:
+            item = self.restore.pop(ref, None)
+        if not item:
+            return "Không còn hướng cũ để khôi phục (bot đã khởi động lại hoặc đã khôi phục rồi)."
+        dev, old = item
+        self.publish(f"har/{dev}/cmd", {"cmd": "set_upright", "up": [round(float(x), 4) for x in old]})
+        self.record(who, "upright_restore", ref)
+        return f"↩️ <b>{escape(who)}</b> đã khôi phục hướng đứng thẳng cũ cho <code>{escape(dev)}</code>."
+
+    def on_calibration(self, dev: str, old: dict, st: dict) -> None:
+        """Gọi khi status báo kết quả hiệu chỉnh mới: trả lời /hieuchinh hoặc báo lần người đeo nhấn nút."""
+        req, res = st.get("upright_req") or "", st.get("upright_result")
+        with self.lock:
+            pend = self.cal_pending.pop(req, None)
+        if pend:
+            chat, src = pend["chat"], f"theo lệnh của <b>{escape(pend['who'])}</b>"
+        elif req.startswith("btn-"):
+            chat, src = self.cfg.telegram_chat_id, "bằng <b>nút trên bộ đeo</b> (nhấn 3 lần)"
+        else:
+            return  # record.py (thu dữ liệu) hoặc lệnh khác: không báo
+        if res != "ok":
+            why = CAL_FAIL.get(res, res)
+            self.reply(chat, f"❌ Hiệu chỉnh hướng đứng {src} <b>chưa đạt</b> ({escape(str(why))}). Giữ hướng cũ.\n"
+                             "Thử lại: người đeo đứng thẳng yên rồi gõ /hieuchinh, hoặc nhấn nút 3 lần.")
+            return
+        new, prev = st.get("upright"), old.get("upright")
+        change, tilt = angle_deg(new, prev), angle_deg(new, UPRIGHT_DEFAULT)
+        lines = [f"✅ Đã hiệu chỉnh hướng đứng thẳng {src} lúc {_hms(self.now())}."]
+        if tilt is not None:
+            lines.append(f"Nghiêng {tilt:.0f}° so với cách đeo chuẩn"
+                         + (f", đổi {change:.0f}° so với hướng trước." if change is not None else "."))
+        markup = {}
+        if prev and change is not None and change >= 1:
+            with self.lock:
+                self.restore[req] = (dev, prev)
+            markup = {"reply_markup": {"inline_keyboard": [[{"text": "↩️ Khôi phục hướng cũ",
+                                                             "callback_data": f"uprestore:{req}"}]]}}
+        if change is not None and change > UPRIGHT_WARN_DEG:
+            lines.append(f"⚠️ Đổi hơn {UPRIGHT_WARN_DEG}°: nếu lúc đo người đeo không đứng thẳng (đang ngồi, nằm, cúi), "
+                         "bấm Khôi phục rồi hiệu chỉnh lại.")
+        self.record("bộ đeo" if req.startswith("btn-") else (pend or {}).get("who", ""), "calibrated", req)
+        self.reply(chat, "\n".join(lines), **markup)
+
+    def check_timeouts(self) -> None:
+        now = self.now()
+        with self.lock:
+            late = [(k, v) for k, v in self.cal_pending.items() if now - v["t"] > CAL_TIMEOUT_MS]
+            for k, _ in late:
+                self.cal_pending.pop(k, None)
+        for _, v in late:
+            self.reply(v["chat"], "⌛ Không nhận được kết quả hiệu chỉnh từ bộ đeo. Kiểm tra kết nối rồi thử lại /hieuchinh.")
+
     def record(self, who: str, action: str, ref: str) -> None:
-        self.conn.execute("INSERT INTO bot_actions (t, who, action, ref) VALUES (?, ?, ?, ?)",
-                          (self.now(), who, action, ref))
+        with self.lock:
+            self.conn.execute("INSERT INTO bot_actions (t, who, action, ref) VALUES (?, ?, ?, ?)",
+                              (self.now(), who, action, ref))
 
     # ---------- nội dung ----------
     def status_text(self) -> str:
@@ -351,8 +451,21 @@ class Bot:
     # ---------- MQTT ----------
     def on_status(self, topic: str, payload: dict) -> None:
         dev, kind = topic_parts(topic)
-        if kind == "status" and dev:
-            self.status[dev] = {**payload, "_rx": self.now()}
+        if kind != "status" or not dev:
+            return
+        old = self.status.get(dev)
+        self.status[dev] = {**old, **payload, "_rx": self.now()} if old else {**payload, "_rx": self.now()}
+        key = (payload.get("upright_req"), payload.get("upright_result"))
+        if old is None:  # status đầu tiên (retained) lúc bot vừa chạy: kết quả cũ, không báo lại
+            self.cal_done[dev] = key
+            return
+        if key[0] is None or key[1] in (None, "none", "pending") or self.cal_done.get(dev) == key:
+            return
+        self.cal_done[dev] = key
+        try:
+            self.on_calibration(dev, old or {}, payload)
+        except Exception:
+            log.exception("Lỗi báo kết quả hiệu chỉnh")
 
 
 def _plain(html_text: str) -> str:
@@ -378,7 +491,8 @@ def main() -> None:
             if not registered:
                 bot.register_commands()  # menu lệnh trong Telegram
                 registered = True
-            bot.poll_once(timeout=25)
+            bot.poll_once(timeout=10)
+            bot.check_timeouts()
             fails = 0
         except Exception:
             fails += 1

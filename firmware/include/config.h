@@ -23,6 +23,10 @@
 // Hiệu chỉnh hướng đứng thẳng (lib/upright_cal) theo lệnh {"cmd":"calibrate_upright","id":...}:
 // người đeo đứng thẳng yên; mỗi lần thử 2 s, tối đa N lần. Kết quả lưu NVS, gửi trong status.
 #define UPRIGHT_CAL_TRIES 4     // 4 × 2 s = 8 s
+// Hiệu chỉnh bằng nút (nhấn 3 lần, lib/cal_flow): đếm ngược để người đeo buông tay, đứng thẳng rồi mới đo
+#define CAL_COUNTDOWN_MS 2000
+#define CAL_TIMEOUT_MS 15000    // > UPRIGHT_CAL_TRIES × 2 s
+#define CAL_SHOW_MS 5000        // hiện kết quả trên OLED
 
 // --- Mạng ---
 #define MQTT_BUFFER_SIZE 2048   // mặc định 256 B của PubSubClient sẽ làm rơi gói IMU

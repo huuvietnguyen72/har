@@ -71,6 +71,8 @@ struct SharedState {
   uint32_t alarmUntilMs = 0;
   uint32_t displayWakeMs = 0;
   uint32_t recordSinceMs = 0;  // millis() lúc nhận display mode=record; 0 = không thu
+  uint8_t calPhase = 0;        // hiệu chỉnh bằng nút (CalFlow::Phase): 0 = không, 1 đếm ngược, 2 đo, 3 ok, 4 không đạt
+  uint8_t calLeftS = 0;        // giây đếm ngược còn lại
 };
 
 extern SharedState g;

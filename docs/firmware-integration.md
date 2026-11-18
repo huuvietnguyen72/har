@@ -332,6 +332,17 @@ Tần số 2,0 Hz trùng nhịp loa khi nghi té (kêu 200 ms, nghỉ 300 ms). G
 
 Báo giả trên hoạt động tự thu (1,1 giờ) bằng 0 ở mọi cấu hình. **Hạn chế:** ngưỡng 0,5 được chọn trên chính 23 cú té của một người, và nằm sát bờ (ở 0,55 model chỉ còn bắt 6/23), nên 96 % là con số lạc quan. Cần kiểm tra lại khi có thêm người té thật.
 
+## 20. Hiệu chỉnh hướng đứng thẳng bằng nút và Telegram
+
+**Bối cảnh.** Bộ đeo sẽ được đeo bởi người khác và ở vị trí khác lúc thu dữ liệu. Hướng đứng thẳng (`upright`) quyết định góc nghiêng, đặc trưng quan trọng nhất của model, và bước kiểm tra tư thế sau té. Trước đây chỉ `record.py` hoặc lệnh MQTT gõ tay mới hiệu chỉnh được; bộ đeo đang dùng giá trị NVS của lần đo cuối của S01 (nghiêng 22,6°).
+
+**Thêm.**
+- **Nút:** nhấn 3 lần khi không có cảnh báo (`lib/button` thêm `TRIPLE`; `DOUBLE` giờ chờ 0,4 s để phân biệt). `lib/cal_flow` (C++ thuần): đếm ngược 2 s để người đeo buông tay → `requestUprightCal("btn-<giây>")` → kết quả trên OLED (tiếng Việt) và loa (bíp dài = đạt, 3 bíp ngắn = chưa đạt). Cảnh báo té luôn được ưu tiên: đang hiệu chỉnh mà có té thì hủy luồng hiệu chỉnh.
+- **Telegram:** `/hieuchinh` gửi `calibrate_upright` với id `tg-<giây>`; `har-bot` đọc `upright_req`/`upright_result` trong `status` và trả kết quả. Lần hiệu chỉnh bằng nút cũng được báo.
+- **Không chặn theo góc trong firmware:** test cũ đã chấp nhận đeo ngược, và cách đeo mới có thể khác nhiều. Thay vào đó, mỗi lần hiệu chỉnh đều báo góc nghiêng so với cách đeo chuẩn và góc đổi so với hướng trước; đổi > 45° thì nhắc kiểm tra, kèm nút **Khôi phục hướng cũ** (`set_upright`). Góc của các lần hiệu chỉnh thật S01–S04: 7,7°–26,5°; nằm ≈ 90°.
+
+**Kiểm chứng.** Firmware native 21/21 (thêm: nhấn 3 lần, nhấn đúp chờ lần thứ 3, luồng đếm ngược–đo–kết quả, hết giờ, mốc thời gian đảo). Edge 34/34 (thêm: `/hieuchinh` → kết quả → khôi phục, báo lần nhấn nút, không báo lại status lặp, không báo `record.py`, hết giờ chờ).
+
 ## Kết quả kiểm tra
 
 | Phép thử | Kết quả |

@@ -78,6 +78,11 @@ void draw() {
   v.alarm = g.alarm == ALARM_SUSPECTED ? OLED_SUSPECTED : g.alarm == ALARM_CONFIRMED ? OLED_CONFIRMED : OLED_IDLE;
   v.alarmLeftS = (int)((int32_t)(g.alarmUntilMs - millis()) / 1000) + 1;
   v.recording = recording;
+  v.cal = g.calPhase;
+  v.calLeftS = g.calLeftS;
+  char calResult[12];
+  strlcpy(calResult, g.uprightResult, sizeof(calResult));
+  v.calResult = calResult;
   v.label = recording ? activity : label;
   v.conf = recording ? NAN : conf;
   oledDraw(oled.getU8g2(), &v);
@@ -134,7 +139,7 @@ void displayTask(void*) {
     vTaskDelay(pdMS_TO_TICKS(DISPLAY_REFRESH_MS));
     if (!ready) continue;
     const uint32_t idle = millis() - g.displayWakeMs;
-    const bool alarm = g.alarm != ALARM_IDLE;
+    const bool alarm = g.alarm != ALARM_IDLE || g.calPhase != 0;  // cảnh báo hoặc đang hiệu chỉnh: luôn sáng
     const bool want = alarm || DISPLAY_TIMEOUT_MS == 0 || idle < (uint32_t)DISPLAY_TIMEOUT_MS;
     const bool dim = !alarm && DISPLAY_DIM_MS > 0 && idle >= (uint32_t)DISPLAY_DIM_MS;
     if (want != on) {

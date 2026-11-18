@@ -4,6 +4,7 @@
 
 #include "alarm_fsm.h"
 #include "button.h"
+#include "cal_flow.h"
 #include "fall_detector.h"
 #include "gyro_cal.h"
 #include "upright_cal.h"
@@ -116,6 +117,48 @@ void test_button_single_double_long() {
   TEST_ASSERT_TRUE(ev & Button::LONG);
   ev = run(b, false, now, 800);
   TEST_ASSERT_FALSE(ev & (Button::SINGLE | Button::DOUBLE));
+}
+
+void test_button_triple_and_double_waits() {
+  Button b;
+  uint32_t now = 0;
+  // nhấn đúp: DOUBLE chỉ phát sau thời gian chờ lần nhấn thứ 3
+  uint8_t ev = run(b, true, now, 80) | run(b, false, now, 120) | run(b, true, now, 80) | run(b, false, now, 200);
+  TEST_ASSERT_FALSE(ev & (Button::DOUBLE | Button::TRIPLE | Button::SINGLE));
+  ev = run(b, false, now, 400);
+  TEST_ASSERT_TRUE(ev & Button::DOUBLE);
+  // nhấn 3 lần: TRIPLE, không kèm SINGLE/DOUBLE
+  ev = run(b, true, now, 80) | run(b, false, now, 120) | run(b, true, now, 80) | run(b, false, now, 120) |
+       run(b, true, now, 80) | run(b, false, now, 600);
+  TEST_ASSERT_TRUE(ev & Button::TRIPLE);
+  TEST_ASSERT_FALSE(ev & (Button::SINGLE | Button::DOUBLE));
+}
+
+void test_cal_flow_countdown_measure_result() {
+  CalFlow c(2000, 15000, 5000);
+  TEST_ASSERT_TRUE(c.start(1000));
+  TEST_ASSERT_FALSE(c.start(1500));  // đang đếm ngược: bỏ qua lần nhấn mới
+  TEST_ASSERT_EQUAL(2, c.leftS(1100));
+  TEST_ASSERT_EQUAL(CalFlow::NONE, c.update(2900, 0));
+  TEST_ASSERT_EQUAL(CalFlow::BEGIN_MEASURE, c.update(3000, 0));
+  TEST_ASSERT_EQUAL(CalFlow::NONE, c.update(5000, 0));
+  TEST_ASSERT_EQUAL(CalFlow::DONE_OK, c.update(7000, 1));
+  TEST_ASSERT_EQUAL(CalFlow::OK, c.phase());
+  TEST_ASSERT_TRUE(c.start(8000));  // đang hiện kết quả: được bắt đầu lại
+  c.update(10000, 0);
+  TEST_ASSERT_EQUAL(CalFlow::DONE_FAIL, c.update(10500, 2));  // cử động
+  c.update(15600, 0);
+  TEST_ASSERT_EQUAL(CalFlow::IDLE, c.phase());
+}
+
+void test_cal_flow_timeout_and_clock_order() {
+  CalFlow c(2000, 15000, 5000);
+  c.start(1000);
+  TEST_ASSERT_EQUAL(CalFlow::NONE, c.update(999, 0));  // now cũ hơn mốc: không tràn số
+  TEST_ASSERT_EQUAL(CalFlow::BEGIN_MEASURE, c.update(3000, 0));
+  TEST_ASSERT_EQUAL(CalFlow::DONE_FAIL, c.update(18000, 0));  // không có kết quả sau 15 s
+  c.abort();
+  TEST_ASSERT_EQUAL(CalFlow::IDLE, c.phase());
 }
 
 void test_button_debounce() {
@@ -319,5 +362,8 @@ int main() {
   RUN_TEST(test_upright_upside_down_accepted);
   RUN_TEST(test_upright_rejects_moving_and_bad_gravity);
   RUN_TEST(test_fall_uses_calibrated_upright);
+  RUN_TEST(test_button_triple_and_double_waits);
+  RUN_TEST(test_cal_flow_countdown_measure_result);
+  RUN_TEST(test_cal_flow_timeout_and_clock_order);
   return UNITY_END();
 }

@@ -20,7 +20,8 @@ PlatformIO + Arduino framework (espressif32 6.9.0). Chân: [`include/pins.h`](in
 | `src/display.cpp` + `src/oled_layout.h` | **displayTask**: OLED (U8g2, chung bus I2C với cảm biến), nhãn tiếng Anh "Lie (70%)", cảnh báo té tiếng Việt; ≤ 2 lần/giây, luôn sáng (giảm sáng sau 60 s không nhấn nút; đổi trong `config.h`) |
 | `src/events.cpp` | Sự kiện lưu LittleFS (mỗi sự kiện một file), giờ hệ thống, ngưỡng lưu NVS |
 | `lib/fall_detector/` | Phát hiện té bằng ngưỡng, C++ thuần — giống hệt `edge/har_edge/fall_threshold.py` |
-| `lib/button/` | Nhận dạng nhấn 1 lần / nhấn đúp / giữ 3 s, chống dội |
+| `lib/button/` | Nhận dạng nhấn 1 lần / nhấn đúp / nhấn 3 lần / giữ 3 s, chống dội |
+| `lib/cal_flow/` | Luồng hiệu chỉnh hướng đứng thẳng bằng nút: đếm ngược → đo → báo kết quả |
 | `lib/gyro_cal/`, `lib/upright_cal/` | Hiệu chỉnh độ lệch con quay và hướng đứng thẳng |
 | `include/config.h` | Mọi hằng số: tần số, vòng đệm, thời gian hủy, ngoại vi |
 
@@ -38,7 +39,8 @@ PlatformIO + Arduino framework (espressif32 6.9.0). Chân: [`include/pins.h`](in
 | --- | --- | --- |
 | Nhấn 1 lần | Đang cảnh báo | Hủy (`cancelled`) / tắt loa sau khi đã xác nhận |
 | Nhấn 1 lần | Bình thường | Bật màn hình |
-| Nhấn đúp | Bình thường | Gửi `marker` (đồng bộ video khi thu dataset) |
+| Nhấn đúp | Bình thường | Gửi `marker` (đồng bộ video khi thu dataset); phát sau 0,4 s chờ lần nhấn thứ 3 |
+| Nhấn 3 lần | Bình thường | **Hiệu chỉnh hướng đứng thẳng**: bíp 2 tiếng, OLED "ĐỨNG THẲNG – Giữ yên… 2s", đo tối đa 4 × 2 s. Đạt: bíp dài, OLED "ĐÃ HIỆU CHỈNH". Chưa đạt: 3 bíp ngắn, OLED nêu lý do, giữ hướng cũ. Lưu NVS; `upright_req` = `btn-<giây>` |
 | Giữ 3 s | Bình thường | Gửi `sos` |
 
 | Đèn | Ý nghĩa |
