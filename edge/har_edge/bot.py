@@ -3,8 +3,9 @@
 Lệnh (chỉ nhận từ chat trong TELEGRAM_CHAT_ID / TELEGRAM_ALLOWED_IDS):
 - /trangthai : đang làm gì, từ lúc nào, bộ đeo online không, cảnh báo gần nhất
 - /homnay    : thời gian từng hoạt động hôm nay (theo dự đoán), số cảnh báo
-- /coi [giây]: bật còi trên bộ đeo (mặc định 3 s, tối đa 10 s) để tìm bộ đeo hoặc gọi người đeo
-- /tatcoi    : tắt còi đang kêu sau khi té đã xác nhận
+- /coi       : chọn bật còi 5 / 30 / 60 giây (hoặc /coi 20, tối đa 60 s) để tìm bộ đeo hoặc gọi người đeo;
+               tin trả lời có nút "Dừng còi" (nút trên bộ đeo không tắt được còi này)
+- /tatcoi    : dừng còi /coi, hoặc tắt còi cảnh báo sau khi té đã xác nhận
 Nút dưới tin cảnh báo té (har-notify gắn): "Tắt còi" và "Đã kiểm tra, ổn".
 
 An toàn: firmware xử lý cancel_alarm trong 10 s chờ hủy như người đeo tự hủy (cú ngã không được báo nữa),
@@ -35,7 +36,7 @@ VI = {"stand": "Đứng", "sit": "Ngồi", "lie": "Nằm", "walk": "Đi bộ", "
       "stairs_down": "Xuống cầu thang", "fall": "Té"}
 ORDER = ["stand", "sit", "lie", "walk", "stairs_up", "stairs_down", "fall"]
 COMMANDS = [("trangthai", "Người đeo đang làm gì"), ("homnay", "Thống kê hôm nay"),
-            ("coi", "Bật còi trên bộ đeo (vd /coi 5)"), ("tatcoi", "Tắt còi sau khi té đã xác nhận"),
+            ("coi", "Bật còi 5 / 30 / 60 giây"), ("tatcoi", "Dừng còi đang kêu"),
             ("help", "Danh sách lệnh")]
 CANCEL_WINDOW_MS = 10_000  # firmware/include/config.h
 CONFIRMED_BUZZ_MS = 30_000
@@ -43,12 +44,19 @@ PENDING_MS = 15_000  # nghi té chưa có kết quả quá mốc này coi như �
 STALE_MSG_S = 120
 GAP_MS = 5_000  # khoảng trống giữa hai dự đoán lớn hơn mốc này = không có dữ liệu
 ONLINE_MS = 15_000
+BEEP_OPTIONS_S = (5, 30, 60)
+MAX_BEEP_S = 60
+STOP_BEEP = {"inline_keyboard": [[{"text": "⏹ Dừng còi", "callback_data": "beepstop"}]]}
 
 
 def fall_buttons(alert_id: str) -> dict:
     """Nút dưới tin cảnh báo té/SOS (har-notify gắn, har-bot xử lý)."""
     return {"inline_keyboard": [[{"text": "🔕 Tắt còi", "callback_data": f"silence:{alert_id}"},
                                  {"text": "✅ Đã kiểm tra, ổn", "callback_data": f"ack:{alert_id}"}]]}
+
+
+def beep_menu() -> dict:
+    return {"inline_keyboard": [[{"text": f"🔔 {s} giây", "callback_data": f"beep:{s}"} for s in BEEP_OPTIONS_S]]}
 
 
 def _hm(t_ms: int) -> str:
@@ -91,6 +99,7 @@ class Bot:
         ids = [cfg.telegram_chat_id, *cfg.telegram_allowed_ids.split(",")]
         self.allowed = {i.strip() for i in ids if i.strip()}
         self.status: dict[str, dict] = {}  # dev -> status mới nhất (retained từ ESP32)
+        self.beep_until: dict[str, int] = {}  # dev -> lúc còi /coi tự dừng
         self.offset = 0
 
     # ---------- Telegram ----------
@@ -140,7 +149,11 @@ class Bot:
         elif cmd == "homnay":
             self.reply(chat, self.today_text())
         elif cmd == "coi":
-            self.reply(chat, self.beep(args[0] if args else "", who))
+            if not args:
+                self.reply(chat, "Bật còi trên bộ đeo trong bao lâu?", reply_markup=beep_menu())
+            else:
+                text, ok = self.beep(args[0], who)
+                self.reply(chat, text, **({"reply_markup": STOP_BEEP} if ok else {}))
         elif cmd == "tatcoi":
             self.reply(chat, self.silence(who))
         elif cmd in ("start", "help"):
@@ -159,6 +172,16 @@ class Bot:
         if action == "silence":
             text = self.silence(who, ref)
             self.api("answerCallbackQuery", callback_query_id=cq["id"], text=_plain(text)[:190])
+            self.reply(chat, text, reply_to_message_id=msg.get("message_id"))
+        elif action == "beep":
+            text, ok = self.beep(ref, who)
+            self.api("answerCallbackQuery", callback_query_id=cq["id"], text=_plain(text)[:190])
+            self.reply(chat, text, **({"reply_markup": STOP_BEEP} if ok else {}))
+        elif action == "beepstop":
+            text = self.stop_beep(who) or "Còi đã dừng rồi."
+            self.api("answerCallbackQuery", callback_query_id=cq["id"], text=_plain(text)[:190])
+            self.api("editMessageReplyMarkup", chat_id=chat, message_id=msg.get("message_id"),
+                     reply_markup={"inline_keyboard": []})
             self.reply(chat, text, reply_to_message_id=msg.get("message_id"))
         elif action == "ack":
             self.record(who, "ack", ref)
@@ -206,29 +229,44 @@ class Bot:
             state = "idle"
         return state, ev
 
-    def beep(self, arg: str, who: str) -> str:
+    def beep(self, arg: str, who: str) -> tuple[str, bool]:
+        """Bật còi (lệnh beep của firmware). Trả (tin trả lời, đã gửi lệnh)."""
         dev = self.dev()
         try:
-            secs = float(arg.replace(",", ".")) if arg else 3.0
+            secs = float(arg.replace(",", "."))
         except ValueError:
-            return "Cách dùng: /coi hoặc /coi 5 (số giây, tối đa 10)."
-        secs = max(0.5, min(10.0, secs))
+            return f"Cách dùng: /coi rồi chọn, hoặc /coi 20 (số giây, tối đa {MAX_BEEP_S}).", False
+        secs = max(0.5, min(float(MAX_BEEP_S), secs))
         if self.online(dev) is False:
-            return f"📴 Bộ đeo <code>{escape(dev)}</code> đang offline, không bật còi được."
+            return f"📴 Bộ đeo <code>{escape(dev)}</code> đang offline, không bật còi được.", False
         self.publish(f"har/{dev}/cmd", {"cmd": "beep", "ms": int(secs * 1000)})
-        self.record(who, "beep", dev)
-        return f"🔔 Đã gửi lệnh bật còi {secs:g} giây tới <code>{escape(dev)}</code>."
+        self.beep_until[dev] = self.now() + int(secs * 1000)
+        self.record(who, "beep", f"{dev}:{secs:g}s")
+        return (f"🔔 <b>{escape(who)}</b> đã bật còi {secs:g} giây trên <code>{escape(dev)}</code> "
+                f"(tới {_hms(self.beep_until[dev])}). Nút trên bộ đeo không tắt được còi này; "
+                "bấm Dừng còi hoặc gõ /tatcoi."), True
+
+    def stop_beep(self, who: str) -> str | None:
+        """Dừng còi /coi (beep 0 ms). Không đụng tới cảnh báo té. None nếu còi đã tự dừng."""
+        dev = self.dev()
+        if self.beep_until.get(dev, 0) <= self.now():
+            return None
+        self.publish(f"har/{dev}/cmd", {"cmd": "beep", "ms": 0})
+        self.beep_until.pop(dev, None)
+        self.record(who, "beep_stop", dev)
+        return f"⏹ <b>{escape(who)}</b> đã dừng còi lúc {_hms(self.now())}."
 
     def silence(self, who: str, ref: str = "") -> str:
         dev = self.dev()
+        stopped = self.stop_beep(who)
         state, ev = self.alarm_state(dev)
         if state == "pending":
-            left = max(0, CANCEL_WINDOW_MS - (self.now() - ev["t"])) / 1000
-            return ("⏳ Bộ đeo đang trong 10 s chờ người đeo tự hủy (còn khoảng "
-                    f"{left:.0f} s). Tắt từ xa lúc này sẽ <b>hủy luôn cảnh báo té</b>, nên bot không làm. "
-                    "Nếu người đeo ổn, họ nhấn nút trên bộ đeo.")
+            return ((stopped + "\n") if stopped else "") + (
+                "⏳ Bộ đeo đang trong 10 s chờ người đeo tự hủy cảnh báo té (còn khoảng "
+                f"{max(0, CANCEL_WINDOW_MS - (self.now() - ev['t'])) / 1000:.0f} s). Tắt từ xa lúc này sẽ "
+                "<b>hủy luôn cảnh báo té</b>, nên bot không làm. Nếu người đeo ổn, họ nhấn nút trên bộ đeo.")
         if state == "idle":
-            return "🔕 Hiện không có còi cảnh báo nào đang kêu."
+            return stopped or "🔕 Hiện không có còi nào đang kêu."
         self.publish(f"har/{dev}/cmd", {"cmd": "cancel_alarm"})
         self.record(who, "silence", ref or ev["id"])
         return (f"🔕 <b>{escape(who)}</b> đã tắt còi lúc {_hms(self.now())}. "

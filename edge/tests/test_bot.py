@@ -57,14 +57,44 @@ def test_ignores_other_chats_and_stale_commands(env):
     assert published == [] and calls == []
 
 
+def test_beep_menu_options_and_stop(env):
+    bot, conn, calls, published, clock = env
+    bot.handle_update(msg("/coi"))  # không có số giây -> hiện lựa chọn, chưa kêu
+    assert published == []
+    menu = [b for m, b in calls if m == "sendMessage"][-1]["reply_markup"]["inline_keyboard"][0]
+    assert [b["callback_data"] for b in menu] == ["beep:5", "beep:30", "beep:60"]
+    cq = {"id": "q", "data": "beep:30", "from": {"first_name": "Viet"}, "message": {"message_id": 3, "chat": {"id": int(CHAT)}}}
+    bot.handle_update({"update_id": 2, "callback_query": cq})
+    assert published == [("har/har01/cmd", {"cmd": "beep", "ms": 30000})]
+    assert [b for m, b in calls if m == "sendMessage"][-1]["reply_markup"]["inline_keyboard"][0][0]["callback_data"] == "beepstop"
+    clock["now"] = NOW + 10_000
+    bot.handle_update({"update_id": 3, "callback_query": {**cq, "data": "beepstop"}})
+    assert published[-1] == ("har/har01/cmd", {"cmd": "beep", "ms": 0})  # dừng còi, không cancel_alarm
+    bot.handle_update({"update_id": 4, "callback_query": {**cq, "data": "beepstop"}})
+    assert len(published) == 2 and "đã dừng rồi" in sent_texts(calls)[-1]
+    assert [r[0] for r in conn.execute("SELECT action FROM bot_actions ORDER BY id")] == ["beep", "beep_stop"]
+
+
+def test_tatcoi_stops_beep_but_never_cancels_pending_fall(env):
+    bot, conn, calls, published, clock = env
+    bot.handle_update(msg("/coi 60"))
+    add_event(conn, "suspected", NOW + 2000, "har01-9")
+    clock["now"] = NOW + 4000
+    bot.handle_update(msg("/tatcoi", t=clock["now"]))
+    assert published == [("har/har01/cmd", {"cmd": "beep", "ms": 60000}), ("har/har01/cmd", {"cmd": "beep", "ms": 0})]
+    assert "đã dừng còi" in sent_texts(calls)[-1] and "hủy luôn cảnh báo té" in sent_texts(calls)[-1]
+
+
 def test_beep_capped_and_offline(env):
     bot, conn, calls, published, _ = env
     bot.handle_update(msg("/coi 5"))
-    bot.handle_update(msg("/coi@harnoti_bot 99"))
-    assert published == [("har/har01/cmd", {"cmd": "beep", "ms": 5000}), ("har/har01/cmd", {"cmd": "beep", "ms": 10000})]
+    bot.handle_update(msg("/coi@harnoti_bot 999"))
+    assert published == [("har/har01/cmd", {"cmd": "beep", "ms": 5000}), ("har/har01/cmd", {"cmd": "beep", "ms": 60000})]
     assert conn.execute("SELECT COUNT(*) FROM bot_actions WHERE action = 'beep'").fetchone()[0] == 2
+    bot.handle_update(msg("/coi abc"))
+    assert len(published) == 2 and "Cách dùng" in sent_texts(calls)[-1]
     bot.on_status("har/har01/status", {"v": 1, "online": False})
-    bot.handle_update(msg("/coi"))
+    bot.handle_update(msg("/coi 5"))
     assert len(published) == 2 and "offline" in sent_texts(calls)[-1]
 
 
