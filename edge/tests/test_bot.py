@@ -170,3 +170,20 @@ def test_notify_attaches_buttons_to_fall_alerts(tmp_path):
     fall = [b for b in bodies if "TÉ" in b["text"]][0]
     assert fall["reply_markup"] == fall_buttons("har01-5")
     assert all("reply_markup" not in b for b in bodies if "mất kết nối" in b["text"])
+
+
+def test_logs_never_contain_bot_token(capsys):
+    import logging
+
+    from har_edge.logutil import setup_logging
+
+    setup_logging()
+    tok = "1234567890:FAKE-token_for_tests_only_xxxxxxxx"  # token giả, không phải token thật
+    log = logging.getLogger("har-bot")
+    logging.getLogger("httpx").info("HTTP Request: POST https://api.telegram.org/bot%s/getUpdates", tok)
+    try:
+        raise httpx.ConnectError(f"lỗi https://api.telegram.org/bot{tok}/sendMessage")
+    except httpx.ConnectError:
+        log.exception("Lỗi vòng bot")
+    err = capsys.readouterr().err
+    assert tok not in err and "bot<token-ẩn>" in err and "HTTP Request" not in err
