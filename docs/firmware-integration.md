@@ -385,6 +385,25 @@ Trên dataset S01–S04 (LOSO) v3 tương đương v2 (macro-F1 A2 0,928 so vớ
 
 **Còn sai:** B "đứng" bị nhận thành "lên cầu thang" 14/50 lần. Áp suất phòng dao động (cửa, quạt) làm độ cao trong 10 s "đổi" tới 0,45 m, vượt ngưỡng chặn 0,3 m. Nâng ngưỡng lên 0,4–0,6 m sửa được chỗ này nhưng làm cầu thang trên T01 giảm mạnh (lên 83 % → 62 % ở 0,6 m) vì các lượt ngắn, nên giữ 0,3 m. Cầu thang bị nhận thành "đi" chủ yếu ở đầu lượt, khi độ cao chưa đổi đủ.
 
+## 23. Thu thêm dữ liệu ở vị trí đeo khác (model v4)
+
+**Vì sao.** Mục 22: model v3 nhận đúng "đứng" ở vị trí thử B và D chủ yếu nhờ bộ chặn cầu thang. Không có bộ chặn, v3 đoán "lên cầu thang" (P(đứng) 0,16 ở D). Khi áp suất phòng dao động, bộ chặn để lọt.
+
+**Dữ liệu** (S01, 20/11, `note` có `train`): 4 vị trí khác với các vị trí thử A–D, để phép chấm trên T01 vẫn công bằng. E: hông phải nghiêng 42,5°; F: hông trái nghiêng 32,6°; G: thắt lưng phía sau; H: bụng lệch trái. Mỗi vị trí: 2 phiên đứng (tự nhiên và đứng sinh hoạt, 60–110 s), 1 phiên đi, 3 lượt lên, 3 lượt xuống cầu thang. Đã bỏ các phiên lỗi (2–6 s, không chuyển động). Dữ liệu T01 không bao giờ chép vào `ml/data/raw`.
+
+**Kết quả** (cùng bộ đặc trưng v3: xoay về hướng đứng + thẳng đứng/nằm ngang):
+
+| | v3 | v4 (học thêm E–H) |
+| --- | --- | --- |
+| Phiên gốc S01–S04 (LOSO, cùng tập chấm) | macro-F1 0,927, đứng 0,79 | **0,963, đứng 0,97** |
+| T01, không bộ chặn: đứng / lên / xuống / TB | 50 % / 92 % / 82 % / 87 % | **99 % / 91 % / 82 % / 95 %** |
+| T01, có bộ chặn | 92 % / 83 % / 76 % / 92 % | 99 % / 82 % / 76 % / 93 % |
+| Té S01 / ADL SisFall báo giả | 23/23 / 21 phiên | 23/23 / 21 phiên |
+
+- "Đứng" của S02–S04 cũng tăng (0,79 → 0,97) dù các phiên đó đeo ở vị trí chuẩn: model học được nhiều dáng đứng hơn.
+- Với v4, bộ chặn cầu thang không còn sửa lỗi đứng nào mà còn chặn nhầm một phần cầu thang thật (T01: 95 % → 93 %). Vẫn giữ bật (`STAIRS_MIN_ALT_M=0,3`) để phòng người hoặc vị trí đeo chưa gặp; đặt 0 để tắt.
+- **Hạn chế:** T01 và S01 là cùng một người, nên 99 % "đứng" trên T01 có phần nhờ model đã quen người này. Khi để riêng S01 (không ai khác có dữ liệu ở vị trí lạ), "đứng" ở E–H chỉ đạt 24 %. Muốn chắc cho người khác, cần thêm người đeo ở vị trí lạ.
+
 ## Kết quả kiểm tra
 
 | Phép thử | Kết quả |
