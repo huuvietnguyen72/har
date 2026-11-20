@@ -1,7 +1,8 @@
 """har-notify: đọc bảng alerts trong SQLite và gửi Telegram.
 
 - Cùng một sự kiện chỉ gửi một lần (cột notified)
-- Cảnh báo cùng loại của cùng thiết bị cách nhau < 60 s thì gộp, không gửi lại
+- Cảnh báo cùng loại của cùng thiết bị cách nhau < 20 s thì gộp (cùng một sự cố bị báo nhiều lần), không gửi lại;
+  hai cú té cách nhau xa hơn vẫn có tin riêng (thử 21/11: cú té thứ hai sau 46 s từng bị gộp mất)
 - Mất Internet: giữ trong hàng, gửi khi có mạng, ghi rõ "gửi trễ" và giờ thật
 - Cảnh báo đã hủy (cancelled) chỉ ghi lại, không gửi
 
@@ -23,7 +24,7 @@ from .logutil import setup_logging
 
 log = logging.getLogger("har-notify")
 
-MERGE_MS = 60_000
+MERGE_MS = 20_000
 LATE_MS = 60_000
 VI = {"stand": "Đứng", "sit": "Ngồi", "lie": "Nằm", "walk": "Đi", "stairs_up": "Lên cầu thang",
       "stairs_down": "Xuống cầu thang", "fall": "Té"}
@@ -92,7 +93,7 @@ class Notifier:
                 "SELECT 1 FROM alerts WHERE dev = ? AND type = ? AND notified = 1 AND id != ? AND ABS(t - ?) < ?",
                 (r["dev"], r["type"], r["id"], r["t"], MERGE_MS)).fetchone()
             if dup:
-                log.info("Gộp cảnh báo %s vào cảnh báo trước (< 60 s)", r["id"])
+                log.info("Gộp cảnh báo %s vào cảnh báo trước (< %d s)", r["id"], MERGE_MS // 1000)
                 self._mark(r["id"], now, 3)
                 continue
             try:

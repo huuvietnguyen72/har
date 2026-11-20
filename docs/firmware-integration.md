@@ -189,7 +189,7 @@ Thỉnh thoảng `MDNS.queryHost("raspivn")` không trả lời trong 2 s, và f
 | --- | --- | --- |
 | Nhấn 1 lần | `[btn] 1-lần` | — |
 | Nhấn đúp | `[btn] nhấn-đúp` | `marker`, 5 lần |
-| Giữ 3 s | `[btn] giữ-3s` | `sos` → cảnh báo mức cao, đã báo trong 0,3 s; các SOS dưới 60 s được gộp |
+| Giữ 3 s | `[btn] giữ-3s` | `sos` → cảnh báo mức cao, đã báo trong 0,3 s; các SOS cách nhau dưới 20 s được gộp (trước 21/11: 60 s) |
 | Thả hộp, nhấn trong 10 s | — | `suspected` lúc 00:47:39, `cancelled` lúc 00:47:41, cảnh báo `cancelled: true`, `notify: false` |
 
 Còi kêu ngắt quãng khi nghi té và bíp khi nhấn; LED xanh và đỏ hoạt động đúng (người dùng xác nhận).
