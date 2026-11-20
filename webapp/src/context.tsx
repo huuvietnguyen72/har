@@ -50,8 +50,14 @@ interface LiveCtx {
   dismiss(id: string): void;
   selectedDev: string | null;
   setSelectedDev(dev: string): void;
+  /** Cảnh báo té / SOS chưa xử lý đang hiện giữa màn hình (components/CriticalAlert.tsx). */
+  critical: HarEvent | null;
+  ackCritical(): Promise<void>;
+  closeCritical(): void;
 }
 const Live = createContext<LiveCtx>(null!);
+const isCritical = (e: HarEvent) => (e.type === "fall" || e.type === "sos") && !e.cancelled && !e.acknowledged;
+const CRITICAL_RECENT_MS = 30 * 60_000;
 export const useLive = () => useContext(Live);
 
 export function LiveProvider({ children }: { children: ReactNode }) {
@@ -61,6 +67,8 @@ export function LiveProvider({ children }: { children: ReactNode }) {
   const [lastEvent, setLastEvent] = useState<HarEvent | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [selectedDev, setSelectedDev] = useState<string | null>(null);
+  const [critical, setCritical] = useState<HarEvent | null>(null);
+  const closedIds = useRef(new Set<string>()); // người dùng đã bấm Đóng: không bật lại
   const selRef = useRef(selectedDev);
   selRef.current = selectedDev;
 
@@ -72,22 +80,27 @@ export function LiveProvider({ children }: { children: ReactNode }) {
       setStatuses(Object.fromEntries(list.map((s) => [s.dev, s])));
       if (!selRef.current && list[0]) setSelectedDev(list[0].dev);
     }).catch(() => {});
+    // mở dashboard mà còn cảnh báo té / SOS chưa xử lý trong 30 phút gần nhất: hiện ngay
+    dataSource.getEvents(undefined, 20).then((evs) => {
+      if (!alive) return;
+      const recent = evs.find((e) => isCritical(e) && Date.now() - e.t < CRITICAL_RECENT_MS && !closedIds.current.has(e.id));
+      if (recent) setCritical((cur) => cur ?? recent);
+    }).catch(() => {});
     const unsub = dataSource.subscribe({
       onStatus: (s) => {
         setStatuses((prev) => ({ ...prev, [s.dev]: s }));
         if (!selRef.current) setSelectedDev(s.dev);
       },
+      onEventState: (e) => {
+        // đã xử lý ở máy khác, hoặc người đeo đã hủy: đóng hộp
+        if (!isCritical(e)) setCritical((cur) => (cur && cur.id === e.id ? null : cur));
+      },
       onEvent: (e) => {
         setLastEvent(e);
-        if (e.new && !e.cancelled) {
+        if (e.new && isCritical(e) && !closedIds.current.has(e.id)) setCritical(e);
+        // té / SOS: hộp giữa màn hình (kêu, rung); cảnh báo khác (pin yếu, mất kết nối): thông báo nhỏ ở góc
+        if (e.new && !e.cancelled && !(e.type === "fall" || e.type === "sos")) {
           setToasts((prev) => [...prev.filter((t) => t.id !== e.id), { id: e.id, event: e }].slice(-4));
-          if (e.type === "fall" || e.type === "sos") {
-            try {
-              navigator.vibrate?.([300, 100, 300]);
-            } catch {
-              /* không hỗ trợ rung */
-            }
-          }
         }
       },
       onConnection: setConnection,
@@ -99,9 +112,22 @@ export function LiveProvider({ children }: { children: ReactNode }) {
   }, [session]);
 
   const dismiss = useCallback((id: string) => setToasts((p) => p.filter((t) => t.id !== id)), []);
+  const closeCritical = useCallback(() => {
+    setCritical((cur) => {
+      if (cur) closedIds.current.add(cur.id);
+      return null;
+    });
+  }, []);
+  const ackCritical = useCallback(async () => {
+    if (!critical) return;
+    const updated = await dataSource.ackEvent(critical.id, true);
+    setLastEvent(updated);
+    closedIds.current.add(critical.id);
+    setCritical(null);
+  }, [critical]);
   const value = useMemo(
-    () => ({ statuses, connection, lastEvent, toasts, dismiss, selectedDev, setSelectedDev }),
-    [statuses, connection, lastEvent, toasts, dismiss, selectedDev],
+    () => ({ statuses, connection, lastEvent, toasts, dismiss, selectedDev, setSelectedDev, critical, ackCritical, closeCritical }),
+    [statuses, connection, lastEvent, toasts, dismiss, selectedDev, critical, ackCritical, closeCritical],
   );
   return <Live.Provider value={value}>{children}</Live.Provider>;
 }

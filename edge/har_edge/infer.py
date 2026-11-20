@@ -157,6 +157,8 @@ class Infer:
         p_fall = float(probs.get("fall", 0.0))
         t_end = int(t[-1])
         st.last_pred_t = t_end
+        if smoothed != st.label:
+            st.last_status_now = 0  # hoạt động đổi: gửi trạng thái (cloud, OLED) ở vòng tick kế tiếp, không chờ 5 s
         st.label, st.conf = smoothed, conf
         st.n_pred += 1
 

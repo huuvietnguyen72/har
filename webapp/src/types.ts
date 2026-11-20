@@ -109,6 +109,8 @@ export interface LiveHandlers {
   onStatus?: (s: Status) => void;
   onEvent?: (e: HarEvent) => void;
   onConnection?: (mode: "ws" | "polling" | "offline") => void;
+  /** Mỗi lần hỏi lại: trạng thái mới nhất của các sự kiện gần đây (đã xử lý / đã hủy ở máy khác). */
+  onEventState?: (e: HarEvent) => void;
 }
 
 export interface DataSource {
