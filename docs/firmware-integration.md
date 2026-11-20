@@ -365,6 +365,26 @@ Báo giả trên hoạt động tự thu (1,1 giờ) bằng 0 ở mọi cấu h�
 
 **Đánh đổi:** lên cầu thang đúng giảm từ 0,80 xuống 0,75, vì những đoạn leo chậm hoặc vừa bắt đầu leo có độ cao đổi chưa tới 0,3 m. Hạ `STAIRS_MIN_ALT_M` thì nhận cầu thang tốt hơn nhưng lại để lọt lỗi đứng bị nhận thành cầu thang.
 
+## 22. Thử ở 4 vị trí đeo và đặc trưng không phụ thuộc hướng quay quanh trục đứng
+
+**Dữ liệu thử T01** (20/11, chỉ dùng để chấm điểm, không huấn luyện; `ml/data/test/`, không lên Git): một người đeo, mỗi vị trí hiệu chỉnh một lần bằng nút rồi thu đứng, ngồi, nằm, đi (60 s mỗi tư thế) và 3 lượt lên, 3 lượt xuống cầu thang. 41 phiên sau khi bỏ 9 phiên thu lỗi (dừng sớm, đứng yên, lẫn lên và xuống). Vị trí: A hông phải như lúc thu dataset, B hông phải nhưng hộp nghiêng 30°, C hông trái, D giữa bụng. Chấm như `har-infer`: dự đoán mỗi 1 s, bỏ 2 s đầu và cuối phiên, bộ chặn cầu thang dùng áp suất liên tục.
+
+**Vấn đề còn lại sau mục 21:** xoay tín hiệu về hướng đứng chỉ sửa độ nghiêng, không sửa hướng hộp quay quanh trục đứng. Ở D (hộp quay ~90° so với lúc thu), model v2 nhận "đứng" thành "ngồi".
+
+**Sửa:** `features.extract_features(..., yaw_invariant=True)` (model ghi `"yaw_invariant": true`). Sau khi xoay về hướng đứng, mỗi tín hiệu tách thành thành phần thẳng đứng và độ lớn nằm ngang (`av`, `ah`, `gv`, `|gv|`, `gh`), thêm phổ của `av`; bỏ đặc trưng theo trục Y, Z. Giá trị không đổi dù đeo bên hông, giữa bụng hay quay hộp trong mặt phẳng.
+
+| Tỉ lệ dự đoán đúng (T01) | v1 | v2 (xoay) + chặn | v3 (thẳng đứng + ngang) + chặn |
+| --- | --- | --- | --- |
+| Trung bình 4 vị trí | 82 % | 88 % | **92 %** |
+| Đứng | 25 % (B 4 %, C 0 %, D 0 %) | 80 % | **92 %** |
+| Lên / xuống cầu thang | 87 % / 81 % | 78 % / 68 % | 83 % / 76 % |
+| Ngồi, nằm, đi | 99–100 % | 100 % | 100 % |
+| Vị trí D | 82 % | 87 % | **99 %** |
+
+Trên dataset S01–S04 (LOSO) v3 tương đương v2 (macro-F1 A2 0,928 so với 0,929); té S01 23/23, ADL SisFall báo giả 21/2.626 phiên như v2.
+
+**Còn sai:** B "đứng" bị nhận thành "lên cầu thang" 14/50 lần. Áp suất phòng dao động (cửa, quạt) làm độ cao trong 10 s "đổi" tới 0,45 m, vượt ngưỡng chặn 0,3 m. Nâng ngưỡng lên 0,4–0,6 m sửa được chỗ này nhưng làm cầu thang trên T01 giảm mạnh (lên 83 % → 62 % ở 0,6 m) vì các lượt ngắn, nên giữ 0,3 m. Cầu thang bị nhận thành "đi" chủ yếu ở đầu lượt, khi độ cao chưa đổi đủ.
+
 ## Kết quả kiểm tra
 
 | Phép thử | Kết quả |

@@ -65,6 +65,8 @@ python train_rf.py --experiment A1 --no-baro --data "data/raw,data/external/sisf
 
 Lý do: thử trực tiếp 19/11, người đeo đứng 2 phút nhưng model cũ đoán "lên cầu thang" 72 % thời gian (hộp nghiêng 26° so với X). Model xoay: 67 % đứng. Thêm bộ chặn của `har-infer` (bỏ nhãn cầu thang khi |Δcao 10 s| < 0,3 m; đứng/đi 0,09–0,11 m, cầu thang 1,5–1,7 m): còn 1 % cầu thang. Luồng 1 s trên phiên tự thu: đứng đúng 0,75 → 0,97, lên cầu thang 0,80 → 0,75.
 
+**Đặc trưng thẳng đứng + nằm ngang (từ 20/11, mặc định, model v3):** `extract_features(..., yaw_invariant=True)` tách tín hiệu đã xoay thành thành phần thẳng đứng và độ lớn nằm ngang, nên không phụ thuộc hộp quay quanh trục đứng (đeo hông, bụng…). `--axis-features` để dùng bộ theo trục (v2). Chấm trên dữ liệu thử T01 ở 4 vị trí đeo (`ml/data/test/`, không huấn luyện): v1 82 %, v2 88 %, **v3 92 %**; trên S01–S04 v3 ≈ v2 (A2 0,928). Chi tiết: `docs/firmware-integration.md` mục 22.
+
 Chỉ S01 thu té, nên khi để riêng S01 làm tập kiểm tra, cột "chỉ tự thu" không có cú té nào để học (F1 té = 0). Với SisFall, F1 té trên S01 là 0,99–1,00 (RF) và 0,91 (CNN). Chỉ có 4 người nên số liệu còn dao động. Với RF, siêu tham số được chọn trên chính các dự đoán out-of-fold, nên kết quả hơi lạc quan.
 
 Mỗi thí nghiệm ghi `results/<thí nghiệm>/metrics.json` (accuracy, macro-F1, F1 từng lớp, ma trận nhầm lẫn, số cửa sổ, số người, phiên bản model). Đẩy lên VPS để trang **Đánh giá model** hiển thị:

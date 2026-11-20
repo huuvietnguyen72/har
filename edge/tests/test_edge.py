@@ -407,3 +407,25 @@ def test_align_to_upright_makes_axis_features_wear_invariant():
     i = FEATURE_NAMES_IMU.index("ax_mean")
     assert abs(f1[i] - f0[i]) < 1e-3 and abs(raw[i] - f0[i]) > 0.05
     assert np.allclose(f0, f1, atol=1e-3)
+
+
+def test_yaw_invariant_features_ignore_rotation_about_vertical():
+    from har_edge.features import FEATURE_NAMES_YAW, feature_names, rotation_to
+
+    n = 125
+    t = np.arange(n) / 50
+    # đi bộ: dao động thẳng đứng 2 Hz + lắc ngang theo một hướng (trước/sau)
+    acc = np.column_stack([-1 - 0.3 * np.sin(2 * np.pi * 2 * t), 0.15 * np.sin(2 * np.pi * 1 * t), 0.05 * np.cos(2 * np.pi * 1 * t)])
+    gyr = np.column_stack([10 * np.sin(2 * np.pi * t), 30 * np.sin(2 * np.pi * 2 * t), 5 * np.cos(2 * np.pi * t)])
+    p = 101_300 + RNG.normal(0, 0.2, n)
+    yaw = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]], float)  # quay 90° quanh trục đứng X (đeo giữa bụng thay vì hông)
+    tilt = rotation_to([-1, 0, 0], [-0.86, -0.48, -0.18])  # rồi nghiêng hộp ~30°
+    up = tilt @ np.array([-1.0, 0, 0])
+    f0 = extract_features(acc, gyr, p, up=[-1, 0, 0], yaw_invariant=True)
+    f1 = extract_features(acc @ (tilt @ yaw).T, gyr @ (tilt @ yaw).T, p, up=up, yaw_invariant=True)
+    assert len(f0) == len(feature_names(True, True)) == len(FEATURE_NAMES_YAW) + 3
+    assert np.allclose(f0, f1, atol=1e-3)
+    # bộ đặc trưng theo trục (v2) thì đổi khi quay quanh trục đứng
+    a0 = extract_features(acc, gyr, p, up=[-1, 0, 0], align=True)
+    a1 = extract_features(acc @ (tilt @ yaw).T, gyr @ (tilt @ yaw).T, p, up=up, align=True)
+    assert not np.allclose(a0, a1, atol=1e-3)

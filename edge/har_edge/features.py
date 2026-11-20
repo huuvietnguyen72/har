@@ -22,11 +22,22 @@ FEATURE_NAMES_IMU: list[str] = (
     + ["svm_dom_freq", "svm_e_0_3hz", "svm_e_3_6hz", "svm_e_6_12hz", "svm_e_total"]
     + ["tilt_deg", "tilt_std_deg", "svm_jerk", "svm_p2p"]
 )
+# Bộ đặc trưng không phụ thuộc hướng quay quanh trục đứng (model có "yaw_invariant": true trong meta).
+# Sau khi xoay về hướng đứng: av = thành phần thẳng đứng, ah = độ lớn nằm ngang, gv = quay quanh trục đứng,
+# gh = độ lớn quay quanh trục ngang. Đeo bên hông, giữa bụng hay quay hộp trong mặt phẳng đều cho cùng giá trị.
+_YAW_CHANNELS = ["av", "ah", "gv", "gv_abs", "gh", "svm", "gmag"]
+FEATURE_NAMES_YAW: list[str] = (
+    [f"{c}_{s}" for c in _YAW_CHANNELS for s in _STATS]
+    + ["corr_av_ah", "corr_gv_gh"]
+    + ["svm_dom_freq", "svm_e_0_3hz", "svm_e_3_6hz", "svm_e_6_12hz", "svm_e_total"]
+    + ["av_dom_freq", "av_e_0_3hz", "av_e_3_6hz", "av_e_6_12hz", "av_e_total"]
+    + ["tilt_deg", "tilt_std_deg", "svm_jerk", "svm_p2p"]
+)
 FEATURE_NAMES_BARO: list[str] = ["p_slope_pa_s", "alt_change_m", "p_resid_std"]
 
 
-def feature_names(use_baro: bool) -> list[str]:
-    return FEATURE_NAMES_IMU + (FEATURE_NAMES_BARO if use_baro else [])
+def feature_names(use_baro: bool, yaw_invariant: bool = False) -> list[str]:
+    return (FEATURE_NAMES_YAW if yaw_invariant else FEATURE_NAMES_IMU) + (FEATURE_NAMES_BARO if use_baro else [])
 
 
 def _stats(x: np.ndarray) -> list[float]:
@@ -96,11 +107,44 @@ def tilt_deg(acc: np.ndarray, up=None) -> np.ndarray:
     return np.degrees(np.arccos(np.clip(cos, -1, 1)))
 
 
+def _spectrum(x: np.ndarray, fs: int) -> list[float]:
+    """Tần số trội và năng lượng theo dải của tín hiệu (đã bỏ thành phần DC)."""
+    x = x - x.mean()
+    spec = np.abs(np.fft.rfft(x)) ** 2 / len(x)
+    freqs = np.fft.rfftfreq(len(x), d=1.0 / fs)
+    dom = float(freqs[1:][np.argmax(spec[1:])]) if len(spec) > 1 else 0.0
+    band = lambda lo, hi: float(spec[(freqs >= lo) & (freqs < hi)].sum())  # noqa: E731
+    return [dom, band(0.3, 3), band(3, 6), band(6, 12), float(spec[1:].sum())]
+
+
+def extract_features_yaw(acc: np.ndarray, gyr: np.ndarray, pressure: np.ndarray | None = None, fs: int = FS,
+                         up=None) -> np.ndarray:
+    """Đặc trưng không phụ thuộc hướng quay quanh trục đứng (tên: FEATURE_NAMES_YAW [+ BARO])."""
+    acc, gyr = align_to_upright(acc, gyr, up)  # X = trục đứng; đứng thẳng: ax ≈ -1 g
+    av, ah = -acc[:, 0], np.hypot(acc[:, 1], acc[:, 2])
+    gv, gh = gyr[:, 0], np.hypot(gyr[:, 1], gyr[:, 2])
+    svm, gmag = np.linalg.norm(acc, axis=1), np.linalg.norm(gyr, axis=1)
+    f: list[float] = []
+    for c in (av, ah, gv, np.abs(gv), gh, svm, gmag):
+        f += _stats(c)
+    f += [_corr(av, ah), _corr(np.abs(gv), gh)]
+    f += _spectrum(svm, fs) + _spectrum(av, fs)
+    tilt = tilt_deg(acc, UPRIGHT)
+    f += [float(tilt_deg(acc.mean(axis=0)[None, :], UPRIGHT)[0]), float(tilt.std()),
+          float(np.abs(np.diff(svm)).mean() * fs), float(svm.max() - svm.min())]
+    if pressure is not None:
+        f += baro_features(np.asarray(pressure, dtype=np.float64), fs)
+    return np.asarray(f, dtype=np.float32)
+
+
 def extract_features(acc: np.ndarray, gyr: np.ndarray, pressure: np.ndarray | None = None, fs: int = FS,
-                     up=None, align: bool = False) -> np.ndarray:
+                     up=None, align: bool = False, yaw_invariant: bool = False) -> np.ndarray:
     """acc (n,3) g, gyr (n,3) °/s, pressure (n,) Pa đã nội suy về fs hoặc None.
     up: vector đứng thẳng đã hiệu chỉnh theo người đeo (None = UPRIGHT).
-    align: xoay tín hiệu về hướng đứng trước khi trích đặc trưng (model có "align_upright": true trong meta)."""
+    align: xoay tín hiệu về hướng đứng trước khi trích đặc trưng (model có "align_upright": true trong meta).
+    yaw_invariant: bộ đặc trưng thẳng đứng + nằm ngang (luôn xoay về hướng đứng; meta "yaw_invariant": true)."""
+    if yaw_invariant:
+        return extract_features_yaw(acc, gyr, pressure, fs, up)
     if align:
         acc, gyr = align_to_upright(acc, gyr, up)
         up = UPRIGHT
