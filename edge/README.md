@@ -55,6 +55,7 @@ Tạo bot bằng @BotFather, điền `TELEGRAM_BOT_TOKEN` trong `.env`, bấm **
 | `/homnay` | Thời gian từng hoạt động hôm nay (theo model), số cảnh báo té, té đã hủy, SOS, mất kết nối |
 | `/coi` | Chọn bật còi 5 / 30 / 60 giây (hoặc `/coi 20`, tối đa 60 s); tin trả lời có nút **Dừng còi** |
 | `/tatcoi` | Dừng còi `/coi`, hoặc tắt còi cảnh báo sau khi té đã xác nhận |
+| `/thu <người> <nhãn> [ghi chú]` | Thu một phiên có nhãn như `record.py --no-upright-cal` (vd `/thu T01 stairs_up vitri=A`); nút **Dừng**, **Lượt nữa**, **Đổi chiều** (lên ↔ xuống cầu thang); `/dung` dừng; tự dừng sau 10 phút |
 | `/hieuchinh` | Hiệu chỉnh hướng đứng thẳng khi đổi người đeo hoặc cách đeo: người đeo đứng thẳng yên ~4 s |
 | Nút **Tắt còi**, **Đã kiểm tra, ổn** | Gắn dưới tin cảnh báo té và SOS |
 

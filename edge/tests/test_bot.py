@@ -236,3 +236,40 @@ def test_hieuchinh_timeout(env):
     clock["now"] = NOW + 30_000
     bot.check_timeouts()
     assert "Không nhận được kết quả" in sent_texts(calls)[-1] and bot.cal_pending == {}
+
+
+def test_thu_stairs_session_buttons(env):
+    bot, conn, calls, published, clock = env
+    bot.on_status("har/har01/status", {"online": True, "upright": [-0.9, -0.08, -0.43], "upright_cal": "measured"})
+    bot.handle_update(msg("/thu T01 stairs_up vitri=A"))
+    start = [p for t, p in published if t == "har/har01/session"][-1]
+    assert start["action"] == "start" and start["subject"] == "T01" and start["activity"] == "stairs_up"
+    assert start["note"] == "vitri=A" and start["upright"] == [-0.9, -0.08, -0.43] and 20 < start["upright_angle_deg"] < 30
+    assert ("har/har01/cmd", {"cmd": "display", "mode": "record", "activity": "stairs_up"}) in published
+    bot.handle_update(msg("/thu T01 walk"))  # đang thu: không mở phiên thứ hai
+    assert len([1 for t, p in published if t == "har/har01/session"]) == 1 and "Đang thu" in sent_texts(calls)[-1]
+    cq = {"id": "q", "data": "rec:stop", "from": {"first_name": "Viet"}, "message": {"message_id": 4, "chat": {"id": int(CHAT)}}}
+    clock["now"] = NOW + 15_000
+    bot.handle_update({"update_id": 2, "callback_query": cq})
+    stop = [p for t, p in published if t == "har/har01/session"][-1]
+    assert stop == {"action": "stop", "id": start["id"]}
+    assert ("har/har01/cmd", {"cmd": "cancel_alarm"}) in published
+    after = [b for m, b in calls if m == "sendMessage"][-1]
+    assert [b["callback_data"] for b in after["reply_markup"]["inline_keyboard"][0]] == ["rec:again", "rec:flip"]
+    clock["now"] = NOW + 20_000
+    bot.handle_update({"update_id": 3, "callback_query": {**cq, "data": "rec:flip"}})  # đổi chiều: xuống
+    flip = [p for t, p in published if t == "har/har01/session"][-1]
+    assert flip["action"] == "start" and flip["activity"] == "stairs_down" and flip["note"] == "vitri=A"
+    assert flip["id"] != start["id"]
+    clock["now"] = NOW + 20_000 + 11 * 60_000  # quên dừng
+    bot.check_timeouts()
+    assert [p for t, p in published if t == "har/har01/session"][-1]["action"] == "stop" and bot.rec is None
+    assert "tự dừng" in sent_texts(calls)[-1]
+
+
+def test_thu_usage_and_stop_without_session(env):
+    bot, conn, calls, published, _ = env
+    bot.handle_update(msg("/thu T01 nhay"))
+    assert published == [] and "Cách dùng" in sent_texts(calls)[-1]
+    bot.handle_update(msg("/dung"))  # bot vừa khởi động lại: vẫn gửi lệnh dừng cho har-ingest
+    assert ("har/har01/session", {"action": "stop", "id": None}) in published
