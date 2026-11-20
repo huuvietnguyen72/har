@@ -429,3 +429,24 @@ def test_yaw_invariant_features_ignore_rotation_about_vertical():
     a0 = extract_features(acc, gyr, p, up=[-1, 0, 0], align=True)
     a1 = extract_features(acc @ (tilt @ yaw).T, gyr @ (tilt @ yaw).T, p, up=up, align=True)
     assert not np.allclose(a0, a1, atol=1e-3)
+
+
+def test_status_sent_right_after_activity_changes(conn):
+    """Hoạt động đổi -> trạng thái (cloud + OLED) phát ở vòng tick kế tiếp, không chờ chu kỳ 5 s."""
+    inf = Infer(Config(status_every_s=5), conn, HeuristicModel())
+    rng = np.random.default_rng(5)
+    parts = [generate("walk", 12, rng), generate("sit", 12, rng)]
+    acc = np.concatenate([x[0] for x in parts])
+    gyr = np.concatenate([x[1] for x in parts])
+    pres = np.concatenate([x[2] for x in parts])
+    log = []  # (now, topic, payload)
+    for topic, msg in packets(acc, gyr, pres):
+        now = msg["t0"] + 520
+        log += [(now, t, p) for t, p, *_ in inf.handle(topic, msg, now)]
+        log += [(now, t, p) for t, p, *_ in inf.tick(now)]
+    changes = [(now, p["label"]) for i, (now, t, p) in enumerate(log) if t.endswith("/pred")
+               and p["label"] != next((q["label"] for _, tt, q in reversed(log[:i]) if tt.endswith("/pred")), None)]
+    assert [lbl for _, lbl in changes][:2] == ["walk", "sit"]
+    for t_change, lbl in changes:
+        shown = [now for now, t, p in log if t.endswith("/display") and p["label"] == lbl and now >= t_change]
+        assert shown and shown[0] - t_change <= 1000, (lbl, shown[:1], t_change)

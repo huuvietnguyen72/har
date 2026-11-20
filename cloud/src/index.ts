@@ -306,6 +306,11 @@ async function summarizeDay(env: Env, dev: string, day: string) {
   };
 }
 
+async function allStatus(env: Env) {
+  const r = await env.DB.prepare("SELECT s.*, d.alias AS d_alias, d.fw AS d_fw FROM status s LEFT JOIN devices d ON d.dev = s.dev").all<any>();
+  return r.results.map((row) => statusOut(env, row, { alias: row.d_alias, fw: row.d_fw }));
+}
+
 // ---------------- định tuyến ----------------
 async function route(req: Request, env: Env, url: URL): Promise<Response> {
   const p = url.pathname.replace(/\/+$/, "") || "/";
@@ -341,9 +346,15 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
       const r = await env.DB.prepare("SELECT dev, alias, position, fw, model, created_at FROM devices").all();
       return json(r.results);
     }
-    if (m === "GET" && p === "/api/status") {
-      const r = await env.DB.prepare("SELECT s.*, d.alias AS d_alias, d.fw AS d_fw FROM status s LEFT JOIN devices d ON d.dev = s.dev").all<any>();
-      return json(r.results.map((row) => statusOut(env, row, { alias: row.d_alias, fw: row.d_fw })));
+    if (m === "GET" && p === "/api/status") return json(await allStatus(env));
+    if (m === "GET" && p === "/api/live") {
+      // dashboard hỏi định kỳ: trạng thái + cảnh báo mới nhất trong MỘT request (đỡ tốn hạn mức request)
+      const limit = qInt(url, "limit", 20, 1, 100);
+      const [st, evs] = await Promise.all([
+        allStatus(env),
+        env.DB.prepare("SELECT * FROM events ORDER BY t DESC LIMIT ?").bind(limit).all(),
+      ]);
+      return json({ status: st, events: evs.results.map(eventOut) });
     }
     if (m === "GET" && p === "/api/status/history") {
       const dev = needDev(url);

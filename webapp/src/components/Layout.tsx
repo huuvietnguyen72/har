@@ -2,6 +2,7 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth, useLive } from "../context";
 import { dataSource } from "../data";
 import { POLLING_ONLY, POLL_MS } from "../data/api";
+import { CriticalAlert } from "./CriticalAlert";
 import { EVENT_VI, LABEL_VI, SOURCE_VI } from "../labels";
 import { fmtTime } from "../format";
 import type { Label } from "../types";
@@ -51,6 +52,7 @@ export default function Layout() {
       <main className="main">
         <Outlet />
       </main>
+      <CriticalAlert />
       <div className="toasts" aria-live="assertive">
         {toasts.map(({ id, event: e }) => (
           <div key={id} className={`toast toast-${e.severity}`} role="alert">

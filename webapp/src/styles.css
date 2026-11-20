@@ -212,3 +212,26 @@ a { color: inherit; }
   .table.compact tr { display: table-row; }
   .table.compact td { display: table-cell; padding: 6px 8px; border-bottom: 1px solid var(--border); }
 }
+
+/* ---------- Cảnh báo té / SOS giữa màn hình (components/CriticalAlert.tsx) ---------- */
+.critical-backdrop { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(15, 23, 42, 0.62); animation: fade .2s ease-out; }
+.critical-card { width: 440px; max-width: 100%; max-height: calc(100vh - 32px); overflow: auto; text-align: center; padding: 24px 22px 20px; border-radius: 16px; background: var(--card); color: var(--text); border: 3px solid var(--danger); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35); animation: pop .25s ease-out; }
+.critical-sos { border-color: var(--warn); }
+.critical-icon { font-size: 52px; line-height: 1; animation: pulse 1s ease-in-out infinite; }
+.critical-card h2 { margin: 10px 0 4px; font-size: 26px; letter-spacing: .02em; color: var(--danger); }
+.critical-sos h2 { color: var(--warn); }
+.critical-who { margin: 0; font-size: 18px; font-weight: 600; }
+.critical-time { margin: 4px 0 10px; color: var(--muted); }
+.critical-time strong { color: var(--text); }
+.critical-facts { list-style: none; margin: 0 0 10px; padding: 10px 12px; border-radius: 10px; background: var(--danger-soft); font-size: 14px; display: flex; flex-direction: column; gap: 3px; }
+.critical-sos .critical-facts { background: var(--warn-soft); }
+.critical-hint { margin: 0 0 14px; font-weight: 600; }
+.critical-err { margin: -6px 0 12px; color: var(--danger); font-size: 14px; }
+.critical-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.critical-actions .critical-ack { background: var(--danger); font-size: 16px; padding: 10px 18px; flex-basis: 100%; }
+.critical-sos .critical-actions .critical-ack { background: var(--warn); color: #111; }
+@keyframes pop { from { transform: scale(.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pulse { 50% { transform: scale(1.12); } }
+@media (prefers-color-scheme: dark) { .critical-actions .critical-ack { color: #1a0505; } }
+@media (prefers-reduced-motion: reduce) { .critical-icon, .critical-card, .critical-backdrop { animation: none; } }

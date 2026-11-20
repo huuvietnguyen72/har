@@ -5,7 +5,7 @@ import type { DataSource, HarEvent, LiveHandlers, Session, Status } from "../typ
 const API = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") || "/api";
 // Bản Cloudflare (Worker + D1) không có WebSocket: build với VITE_REALTIME=polling để chỉ hỏi lại định kỳ.
 export const POLLING_ONLY = import.meta.env.VITE_REALTIME === "polling";
-export const POLL_MS = POLLING_ONLY ? 5_000 : 10_000;
+export const POLL_MS = POLLING_ONLY ? 2_000 : 10_000;
 const TOKEN_KEY = "har.session";
 
 export class UnauthorizedError extends Error {}
@@ -87,8 +87,12 @@ export const apiDataSource: DataSource = {
 
     const poll = async () => {
       try {
-        const [st, evs] = await Promise.all([req<Status[]>("/status"), req<HarEvent[]>("/events?limit=20")]);
+        // bản Cloudflare: trạng thái + cảnh báo trong MỘT request (/live) để đỡ tốn hạn mức request
+        const [st, evs] = POLLING_ONLY
+          ? await req<{ status: Status[]; events: HarEvent[] }>("/live?limit=20").then((r) => [r.status, r.events] as const)
+          : await Promise.all([req<Status[]>("/status"), req<HarEvent[]>("/events?limit=20")]);
         st.forEach((s) => h.onStatus?.(s));
+        evs.forEach((e) => h.onEventState?.(e));
         for (const e of [...evs].reverse()) {
           if (!seen.has(e.id)) {
             seen.add(e.id);
@@ -105,8 +109,14 @@ export const apiDataSource: DataSource = {
       if (pollTimer) return;
       h.onConnection?.("polling");
       poll();
-      pollTimer = window.setInterval(poll, POLL_MS);
+      pollTimer = window.setInterval(() => {
+        if (!(POLLING_ONLY && document.hidden)) poll(); // tab ẩn: tạm dừng hỏi để đỡ tốn request
+      }, POLL_MS);
     };
+    const onVisible = () => {
+      if (POLLING_ONLY && !document.hidden && !closed) poll(); // quay lại tab: cập nhật ngay
+    };
+    document.addEventListener("visibilitychange", onVisible);
     const stopPolling = () => {
       if (pollTimer) window.clearInterval(pollTimer);
       pollTimer = undefined;
@@ -153,6 +163,7 @@ export const apiDataSource: DataSource = {
 
     return () => {
       closed = true;
+      document.removeEventListener("visibilitychange", onVisible);
       stopPolling();
       if (pingTimer) window.clearInterval(pingTimer);
       if (reconnectTimer) window.clearTimeout(reconnectTimer);

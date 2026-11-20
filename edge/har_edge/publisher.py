@@ -37,8 +37,11 @@ class HttpPublisher(Publisher):
     def __init__(self, api_url: str, device_key: str, timeout: float = 5.0, client: httpx.Client | None = None):
         if not api_url or not device_key:
             raise ValueError("Thiếu VPS_API_URL hoặc VPS_DEVICE_KEY trong edge/.env")
+        # giữ kết nối rảnh 60 s (mặc định httpx 5 s): trạng thái gửi ~5 s/lần nên không phải mở kết nối và
+        # phân giải tên miền lại mỗi lần (DNS của router có lúc chậm 5 s)
         self.client = client or httpx.Client(
-            base_url=api_url.rstrip("/"), timeout=timeout, headers={"X-Device-Key": device_key}
+            base_url=api_url.rstrip("/"), timeout=timeout, headers={"X-Device-Key": device_key},
+            limits=httpx.Limits(max_keepalive_connections=2, keepalive_expiry=60.0),
         )
 
     def _post(self, path: str, body: dict) -> dict:
