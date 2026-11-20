@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth, useLive } from "../context";
 import { dataSource } from "../data";
+import { POLLING_ONLY, POLL_MS } from "../data/api";
 import { EVENT_VI, LABEL_VI, SOURCE_VI } from "../labels";
 import { fmtTime } from "../format";
 import type { Label } from "../types";
@@ -14,7 +15,7 @@ const NAV = [
 
 const CONN = {
   ws: { text: "Thời gian thực", tone: "ok" },
-  polling: { text: "Hỏi lại mỗi 10 s", tone: "warn" },
+  polling: POLLING_ONLY ? { text: `Cập nhật mỗi ${POLL_MS / 1000} s`, tone: "ok" } : { text: "Hỏi lại mỗi 10 s", tone: "warn" },
   offline: { text: "Mất kết nối cloud", tone: "danger" },
   connecting: { text: "Đang kết nối…", tone: "neutral" },
 } as const;
