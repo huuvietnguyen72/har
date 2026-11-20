@@ -235,3 +235,7 @@ a { color: inherit; }
 @keyframes pulse { 50% { transform: scale(1.12); } }
 @media (prefers-color-scheme: dark) { .critical-actions .critical-ack { color: #1a0505; } }
 @media (prefers-reduced-motion: reduce) { .critical-icon, .critical-card, .critical-backdrop { animation: none; } }
+
+/* ---------- Trang Cảnh báo ---------- */
+.alerts-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.table tr.row-acked td { background: var(--ok-soft); transition: background .3s; }
