@@ -373,3 +373,37 @@ def test_notify_dedup_merge_cancel(conn, tmp_path):
     n.step(now + 31_000)
     assert len(sent) == 2
     assert "/alerts" in format_message({"id": "x", "dev": "d", "t": now, "type": "fall"}, now, "https://h")
+
+
+def test_stairs_gate_and_altitude():
+    from har_edge.logic import altitude_change_m, stairs_gate
+
+    probs = {"stand": 0.2, "stairs_up": 0.6, "walk": 0.1, "fall": 0.1}
+    gated = stairs_gate(probs, 0.05, 0.3)
+    assert gated["stairs_up"] == 0 and gated["stand"] == 0.2 and gated["fall"] == 0.1  # không chia lại tỉ lệ
+    assert max(gated, key=gated.get) == "stand"
+    assert stairs_gate(probs, 1.2, 0.3) == probs  # leo thật: giữ
+    assert stairs_gate(probs, None, 0.3) == probs  # chưa đủ 10 s áp suất
+    assert stairs_gate(probs, 0.0, 0) == probs  # tắt
+    assert stairs_gate({"stand": 0.7, "stairs_up": 0.3}, 0.0, 0.3) == {"stand": 0.7, "stairs_up": 0.3}
+    t = np.arange(0, 12_000, 100.0)
+    p = 101_300 - 1.2 * t / 1000 + RNG.normal(0, 0.3, len(t))  # lên ~0,1 m/s
+    alt = altitude_change_m(np.column_stack([t, p]), t[-1])
+    assert 0.8 < alt < 1.2
+    assert altitude_change_m(np.column_stack([t[-30:], p[-30:]]), t[-1]) is None  # mới có 3 s
+
+
+def test_align_to_upright_makes_axis_features_wear_invariant():
+    from har_edge.features import FEATURE_NAMES_IMU, rotation_to
+
+    n = 125
+    acc = np.tile([-1.0, 0.0, 0.0], (n, 1)) + RNG.normal(0, 0.01, (n, 3))
+    gyr = RNG.normal(0, 1, (n, 3))
+    up = np.array([-0.9, -0.08, -0.43])
+    R = rotation_to([-1, 0, 0], up)  # cùng tư thế, hộp đeo nghiêng 26°
+    f0 = extract_features(acc, gyr, up=[-1, 0, 0], align=True)
+    f1 = extract_features(acc @ R.T, gyr @ R.T, up=up, align=True)
+    raw = extract_features(acc @ R.T, gyr @ R.T, up=up)
+    i = FEATURE_NAMES_IMU.index("ax_mean")
+    assert abs(f1[i] - f0[i]) < 1e-3 and abs(raw[i] - f0[i]) > 0.05
+    assert np.allclose(f0, f1, atol=1e-3)

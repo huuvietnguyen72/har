@@ -60,6 +60,34 @@ def upright_vec(up=None) -> np.ndarray:
     return u / n if np.isfinite(n) and n > 1e-6 else UPRIGHT
 
 
+def rotation_to(a, b) -> np.ndarray:
+    """Ma trận xoay R (3x3) đưa hướng a về hướng b: R @ a/|a| = b/|b|."""
+    a = np.asarray(a, float) / np.linalg.norm(a)
+    b = np.asarray(b, float) / np.linalg.norm(b)
+    v = np.cross(a, b)
+    c = float(a @ b)
+    if np.linalg.norm(v) < 1e-9:
+        if c > 0:
+            return np.eye(3)
+        # ngược chiều: xoay 180° quanh một trục vuông góc với a
+        p = np.array([1.0, 0, 0]) if abs(a[0]) < 0.9 else np.array([0, 1.0, 0])
+        u = np.cross(a, p)
+        u /= np.linalg.norm(u)
+        return 2 * np.outer(u, u) - np.eye(3)
+    vx = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
+    return np.eye(3) + vx + vx @ vx * (1 / (1 + c))
+
+
+def align_to_upright(acc: np.ndarray, gyr: np.ndarray, up=None) -> tuple[np.ndarray, np.ndarray]:
+    """Xoay gia tốc và con quay sao cho hướng đứng đã hiệu chỉnh trùng UPRIGHT (X chỉ xuống).
+
+    Đặc trưng theo từng trục (ax_mean, ay_mean…) khi đó không còn phụ thuộc người đeo nghiêng hộp bao nhiêu.
+    Hướng quanh trục đứng (trước/sau, trái/phải) vẫn không căn được.
+    """
+    R = rotation_to(upright_vec(up), UPRIGHT)
+    return np.asarray(acc, dtype=np.float64) @ R.T, np.asarray(gyr, dtype=np.float64) @ R.T
+
+
 def tilt_deg(acc: np.ndarray, up=None) -> np.ndarray:
     """Góc (độ) giữa vector gia tốc từng mẫu và hướng đứng thẳng (up: vector đã hiệu chỉnh hoặc None)."""
     norm = np.linalg.norm(acc, axis=1)
@@ -69,9 +97,13 @@ def tilt_deg(acc: np.ndarray, up=None) -> np.ndarray:
 
 
 def extract_features(acc: np.ndarray, gyr: np.ndarray, pressure: np.ndarray | None = None, fs: int = FS,
-                     up=None) -> np.ndarray:
+                     up=None, align: bool = False) -> np.ndarray:
     """acc (n,3) g, gyr (n,3) °/s, pressure (n,) Pa đã nội suy về fs hoặc None.
-    up: vector đứng thẳng đã hiệu chỉnh theo người đeo (None = UPRIGHT)."""
+    up: vector đứng thẳng đã hiệu chỉnh theo người đeo (None = UPRIGHT).
+    align: xoay tín hiệu về hướng đứng trước khi trích đặc trưng (model có "align_upright": true trong meta)."""
+    if align:
+        acc, gyr = align_to_upright(acc, gyr, up)
+        up = UPRIGHT
     acc = np.asarray(acc, dtype=np.float64)
     gyr = np.asarray(gyr, dtype=np.float64)
     svm = np.linalg.norm(acc, axis=1)

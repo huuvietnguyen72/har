@@ -31,6 +31,7 @@ class Config:
     fall_p_confirm: float = 0.5
     fall_p_model_only: float = 0.5
     fall_lie_after_s: float = 5.0
+    stairs_min_alt_m: float = 0.3  # bỏ nhãn cầu thang khi |Δcao 10 s| nhỏ hơn mức này (0 = tắt)
     low_battery_v: float = 3.4
     offline_alert_s: float = 120.0
     status_every_s: float = 5.0
@@ -67,6 +68,7 @@ def load_config(env_file: str | os.PathLike | None = None) -> Config:
         fall_p_confirm=_f("FALL_P_CONFIRM", 0.5),
         fall_p_model_only=_f("FALL_P_MODEL_ONLY", 0.5),
         fall_lie_after_s=_f("FALL_LIE_AFTER_S", 5.0),
+        stairs_min_alt_m=_f("STAIRS_MIN_ALT_M", 0.3),
         low_battery_v=_f("LOW_BATTERY_V", 3.4),
         offline_alert_s=_f("OFFLINE_ALERT_S", 120.0),
         status_every_s=_f("STATUS_EVERY_S", 5.0),

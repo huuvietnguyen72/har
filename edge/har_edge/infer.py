@@ -20,7 +20,7 @@ from . import store
 from .config import Config, load_config
 from .logutil import setup_logging
 from .features import smooth_pressure
-from .logic import FallFusion, FusionParams, Segmenter, Smoother, TechMonitor
+from .logic import FallFusion, FusionParams, Segmenter, Smoother, TechMonitor, altitude_change_m, stairs_gate
 from .model import BaseModel, load_model
 from .units import battery_pct, env_packet_to_array, imu_packet_to_array
 
@@ -148,6 +148,8 @@ class Infer:
                 pressure = np.zeros(len(t))
         t0 = time.perf_counter()
         probs = self.model.predict_proba(acc, gyr, pressure, st.esp.get("upright"))  # hướng đã hiệu chỉnh
+        alt = altitude_change_m(np.asarray(st.pressure), float(t[-1])) if len(st.pressure) >= 4 else None
+        probs = stairs_gate(probs, alt, self.cfg.stairs_min_alt_m)  # đứng yên mà model đoán cầu thang
         infer_ms = (time.perf_counter() - t0) * 1000
         raw = max(probs, key=probs.get)
         conf = float(probs[raw])
