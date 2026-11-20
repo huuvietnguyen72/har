@@ -18,7 +18,7 @@ ESP32 ──MQTT──► Mosquitto ──► har-ingest ─► data/raw, data/s
 | `har-ingest` | `har_edge/ingest.py` | Đổi đơn vị, đếm gói mất theo `seq`, ghi CSV liên tục + theo phiên thu, xác nhận sự kiện (`har/{dev}/ack`) |
 | `har-infer` | `har_edge/infer.py` | Cửa sổ 2,5 s mỗi 1 s, model (RF/TFLite/luật), làm mượt đa số 3, gộp đoạn, hợp nhất cảnh báo té, trạng thái mỗi 5 s |
 | `har-uplink` | `har_edge/uplink.py` | Outbox SQLite → VPS (`HttpPublisher`) hoặc màn hình (`ConsolePublisher`), thử lại 2→60 s, ưu tiên sự kiện |
-| `har-notify` | `har_edge/notify.py` | Telegram, chống gửi trùng, gộp < 60 s, đánh dấu "gửi trễ" |
+| `har-notify` | `har_edge/notify.py` | Telegram, chống gửi trùng, gộp cảnh báo cùng loại cách nhau < 20 s, đánh dấu "gửi trễ" |
 | `har-bot` | `har_edge/bot.py` | Lệnh Telegram: `/trangthai`, `/homnay`, `/coi`, `/tatcoi`; nút dưới tin cảnh báo té |
 
 Logic thuần (làm mượt, gộp đoạn, hợp nhất cảnh báo, cảnh báo kỹ thuật) nằm trong `har_edge/logic.py`; đặc trưng dùng chung với `ml/` nằm trong `har_edge/features.py`.

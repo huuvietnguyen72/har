@@ -414,15 +414,17 @@ def test_notify_dedup_merge_cancel(conn, tmp_path):
 
     now = store.now_ms()
     add("a1", now)
-    add("a2", now + 20_000)  # cách < 60 s -> gộp
+    add("a2", now + 15_000)  # cách < 20 s -> gộp (cùng sự cố)
     add("a3", now + 5_000, notify=0, cancelled=True)
     add("a4", now - 3_600_000, typ="sos")  # cũ -> "gửi trễ"
-    n.step(now + 30_000)
-    assert len(sent) == 2
+    add("a5", now + 46_000)  # cú té thứ hai cách 46 s -> tin riêng (thử 21/11 từng bị gộp mất)
+    n.step(now + 50_000)
+    assert len(sent) == 3
+    assert sum("PHÁT HIỆN TÉ" in s for s in sent) == 2
     assert any("PHÁT HIỆN TÉ" in s and "91%" in s and "Đi" in s for s in sent)
     assert any("SOS" in s and "Gửi trễ" in s for s in sent)
-    n.step(now + 31_000)
-    assert len(sent) == 2
+    n.step(now + 51_000)
+    assert len(sent) == 3
     assert "/alerts" in format_message({"id": "x", "dev": "d", "t": now, "type": "fall"}, now, "https://h")
 
 
