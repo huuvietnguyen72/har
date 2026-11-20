@@ -29,7 +29,8 @@ Logic thuần (làm mượt, gộp đoạn, hợp nhất cảnh báo, cảnh bá
 | --- | --- | --- |
 | `suspected` → `confirmed` (hoặc không có phản hồi sau 15 s) | P(té) ≥ `FALL_P_CONFIRM` | Té, mức **cao**, nguồn `both` |
 | như trên | P(té) < `FALL_P_CONFIRM` | Vẫn cảnh báo, mức **trung bình**, nguồn `threshold` |
-| không kích hoạt | P(té) ≥ `FALL_P_MODEL_ONLY` rồi nằm ≥ `FALL_LIE_AFTER_S` | Cảnh báo, mức **trung bình**, nguồn `model` |
+| không kích hoạt | P(té) ≥ `FALL_P_MODEL_ONLY` rồi nằm ≥ `FALL_LIE_AFTER_S` (trước đó không nằm) | Pi gửi `test_alarm`: bộ đeo **kêu còi, người đeo có 10 s để hủy**. Không hủy → mức **cao**, nguồn `model` (giờ té, không phải giờ bật còi). Hủy → chỉ ghi lại |
+| như trên, nhưng bộ đeo không bật cảnh báo trong 15 s (mất kết nối, hết pin) | | Báo thẳng, mức **trung bình**, nguồn `model`, `reason = device_no_response` |
 | `cancelled` | bất kỳ | Chỉ ghi lại và đẩy lên cloud (`cancelled = true`), không gửi Telegram |
 | `sos` | bất kỳ | Cảnh báo SOS ngay |
 

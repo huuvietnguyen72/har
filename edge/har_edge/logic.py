@@ -109,6 +109,11 @@ class FusionParams:
     pending_timeout_ms: int = 15000  # suspected mà không thấy confirmed/cancelled -> coi như confirmed
     # model không tự báo nếu ngay trước đó đang nằm (trở mình trên giường không phải té)
     skip_if_lying: bool = True
+    # Model phát hiện té mà bộ đeo không kích hoạt: Pi ra lệnh test_alarm để bộ đeo kêu còi và cho người đeo
+    # 10 s tự hủy, như khi bộ đeo tự phát hiện. Bộ đeo không phản hồi (mất kết nối, hết pin) trong khoảng này
+    # thì Pi báo thẳng, để không mất cảnh báo.
+    device_alarm_timeout_ms: int = 15000
+    device_alarm_link_ms: int = 8000  # "suspected" (peak_g 0) tới trong khoảng này sau lệnh -> do lệnh của Pi
 
 
 class FallFusion:
@@ -119,6 +124,12 @@ class FallFusion:
         self.incidents: dict[str, dict] = {}
         self.done: set[str] = set()
         self.candidate: dict | None = None
+        self.model_requests: dict[str, dict] = {}  # id cảnh báo model -> {t, p, requested}: chờ bộ đeo bật còi
+        self.commands: list[dict] = []  # lệnh gửi bộ đeo (har/{dev}/cmd), infer lấy bằng pop_commands()
+
+    def pop_commands(self) -> list[dict]:
+        out, self.commands = self.commands, []
+        return out
 
     # ---------- tiện ích ----------
     def _p_fall_near(self, t: int) -> float | None:
@@ -140,6 +151,12 @@ class FallFusion:
         }
 
     def _finalize(self, inc: dict, reason: str) -> dict:
+        m = inc.get("model")
+        if m:  # bộ đeo kêu theo lệnh của Pi (model phát hiện), người đeo không hủy -> mức cao
+            self.done.add(inc["id"])
+            a = self._alert(m["id"], m["t"], "fall", "high", "model", m["p"])
+            a["reason"] = reason
+            return a
         p = self._p_fall_near(inc["t"])
         high = p is not None and p >= self.p.p_confirm
         a = self._alert(inc["id"], inc["t"], "fall", "high" if high else "medium", "both" if high else "threshold", p)
@@ -156,7 +173,15 @@ class FallFusion:
                 out.append(self._alert(ev["id"], ev["t"], "sos", "high", "device", None))
         elif typ == "suspected":
             if ev["id"] not in self.done and ev["id"] not in self.incidents:
-                self.incidents[ev["id"]] = {"id": ev["id"], "t": ev["t"], "peak_g": ev.get("peak_g"), "received": now}
+                inc = {"id": ev["id"], "t": ev["t"], "peak_g": ev.get("peak_g"), "received": now}
+                req = next((r for r in self.model_requests.values()
+                            if 0 <= now - r["requested"] <= self.p.device_alarm_link_ms), None)
+                if req is not None:
+                    del self.model_requests[req["id"]]
+                    if not ev.get("peak_g"):  # test_alarm (không có va chạm): cảnh báo do model yêu cầu
+                        inc["model"] = req
+                    # có va chạm thật: ngưỡng và model cùng thấy -> xử lý như incident ngưỡng thường
+                self.incidents[ev["id"]] = inc
             if self.candidate and abs(self.candidate["t"] - ev["t"]) <= 5000:
                 self.candidate = None  # model và ngưỡng cùng thấy -> để incident xử lý
         elif typ in ("cancelled", "confirmed"):
@@ -165,8 +190,13 @@ class FallFusion:
             if ref in self.done:
                 return out
             if typ == "cancelled":
-                a = self._alert(ref, inc["t"], "fall", "info", "threshold", self._p_fall_near(inc["t"]),
-                                cancelled=True, notify=False)
+                m = inc.get("model")
+                if m:  # người đeo hủy cảnh báo do model yêu cầu
+                    self.done.add(ref)
+                    a = self._alert(m["id"], m["t"], "fall", "info", "model", m["p"], cancelled=True, notify=False)
+                else:
+                    a = self._alert(ref, inc["t"], "fall", "info", "threshold", self._p_fall_near(inc["t"]),
+                                    cancelled=True, notify=False)
                 out.append(a)
             else:
                 out.append(self._finalize(inc, "confirmed"))
@@ -187,8 +217,10 @@ class FallFusion:
                 if t - c["lie_start"] >= self.p.lie_after_s * 1000:
                     aid = f"{self.dev}-m{c['t']}"
                     self.candidate = None
-                    if aid not in self.done:
-                        out.append(self._alert(aid, c["t"], "fall", "medium", "model", c["p"]))
+                    if aid not in self.done and aid not in self.model_requests:
+                        # chưa báo ngay: nhờ bộ đeo kêu còi + 10 s cho người đeo hủy (xem device_alarm_timeout_ms)
+                        self.model_requests[aid] = {"id": aid, "t": c["t"], "p": c["p"], "requested": now}
+                        self.commands.append({"cmd": "test_alarm"})
             elif label != "fall":
                 c["lie_start"] = None
             if self.candidate is not None and t - c["t"] > 15000:
@@ -197,6 +229,13 @@ class FallFusion:
 
     def tick(self, now: int) -> list[dict]:
         out = []
+        for aid, req in list(self.model_requests.items()):
+            if now - req["requested"] > self.p.device_alarm_timeout_ms:  # bộ đeo không phản hồi -> báo thẳng
+                del self.model_requests[aid]
+                if aid not in self.done:
+                    a = self._alert(aid, req["t"], "fall", "medium", "model", req["p"])
+                    a["reason"] = "device_no_response"
+                    out.append(a)
         for iid, inc in list(self.incidents.items()):
             if now - inc["received"] > self.p.pending_timeout_ms:
                 del self.incidents[iid]
