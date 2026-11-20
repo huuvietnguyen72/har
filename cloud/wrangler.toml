@@ -1,0 +1,27 @@
+# HAR cloud trên Cloudflare: một Worker = API /api/* (D1) + web app (file tĩnh của webapp/dist).
+# Hướng dẫn deploy: cloud/README.md
+name = "har-cloud"
+main = "src/index.ts"
+compatibility_date = "2026-11-01"
+
+[assets]
+directory = "../webapp/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"   # /history, /alerts... trả index.html cho React Router
+run_worker_first = ["/api/*", "/ws"]              # chỉ API qua Worker; file tĩnh phục vụ thẳng, không tính request Worker
+
+[[d1_databases]]
+binding = "DB"
+database_name = "har-db"
+database_id = "3ac47a32-f869-4b54-a825-ef2d1cb9b815"  # npx wrangler d1 create har-db --location apac
+migrations_dir = "migrations"
+
+[vars]
+JWT_EXPIRE_HOURS = "12"
+STATUS_STALE_S = "30"        # trạng thái cũ hơn số giây này -> coi như offline
+STATUS_LOG_EVERY_S = "60"    # lịch sử pin/nhiệt độ: tối đa 1 dòng mỗi 60 s
+TZ_OFFSET_MIN = "420"        # giờ Việt Nam (UTC+7) để chia "ngày" cho trang Lịch sử
+# JWT_SECRET là bí mật: npx wrangler secret put JWT_SECRET (chạy local: ghi vào cloud/.dev.vars)
+
+[observability]
+enabled = true

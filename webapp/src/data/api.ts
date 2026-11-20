@@ -3,6 +3,9 @@
 import type { DataSource, HarEvent, LiveHandlers, Session, Status } from "../types";
 
 const API = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") || "/api";
+// Bản Cloudflare (Worker + D1) không có WebSocket: build với VITE_REALTIME=polling để chỉ hỏi lại định kỳ.
+export const POLLING_ONLY = import.meta.env.VITE_REALTIME === "polling";
+export const POLL_MS = POLLING_ONLY ? 5_000 : 10_000;
 const TOKEN_KEY = "har.session";
 
 export class UnauthorizedError extends Error {}
@@ -102,7 +105,7 @@ export const apiDataSource: DataSource = {
       if (pollTimer) return;
       h.onConnection?.("polling");
       poll();
-      pollTimer = window.setInterval(poll, 10_000);
+      pollTimer = window.setInterval(poll, POLL_MS);
     };
     const stopPolling = () => {
       if (pollTimer) window.clearInterval(pollTimer);
@@ -145,7 +148,8 @@ export const apiDataSource: DataSource = {
       .then((evs) => evs.forEach((e) => seen.add(e.id)))
       .catch(() => {})
       .finally(() => (primed = true));
-    connect();
+    if (POLLING_ONLY) startPolling();
+    else connect();
 
     return () => {
       closed = true;

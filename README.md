@@ -1,15 +1,15 @@
 # HAR – Bộ đeo hông nhận dạng hoạt động và phát hiện té ngã
 
 Đồ án IoT: bộ đeo hông nhận dạng 7 hoạt động và phát hiện té ngã cho người cao tuổi (prototype giám sát trong nhà).
-Model chạy trên Raspberry Pi 4 (edge); kết quả, số liệu đánh giá và dashboard nằm trên VPS (cloud), không xem bằng localhost.
+Model chạy trên Raspberry Pi 4 (edge); kết quả, số liệu đánh giá và dashboard nằm trên cloud (Cloudflare Worker + D1, [`cloud/`](cloud/)), không xem bằng localhost.
 
 ## Kiến trúc (IoT Level 5)
 
 ```
-ESP32 + MPU6050 + BMP280 + AHT20 + OLED ──MQTT/Wi-Fi──► Raspberry Pi 4 ──HTTPS──► VPS: Caddy + FastAPI + PostgreSQL
+ESP32 + MPU6050 + BMP280 + AHT20 + OLED ──MQTT/Wi-Fi──► Raspberry Pi 4 ──HTTPS──► Cloudflare: Worker (API) + D1
   ngưỡng té, còi, nút hủy, vòng đệm 60 s               Mosquitto, chrony            web app React (4 trang, đăng nhập)
                                                        har-ingest, har-infer,
-                                                       har-uplink (outbox) ───────► (cùng VPS)
+                                                       har-uplink (outbox) ───────► (cùng Worker)
                                                        har-notify ────────────────► Telegram
 ```
 
@@ -20,7 +20,8 @@ ESP32 + MPU6050 + BMP280 + AHT20 + OLED ──MQTT/Wi-Fi──► Raspberry Pi 4
 | [`firmware/`](firmware/) | Firmware ESP32 (PlatformIO, FreeRTOS 5 task) | Biên dịch được; 6 test native cho bộ phát hiện té và nút |
 | [`edge/`](edge/) | Dịch vụ Pi: `har-ingest`, `har-infer`, `har-uplink`, `har-notify`; `record.py`, `replay.py`, `fake_device.py`; systemd, `setup-pi.sh` | 17 test pytest |
 | [`ml/`](ml/) | Dataset, Random Forest, 1D-CNN (TFLite int8), thí nghiệm A1/A2/B1/B2/C/D, đẩy `metrics.json` | Chạy hết trên dữ liệu giả lập |
-| [`backend/`](backend/) | FastAPI + PostgreSQL + Caddy, Docker Compose, Alembic, sao lưu, hướng dẫn dựng VPS | 9 test pytest |
+| [`cloud/`](cloud/) | **Cloud đang dùng:** Cloudflare Worker (TypeScript) + D1, phục vụ API và web app; công cụ tạo tài khoản, khóa thiết bị | 8 test đầu-cuối |
+| [`backend/`](backend/) | Bản VPS dự phòng (cùng API): FastAPI + PostgreSQL + Caddy, Docker Compose, Alembic, sao lưu | 9 test pytest |
 | [`webapp/`](webapp/) | React + Vite + TypeScript: Tổng quan, Lịch sử, Cảnh báo, Đánh giá model | Build sạch; chạy thử với API thật |
 | [`hardware/`](hardware/) | Sơ đồ lắp mạch, bảng chân, ảnh mạch và hộp | |
 | [`docs/`](docs/) | Hợp đồng dữ liệu: MQTT, schema cloud, API, nhãn, bảng chân | |
@@ -39,8 +40,8 @@ ESP32 + MPU6050 + BMP280 + AHT20 + OLED ──MQTT/Wi-Fi──► Raspberry Pi 4
 1. Mạch bộ đeo: [`hardware/Datasheet_HAR01.html`](hardware/Datasheet_HAR01.html), bảng chân [`docs/pinout.md`](docs/pinout.md). Kế hoạch và việc tiếp theo: [`docs/ke-hoach.md`](docs/ke-hoach.md).
 2. Nạp firmware ([`firmware/README.md`](firmware/README.md)).
 3. Cài Pi: `sudo HOTSPOT_PASS=... bash edge/deploy/setup-pi.sh` ([`edge/README.md`](edge/README.md)).
-4. Dựng VPS: [`backend/DEPLOY.md`](backend/DEPLOY.md).
-5. Thu dataset bằng `record.py`, huấn luyện ở `ml/`, chép model sang `edge/models/current/`, đẩy `metrics.json` lên VPS.
+4. Deploy cloud lên Cloudflare: [`cloud/README.md`](cloud/README.md) (bản VPS dự phòng: [`backend/DEPLOY.md`](backend/DEPLOY.md)).
+5. Thu dataset bằng `record.py`, huấn luyện ở `ml/`, chép model sang `edge/models/current/`, đẩy `metrics.json` lên cloud.
 
 ## Quy tắc chung
 
