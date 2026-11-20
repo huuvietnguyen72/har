@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Badge, Card, Empty, ErrorNote, EventBadge, LabelChip } from "../components/ui";
 import { useLive } from "../context";
 import { dataSource } from "../data";
@@ -9,12 +9,31 @@ import type { HarEvent } from "../types";
 
 type Filter = "open" | "all" | "fall";
 
+// "Chưa xử lý" chỉ gồm té và SOS: mất kết nối, pin yếu là thông tin kỹ thuật, xem ở tab Tất cả
+const isAlarm = (e: HarEvent) => e.type === "fall" || e.type === "sos";
+const isOpen = (e: HarEvent) => isAlarm(e) && !e.acknowledged && !e.cancelled;
+// dòng vừa bấm Đã xử lý ở lại tại chỗ một lúc (không để dòng khác trượt lên chỗ đó gây nhầm)
+const KEEP_ACKED_MS = 3000;
+
 export default function Alerts() {
   const { lastEvent } = useLive();
   const { data, error, loading, setData } = useAsync<HarEvent[]>(() => dataSource.getEvents(undefined, 300), []);
   const [filter, setFilter] = useState<Filter>("open");
   const [fresh, setFresh] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState<string | null>(null);
+  const [bulk, setBulk] = useState<{ done: number; total: number } | null>(null);
+  const [justAcked, setJustAcked] = useState<Set<string>>(new Set());
+  const timers = useRef<number[]>([]);
+  useEffect(() => () => timers.current.forEach((t) => window.clearTimeout(t)), []);
+
+  const keepVisible = (id: string) => {
+    setJustAcked((s) => new Set(s).add(id));
+    timers.current.push(window.setTimeout(() => setJustAcked((s) => {
+      const n = new Set(s);
+      n.delete(id);
+      return n;
+    }), KEEP_ACKED_MS));
+  };
 
   // Sự kiện mới qua WebSocket: chèn/cập nhật ngay, tô sáng vài giây
   useEffect(() => {
@@ -39,14 +58,31 @@ export default function Alerts() {
     try {
       const upd = await dataSource.ackEvent(e.id, value);
       setData((prev) => (prev ?? []).map((x) => (x.id === upd.id ? upd : x)));
+      if (value) keepVisible(upd.id);
     } finally {
       setBusy(null);
     }
   };
 
+  const open = (data ?? []).filter(isOpen);
+  const ackAll = async () => {
+    if (!open.length || !window.confirm(`Đánh dấu ${open.length} cảnh báo té/SOS chưa xử lý là "Đã xử lý"?`)) return;
+    setBulk({ done: 0, total: open.length });
+    try {
+      for (const [i, e] of open.entries()) {
+        const upd = await dataSource.ackEvent(e.id, true);
+        setData((prev) => (prev ?? []).map((x) => (x.id === upd.id ? upd : x)));
+        keepVisible(upd.id);
+        setBulk({ done: i + 1, total: open.length });
+      }
+    } finally {
+      setBulk(null);
+    }
+  };
+
   const rows = (data ?? []).filter((e) =>
-    filter === "all" ? true : filter === "fall" ? e.type === "fall" || e.type === "sos" : !e.acknowledged && !e.cancelled);
-  const openCount = (data ?? []).filter((e) => !e.acknowledged && !e.cancelled).length;
+    filter === "all" ? true : filter === "fall" ? isAlarm(e) : isOpen(e) || justAcked.has(e.id));
+  const openCount = open.length;
 
   return (
     <Card title="Cảnh báo" actions={
@@ -57,6 +93,16 @@ export default function Alerts() {
       </div>
     }>
       <ErrorNote error={error} />
+      {filter === "open" && (
+        <div className="alerts-toolbar">
+          <span className="muted small">Chỉ gồm té và SOS. Mất kết nối, pin yếu xem ở tab Tất cả.</span>
+          {openCount > 0 && (
+            <button className="btn-ghost small" onClick={ackAll} disabled={!!bulk}>
+              {bulk ? `Đang đánh dấu ${bulk.done}/${bulk.total}…` : `Đánh dấu tất cả đã xử lý (${openCount})`}
+            </button>
+          )}
+        </div>
+      )}
       {loading && !data ? <Empty>Đang tải…</Empty> : rows.length === 0 ? <Empty>Không có cảnh báo nào.</Empty> : (
         <div className="table-wrap">
           <table className="table">
@@ -67,7 +113,7 @@ export default function Alerts() {
             </thead>
             <tbody>
               {rows.map((e) => (
-                <tr key={e.id} className={fresh.has(e.id) ? "fresh" : ""}>
+                <tr key={e.id} className={justAcked.has(e.id) && filter === "open" ? "row-acked" : fresh.has(e.id) ? "fresh" : ""}>
                   <td data-th="Giờ">
                     {fmtDateTime(e.t)}
                     {e.delivered_late && <div className="small muted">gửi trễ</div>}
@@ -79,12 +125,12 @@ export default function Alerts() {
                   <td data-th="Thiết bị">{e.dev}{e.battery_pct != null && <span className="muted"> · pin {Math.round(e.battery_pct)}%</span>}</td>
                   <td data-th="Trạng thái">
                     {e.cancelled ? <Badge>Người đeo đã hủy</Badge> : e.acknowledged
-                      ? <span title={e.acknowledged_at ?? ""}><Badge tone="ok">Đã xử lý</Badge> <span className="small muted">{e.acknowledged_by}</span></span>
+                      ? <span title={e.acknowledged_at ?? ""}><Badge tone="ok">✓ Đã xử lý</Badge> <span className="small muted">{e.acknowledged_by}</span></span>
                       : <Badge tone="warn">Chưa xử lý</Badge>}
                   </td>
                   <td>
                     {!e.cancelled && (
-                      <button className={e.acknowledged ? "btn-ghost small" : "btn small"} disabled={busy === e.id}
+                      <button className={e.acknowledged ? "btn-ghost small" : "btn small"} disabled={busy === e.id || !!bulk}
                         onClick={() => ack(e, !e.acknowledged)}>
                         {e.acknowledged ? "Bỏ đánh dấu" : "Đã xử lý"}
                       </button>
