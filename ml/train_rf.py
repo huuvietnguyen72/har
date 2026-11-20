@@ -28,11 +28,13 @@ HERE = Path(__file__).resolve().parent
 GRID = [(200, None), (200, 20), (400, None), (100, 12)]
 
 
-def featurize(win, use_baro: bool, align: bool = True) -> np.ndarray:
-    """align: xoay tín hiệu về hướng đứng đã hiệu chỉnh trước khi trích đặc trưng (mặc định, xem features.py)."""
+def featurize(win, use_baro: bool, align: bool = True, yaw: bool = True) -> np.ndarray:
+    """align: xoay tín hiệu về hướng đứng đã hiệu chỉnh; yaw: đặc trưng thẳng đứng + nằm ngang (mặc định,
+    không phụ thuộc hướng quay quanh trục đứng). Xem features.py."""
     return np.nan_to_num(np.stack([
         extract_features(win.acc[i], win.gyr[i], win.pressure[i] if use_baro else None,
-                         up=None if win.up is None else win.up[i], align=align) for i in range(len(win))
+                         up=None if win.up is None else win.up[i], align=align, yaw_invariant=yaw)
+        for i in range(len(win))
     ]))
 
 
@@ -52,6 +54,8 @@ def main() -> None:
     ap.add_argument("--export", action="store_true")
     ap.add_argument("--no-align", dest="align", action="store_false",
                     help="không xoay tín hiệu về hướng đứng (cách cũ, đặc trưng theo trục chip)")
+    ap.add_argument("--axis-features", dest="yaw", action="store_false",
+                    help="đặc trưng theo từng trục (model v2) thay cho thẳng đứng + nằm ngang")
     ap.add_argument("--version", default="v1")
     ap.add_argument("--out", default=str(HERE / "results"))
     a = ap.parse_args()
@@ -61,7 +65,8 @@ def main() -> None:
     win = make_windows(recs, a.window)
     print(f"{len(recs)} phiên, {len(win)} cửa sổ, {win.n_subjects} người")
     print(summary(win))
-    X = featurize(win, a.baro, a.align)
+    a.yaw = a.yaw and a.align  # đặc trưng thẳng đứng + nằm ngang luôn xoay về hướng đứng
+    X = featurize(win, a.baro, a.align, a.yaw)
     y, groups = win.y, win.groups
     splits, ev = subject_splits(groups)
 
@@ -84,17 +89,18 @@ def main() -> None:
     t0 = time.perf_counter()
     for i in range(50):
         final.predict_proba(extract_features(win.acc[i], win.gyr[i], win.pressure[i] if a.baro else None,
-                                             up=None if win.up is None else win.up[i], align=a.align)[None, :])
+                                             up=None if win.up is None else win.up[i], align=a.align,
+                                             yaw_invariant=a.yaw)[None, :])
     infer_ms = (time.perf_counter() - t0) / 50 * 1000
 
-    names = feature_names(a.baro)
+    names = feature_names(a.baro, a.yaw)
     imp = sorted(zip(names, final.feature_importances_), key=lambda kv: -kv[1])[:15]
     rep = report(a.experiment, name, feats, a.window, y[ev], best_pred[ev], len(splits), extra={
         "cv": cv_description(groups), "external": external_info(groups),
         "params": {"n_estimators": best[0], "max_depth": best[1]},
         "infer_ms_train_machine": round(infer_ms, 2),
         "feature_importance": {k: round(float(v), 4) for k, v in imp},
-        "synthetic": synthetic, "align_upright": a.align,
+        "synthetic": synthetic, "align_upright": a.align, "yaw_invariant": a.yaw,
     })
     print_report(rep)
     print("Đặc trưng quan trọng nhất:", ", ".join(f"{k} ({v:.3f})" for k, v in imp[:8]))
@@ -106,7 +112,7 @@ def main() -> None:
         joblib.dump(final, d / "model.joblib", compress=3)
         meta = {"name": name, "type": "rf", "file": "model.joblib", "labels": LABELS, "use_baro": a.baro,
                 "window_s": a.window, "fs": 50, "features": names, "experiment": a.experiment,
-                "align_upright": a.align}
+                "align_upright": a.align, "yaw_invariant": a.yaw}
         (d / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"Đã xuất model -> {d}  (chép vào edge/models/current/)")
 

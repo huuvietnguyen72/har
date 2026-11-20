@@ -50,4 +50,6 @@ ml/models/
 ml/data/synthetic/
 # Dataset công khai tải về (SisFall...), không đưa lên Git
 ml/data/external/
+# Dữ liệu thử ở vị trí đeo khác (T01…): chỉ để chấm điểm, không huấn luyện, không đưa lên Git
+ml/data/test/
 *.tsbuildinfo
