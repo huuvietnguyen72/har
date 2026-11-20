@@ -13,7 +13,7 @@ run_worker_first = ["/api/*", "/ws"]              # chỉ API qua Worker; file t
 [[d1_databases]]
 binding = "DB"
 database_name = "har-db"
-database_id = "DOI_SAU_KHI_TAO"                     # lấy từ: npx wrangler d1 create har-db
+database_id = "3ac47a32-f869-4b54-a825-ef2d1cb9b815"  # npx wrangler d1 create har-db --location apac
 migrations_dir = "migrations"
 
 [vars]

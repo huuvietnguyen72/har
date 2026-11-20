@@ -12,6 +12,7 @@ import { createHash, pbkdf2Sync, randomBytes } from "node:crypto";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const DB = "har-db";
 // Gói miễn phí của Workers giới hạn ~10 ms CPU mỗi request: 20 000 vòng PBKDF2-SHA256 nằm trong mức đó.
@@ -33,18 +34,32 @@ function args(argv) {
 
 const sq = (s) => (s == null ? "NULL" : `'${String(s).replace(/'/g, "''")}'`);
 
-function d1(sql, where, json = false) {
-  // ghi SQL ra file tạm để không phải lo dấu nháy khi truyền qua dòng lệnh
+const WRANGLER = fileURLToPath(new URL("../node_modules/wrangler/bin/wrangler.js", import.meta.url));
+
+function wrangler(args) {
+  // gọi thẳng wrangler bằng node (không qua shell): không phải lo dấu nháy trên Windows
+  return execFileSync(process.execPath, [WRANGLER, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] });
+}
+
+/** Ghi: chạy SQL từ file tạm. */
+function d1Write(sql, where) {
   const dir = mkdtempSync(join(tmpdir(), "har-admin-"));
   const file = join(dir, "q.sql");
   writeFileSync(file, sql, "utf8");
   try {
-    const cmd = ["wrangler", "d1", "execute", DB, `--${where}`, "--file", file, ...(json ? ["--json"] : [])];
-    const out = execFileSync("npx", cmd, { encoding: "utf8", shell: process.platform === "win32", stdio: ["ignore", "pipe", "inherit"] });
-    return json ? JSON.parse(out) : out;
+    return wrangler(["d1", "execute", DB, `--${where}`, "--file", file]);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+}
+
+/** Đọc: --command (với --remote, --file chỉ trả thống kê, không trả dòng kết quả). */
+function d1Read(sql, where) {
+  const out = wrangler(["d1", "execute", DB, `--${where}`, "--command", sql, "--json"]);
+  const i = out.search(/^\[/m);  // bỏ các dòng tiến trình trước JSON
+  if (i < 0) throw new Error(`wrangler không trả JSON:
+${out}`);
+  return JSON.parse(out.slice(i));
 }
 
 function hashPassword(pw) {
@@ -74,7 +89,7 @@ if (cmd === "create-user") {
     console.error("Mật khẩu tối thiểu 8 ký tự");
     process.exit(2);
   }
-  d1(`INSERT INTO users (email, password_hash, role) VALUES (${sq(email)}, ${sq(hashPassword(pw))}, ${sq(role)})
+  d1Write(`INSERT INTO users (email, password_hash, role) VALUES (${sq(email)}, ${sq(hashPassword(pw))}, ${sq(role)})
       ON CONFLICT(email) DO UPDATE SET password_hash = excluded.password_hash, role = excluded.role;`, where);
   console.log(`OK: ${email} (${role})` + (generated ? `\nMật khẩu (chỉ hiện 1 lần, đổi bằng cách chạy lại lệnh): ${pw}` : ""));
 } else if (cmd === "create-device" || cmd === "rotate-key") {
@@ -83,7 +98,7 @@ if (cmd === "create-user") {
     console.error("Cần --dev (chữ, số, - hoặc _)");
     process.exit(2);
   }
-  const rows = d1(`SELECT dev FROM devices WHERE dev = ${sq(dev)};`, where, true)[0].results;
+  const rows = d1Read(`SELECT dev FROM devices WHERE dev = ${sq(dev)};`, where)[0].results;
   if (cmd === "create-device" && rows.length) {
     console.error(`${dev} đã tồn tại; dùng rotate-key để đổi key`);
     process.exit(1);
@@ -94,13 +109,13 @@ if (cmd === "create-user") {
   }
   const key = randomBytes(32).toString("base64url");
   const hash = createHash("sha256").update(key).digest("hex");
-  d1(cmd === "create-device"
+  d1Write(cmd === "create-device"
     ? `INSERT INTO devices (dev, alias, position, key_hash) VALUES (${sq(dev)}, ${sq(a.alias === true ? null : a.alias)}, ${sq(a.position || "hông phải")}, ${sq(hash)});`
     : `UPDATE devices SET key_hash = ${sq(hash)} WHERE dev = ${sq(dev)};`, where);
   console.log(`Thiết bị: ${dev}\nAPI key (ghi vào VPS_DEVICE_KEY trong edge/.env trên Pi, chỉ hiện 1 lần):\n${key}`);
 } else if (cmd === "list") {
-  const [u] = d1("SELECT email, role FROM users ORDER BY email;", where, true);
-  const [d] = d1("SELECT dev, alias, fw, model FROM devices ORDER BY dev;", where, true);
+  const [u] = d1Read("SELECT email, role FROM users ORDER BY email;", where);
+  const [d] = d1Read("SELECT dev, alias, fw, model FROM devices ORDER BY dev;", where);
   for (const x of u.results) console.log(`user   ${x.email.padEnd(32)} ${x.role}`);
   for (const x of d.results) console.log(`device ${x.dev.padEnd(12)} ${(x.alias || "").padEnd(20)} fw=${x.fw} model=${x.model}`);
 } else {
