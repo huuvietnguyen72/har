@@ -9,6 +9,8 @@ Lệnh (chỉ nhận từ chat trong TELEGRAM_CHAT_ID / TELEGRAM_ALLOWED_IDS):
 - /hieuchinh : hiệu chỉnh hướng đứng thẳng (người đeo đứng thẳng yên ~4 s); người đeo cũng tự làm được
                bằng cách nhấn nút 3 lần. Kết quả mọi lần hiệu chỉnh (Telegram hoặc nút) được báo kèm góc lệch
                so với hướng cũ và nút "Khôi phục hướng cũ".
+- /thu <người> <nhãn> [ghi chú]: thu một phiên có nhãn như record.py (--no-upright-cal); nút Dừng, Lượt nữa,
+               Đổi chiều (lên <-> xuống cầu thang) để thu cầu thang không cần laptop. /dung dừng phiên.
 Nút dưới tin cảnh báo té (har-notify gắn): "Tắt còi" và "Đã kiểm tra, ổn".
 
 An toàn: firmware xử lý cancel_alarm trong 10 s chờ hủy như người đeo tự hủy (cú ngã không được báo nữa),
@@ -43,6 +45,7 @@ ORDER = ["stand", "sit", "lie", "walk", "stairs_up", "stairs_down", "fall"]
 COMMANDS = [("trangthai", "Người đeo đang làm gì"), ("homnay", "Thống kê hôm nay"),
             ("coi", "Bật còi 5 / 30 / 60 giây"), ("tatcoi", "Dừng còi đang kêu"),
             ("hieuchinh", "Hiệu chỉnh hướng đứng thẳng (đổi người/cách đeo)"),
+            ("thu", "Thu dữ liệu có nhãn, vd /thu T01 stairs_up vitri=A"), ("dung", "Dừng phiên thu"),
             ("help", "Danh sách lệnh")]
 CANCEL_WINDOW_MS = 10_000  # firmware/include/config.h
 CONFIRMED_BUZZ_MS = 30_000
@@ -57,6 +60,17 @@ UPRIGHT_DEFAULT = (-1.0, 0.0, 0.0)  # cách đeo chuẩn: trục X chỉ xuống
 UPRIGHT_WARN_DEG = 45  # đổi nhiều hơn mức này: nhắc kiểm tra (giống record.py)
 CAL_TIMEOUT_MS = 25_000
 CAL_FAIL = {"moving": "người đeo đang cử động", "bad_gravity": "gia tốc đo được không phải 1 g"}
+REC_LABELS = list(VI)  # = har_edge.LABELS
+REC_MAX_MS = 10 * 60_000  # quên dừng: tự dừng sau 10 phút
+FLIP = {"stairs_up": "stairs_down", "stairs_down": "stairs_up"}
+REC_STOP = {"inline_keyboard": [[{"text": "⏹ Dừng", "callback_data": "rec:stop"}]]}
+
+
+def rec_after_buttons(activity: str) -> dict:
+    row = [{"text": f"🔁 Lượt nữa ({VI.get(activity, activity)})", "callback_data": "rec:again"}]
+    if activity in FLIP:
+        row.append({"text": f"⇅ {VI[FLIP[activity]]}", "callback_data": "rec:flip"})
+    return {"inline_keyboard": [row]}
 
 
 def fall_buttons(alert_id: str) -> dict:
@@ -125,6 +139,8 @@ class Bot:
         self.cal_done: dict[str, tuple] = {}  # dev -> (upright_req, upright_result) đã báo
         self.restore: dict[str, tuple] = {}  # id lần hiệu chỉnh -> (dev, hướng cũ)
         self.lock = threading.Lock()  # on_status chạy trên luồng MQTT
+        self.rec: dict | None = None  # phiên thu đang chạy {id, dev, subject, activity, note, t, chat}
+        self.rec_last: dict | None = None  # phiên gần nhất (cho nút Lượt nữa / Đổi chiều)
         self.offset = 0
 
     # ---------- Telegram ----------
@@ -183,6 +199,14 @@ class Bot:
             self.reply(chat, self.silence(who))
         elif cmd == "hieuchinh":
             self.reply(chat, self.calibrate(chat, who))
+        elif cmd == "thu":
+            if len(args) < 2 or args[1] not in REC_LABELS:
+                self.reply(chat, "Cách dùng: <code>/thu &lt;người&gt; &lt;nhãn&gt; [ghi chú]</code>\n"
+                                 "Ví dụ: <code>/thu T01 stairs_up vitri=A</code>\nNhãn: " + ", ".join(REC_LABELS))
+            else:
+                self.rec_start(chat, who, args[0], args[1], " ".join(args[2:]))
+        elif cmd == "dung":
+            self.rec_stop(chat, who)
         elif cmd in ("start", "help"):
             self.reply(chat, "<b>Bộ đeo HAR</b>\n" + "\n".join(f"/{c} – {d}" for c, d in COMMANDS))
         else:
@@ -210,6 +234,18 @@ class Bot:
             self.api("editMessageReplyMarkup", chat_id=chat, message_id=msg.get("message_id"),
                      reply_markup={"inline_keyboard": []})
             self.reply(chat, text, reply_to_message_id=msg.get("message_id"))
+        elif action == "rec":
+            self.api("answerCallbackQuery", callback_query_id=cq["id"])
+            self.api("editMessageReplyMarkup", chat_id=chat, message_id=msg.get("message_id"),
+                     reply_markup={"inline_keyboard": []})
+            if ref == "stop":
+                self.rec_stop(chat, who)
+            elif ref in ("again", "flip") and self.rec_last:
+                last = self.rec_last
+                act = FLIP.get(last["activity"], last["activity"]) if ref == "flip" else last["activity"]
+                self.rec_start(chat, who, last["subject"], act, last["note"])
+            else:
+                self.reply(chat, "Không còn phiên trước để lặp lại; dùng /thu.")
         elif action == "uprestore":
             text = self.restore_upright(ref, who)
             self.api("answerCallbackQuery", callback_query_id=cq["id"], text=_plain(text)[:190])
@@ -363,8 +399,59 @@ class Bot:
         self.record("bộ đeo" if req.startswith("btn-") else (pend or {}).get("who", ""), "calibrated", req)
         self.reply(chat, "\n".join(lines), **markup)
 
+    # ---------- thu dữ liệu có nhãn (giống record.py --no-upright-cal) ----------
+    def rec_start(self, chat: str, who: str, subject: str, activity: str, note: str) -> None:
+        if self.rec:
+            r = self.rec
+            self.reply(chat, f"⚠️ Đang thu <b>{escape(r['subject'])} · {VI.get(r['activity'], r['activity'])}</b> "
+                             f"({_dur(self.now() - r['t'])}). Dừng trước: /dung", reply_markup=REC_STOP)
+            return
+        dev = self.dev()
+        if self.online(dev) is False:
+            self.reply(chat, f"📴 Bộ đeo <code>{escape(dev)}</code> đang offline, không thu được.")
+            return
+        if not re.fullmatch(r"[A-Za-z0-9_-]{1,16}", subject):
+            self.reply(chat, "Mã người chỉ gồm chữ, số, - hoặc _ (vd T01).")
+            return
+        st = self.status.get(dev) or {}
+        up = st.get("upright")
+        ang = angle_deg(up, UPRIGHT_DEFAULT) if up else None
+        sid = f"{dev}_{subject}_{activity}_{datetime.fromtimestamp(self.now() / 1000):%Y%m%d-%H%M%S}"
+        self.publish(f"har/{dev}/session", {
+            "action": "start", "id": sid, "subject": subject, "activity": activity, "note": note[:120],
+            "upright": up, "upright_source": st.get("upright_cal", "unknown"),
+            "upright_angle_deg": None if ang is None else round(ang, 1)})
+        self.publish(f"har/{dev}/cmd", {"cmd": "display", "mode": "record", "activity": activity})
+        self.publish(f"har/{dev}/cmd", {"cmd": "beep", "ms": 150})
+        self.rec = {"id": sid, "dev": dev, "subject": subject, "activity": activity, "note": note[:120],
+                    "t": self.now(), "chat": chat}
+        self.rec_last = dict(self.rec)
+        self.record(who, "rec_start", sid)
+        self.reply(chat, f"🔴 <b>Đang thu</b> {escape(subject)} · <b>{VI.get(activity, activity)}</b>"
+                         + (f" · {escape(note[:120])}" if note else "")
+                         + f"\n<code>{escape(sid)}</code>\nXong thì bấm Dừng (hoặc /dung).", reply_markup=REC_STOP)
+
+    def rec_stop(self, chat: str, who: str, reason: str = "") -> None:
+        r, self.rec = self.rec, None
+        dev = r["dev"] if r else self.dev()
+        # har-ingest đóng mọi phiên đang mở của bộ đeo, kể cả phiên mở trước khi bot khởi động lại
+        self.publish(f"har/{dev}/session", {"action": "stop", "id": r["id"] if r else None})
+        # như record.py: hủy cảnh báo té còn chạy trước khi rời chế độ thu, trả màn hình về bình thường
+        self.publish(f"har/{dev}/cmd", {"cmd": "cancel_alarm"})
+        self.publish(f"har/{dev}/cmd", {"cmd": "display", "mode": "monitor"})
+        self.publish(f"har/{dev}/cmd", {"cmd": "beep", "ms": 400})
+        if not r:
+            self.reply(chat, "⏹ Đã gửi lệnh dừng (bot không thấy phiên nào đang thu).")
+            return
+        self.record(who, "rec_stop", r["id"])
+        self.reply(chat, f"⏹ {reason}Đã dừng <b>{escape(r['subject'])} · {VI.get(r['activity'], r['activity'])}</b> "
+                         f"sau {_dur(self.now() - r['t'])}. Dữ liệu lưu sau ~90 s.",
+                   reply_markup=rec_after_buttons(r["activity"]))
+
     def check_timeouts(self) -> None:
         now = self.now()
+        if self.rec and now - self.rec["t"] > REC_MAX_MS:
+            self.rec_stop(self.rec["chat"], "bot", reason="Quá 10 phút, tự dừng. ")
         with self.lock:
             late = [(k, v) for k, v in self.cal_pending.items() if now - v["t"] > CAL_TIMEOUT_MS]
             for k, _ in late:
