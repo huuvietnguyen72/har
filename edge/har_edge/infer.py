@@ -92,6 +92,9 @@ class Infer:
             store.outbox_put(self.conn, "event", a["id"], event, a["dev"])
             out.append((f"har/{a['dev']}/alert", a, 1, False))
             log.warning("CẢNH BÁO %s", json.dumps(a, ensure_ascii=False))
+        for cmd in st.fusion.pop_commands():  # vd model phát hiện té: nhờ bộ đeo bật còi + 10 s chờ hủy
+            out.append((f"har/{st.dev}/cmd", cmd, 1, False))
+            log.warning("LỆNH bộ đeo %s: %s", st.dev, json.dumps(cmd))
 
     def _close_segment(self, st: DeviceState, seg: dict | None) -> None:
         if seg and seg["end"] > seg["start"]:

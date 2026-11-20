@@ -404,6 +404,22 @@ Trên dataset S01–S04 (LOSO) v3 tương đương v2 (macro-F1 A2 0,928 so vớ
 - Với v4, bộ chặn cầu thang không còn sửa lỗi đứng nào mà còn chặn nhầm một phần cầu thang thật (T01: 95 % → 93 %). Vẫn giữ bật (`STAIRS_MIN_ALT_M=0,3`) để phòng người hoặc vị trí đeo chưa gặp; đặt 0 để tắt.
 - **Hạn chế:** T01 và S01 là cùng một người, nên 99 % "đứng" trên T01 có phần nhờ model đã quen người này. Khi để riêng S01 (không ai khác có dữ liệu ở vị trí lạ), "đứng" ở E–H chỉ đạt 24 %. Muốn chắc cho người khác, cần thêm người đeo ở vị trí lạ.
 
+## 24. Model phát hiện té nhưng còi bộ đeo không kêu
+
+**Hiện tượng** (thử 21/11): 5 cú té lên nệm. 00:58 và 01:02 bộ đeo tự phát hiện (va chạm 3,1–3,2 g): còi kêu, cảnh báo mức cao "ngưỡng + model". 01:21, 01:21 và 01:23 chỉ model trên Pi phát hiện (P = 1,0): Telegram và dashboard có cảnh báo, nhưng **còi không kêu** và người đeo **không có 10 s để tự hủy**.
+
+**Nguyên nhân.** Còi chỉ do bộ đeo bật, khi chính nó phát hiện bằng ngưỡng (rơi tự do → va chạm → nằm yên). Ngã "khuỵu" hoặc ngã chậm không có pha rơi tự do rõ nên ngưỡng bỏ sót (thí nghiệm D: 18/23), trong khi model bắt 23/23. Khi chỉ model phát hiện, Pi gửi cảnh báo thẳng mà không báo bộ đeo.
+
+**Sửa** (`logic.FallFusion`, chỉ phía Pi; dùng lệnh `test_alarm` sẵn có của firmware, không phải nạp lại):
+- Model phát hiện mà bộ đeo không kích hoạt → Pi gửi `{"cmd":"test_alarm"}`. Bộ đeo chạy đúng quy trình như khi tự phát hiện: còi ngắt quãng, OLED "NGHI TÉ NGÃ – nhấn để hủy", 10 s chờ hủy.
+- Pi nhận ra cảnh báo do mình yêu cầu qua `suspected` có `peak_g = 0` tới trong 8 s sau lệnh. Người đeo không hủy → cảnh báo mức **cao**, nguồn `model`, giờ là giờ té. Hủy → chỉ ghi lại, không gửi Telegram.
+- Bộ đeo không bật cảnh báo trong 15 s (mất kết nối, hết pin) → Pi báo thẳng như trước (mức trung bình, `reason = device_no_response`).
+- Nếu ngay lúc đó bộ đeo cũng đo được va chạm thật (`peak_g > 0`), xử lý như cảnh báo ngưỡng thường, không báo trùng.
+
+**Đánh đổi:** cảnh báo do model phát hiện tới Telegram và dashboard chậm thêm khoảng 10 s (bằng cảnh báo của bộ đeo), nhưng còi luôn kêu và người đeo hủy được báo nhầm.
+
+**Kiểm chứng.** Edge 44/44 (thêm 5 test: lệnh tới bộ đeo, không hủy → mức cao với giờ té, hủy → không gửi, không phản hồi → báo thẳng, va chạm thật cùng lúc → không trùng).
+
 ## Kết quả kiểm tra
 
 | Phép thử | Kết quả |

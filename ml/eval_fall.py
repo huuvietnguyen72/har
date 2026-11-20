@@ -61,6 +61,9 @@ def stream(rec, clf, use_baro: bool, window_s: float, params: FusionParams):
             c_alerts += combined.on_prediction(now, data[0], data[1], now)
         else:
             c_alerts += combined.on_device_event(data, now)
+    # model phát hiện té -> nhờ bộ đeo kêu; khi phát lại không có bộ đeo trả lời nên Pi báo thẳng sau thời gian chờ
+    # (giờ cảnh báo vẫn là giờ té nên không đổi cách tính độ nhạy)
+    m_alerts += model_only.tick(int(t[-1]) + 60_000)
     c_alerts += combined.tick(int(t[-1]) + 60_000)
     return ([d["t"] for d in det],
             [a["t"] for a in m_alerts if a["type"] == "fall"],

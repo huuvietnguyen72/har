@@ -154,22 +154,73 @@ def test_fusion_cancelled_not_notified_and_timeout():
     assert len(out) == 1 and out[0]["id"] == "c" and out[0]["reason"] == "timeout"
 
 
-def test_fusion_model_only_requires_lying():
+def _model_fall(fu, t0=T0, p_fall=0.9, lead=("walk",)):
+    """Chuỗi dự đoán: đang đi -> té -> nằm 7 s. Trả cảnh báo phát ra ngay (phải rỗng: Pi chờ bộ đeo)."""
+    return _preds(fu, t0, [*lead, "fall", "lie", "lie", "lie", "lie", "lie", "lie", "lie"], p_fall=p_fall)
+
+
+def test_fusion_model_only_asks_device_to_alarm():
     fu = FallFusion("har01")
-    out = _preds(fu, T0, ["walk", "fall", "lie", "lie", "lie", "lie", "lie", "lie", "lie"], p_fall=0.9)
-    assert len(out) == 1 and out[0]["source"] == "model" and out[0]["severity"] == "medium"
-    fu2 = FallFusion("har01")
+    assert _model_fall(fu) == []  # không báo thẳng nữa
+    assert fu.pop_commands() == [{"cmd": "test_alarm"}] and fu.pop_commands() == []
+    fu2 = FallFusion("har01")  # té rồi đứng dậy đi tiếp: không nhờ bộ đeo
     assert _preds(fu2, T0, ["walk", "fall", "stand", "walk", "walk", "walk", "walk", "walk"], p_fall=0.9) == []
+    assert fu2.pop_commands() == []
+
+
+def test_fusion_model_alarm_confirmed_by_wearer_silence():
+    fu = FallFusion("har01")
+    _model_fall(fu, p_fall=0.8)
+    t_req = T0 + 8000
+    # bộ đeo bật cảnh báo theo lệnh (peak_g 0), người đeo không hủy -> confirmed sau 10 s
+    assert fu.on_device_event({"id": "har01-a", "type": "suspected", "t": t_req + 300, "peak_g": 0.0}, t_req + 400) == []
+    out = fu.on_device_event({"id": "har01-b", "type": "confirmed", "t": t_req + 10_400, "ref": "har01-a", "peak_g": 0.0}, t_req + 10_500)
+    assert len(out) == 1 and out[0]["source"] == "model" and out[0]["severity"] == "high" and out[0]["notify"]
+    assert out[0]["id"] == f"har01-m{T0 + 1000}" and out[0]["t"] == T0 + 1000 and out[0]["prob"] == 0.8  # giờ té, không phải giờ bật còi
+    assert fu.tick(t_req + 60_000) == []  # không báo thêm lần nữa khi hết thời gian chờ
+
+
+def test_fusion_model_alarm_cancelled_by_wearer():
+    fu = FallFusion("har01")
+    _model_fall(fu)
+    t_req = T0 + 8000
+    fu.on_device_event({"id": "har01-a", "type": "suspected", "t": t_req + 300, "peak_g": 0.0}, t_req + 400)
+    out = fu.on_device_event({"id": "har01-c", "type": "cancelled", "t": t_req + 4000, "ref": "har01-a"}, t_req + 4100)
+    assert len(out) == 1 and out[0]["cancelled"] and not out[0]["notify"] and out[0]["source"] == "model"
+    assert fu.tick(t_req + 60_000) == []
+
+
+def test_fusion_model_alarm_device_no_response_falls_back():
+    fu = FallFusion("har01")
+    _model_fall(fu)
+    t_req = T0 + 8000
+    assert fu.tick(t_req + 10_000) == []  # còn chờ bộ đeo
+    out = fu.tick(t_req + 16_000)  # > 15 s không có "suspected": báo thẳng
+    assert len(out) == 1 and out[0]["source"] == "model" and out[0]["severity"] == "medium" and out[0]["notify"]
+    assert out[0]["reason"] == "device_no_response" and out[0]["t"] == T0 + 1000
+    assert fu.tick(t_req + 30_000) == []
+
+
+def test_fusion_model_and_real_impact_same_fall():
+    """Ngưỡng trên bộ đeo cũng thấy va chạm thật ngay sau lệnh: xử lý như incident ngưỡng, không báo trùng."""
+    fu = FallFusion("har01")
+    _model_fall(fu)
+    t_req = T0 + 8000
+    fu.on_device_event({"id": "har01-x", "type": "suspected", "t": t_req + 200, "peak_g": 3.4}, t_req + 300)
+    out = fu.on_device_event({"id": "har01-y", "type": "confirmed", "t": t_req + 10_300, "ref": "har01-x", "peak_g": 3.4}, t_req + 10_400)
+    out += fu.tick(t_req + 60_000)
+    assert [a["id"] for a in out] == ["har01-x"]
 
 
 def test_fusion_model_only_threshold_and_lying_gate():
     # P(té) 0,55: đủ ngưỡng mặc định 0,5 (S01 thật cho 0,50–0,70)
     fu = FallFusion("har01")
-    out = _preds(fu, T0, ["walk", "walk", "fall", "lie", "lie", "lie", "lie", "lie", "lie", "lie"], p_fall=0.55)
-    assert len(out) == 1 and out[0]["source"] == "model"
-    # đang nằm rồi trở mình (giống SisFall D14): không báo
+    _preds(fu, T0, ["walk", "walk", "fall", "lie", "lie", "lie", "lie", "lie", "lie", "lie"], p_fall=0.55)
+    assert fu.pop_commands() == [{"cmd": "test_alarm"}]
+    # đang nằm rồi trở mình (giống SisFall D14): không nhờ bộ đeo, không báo
     fu2 = FallFusion("har01")
     assert _preds(fu2, T0, ["lie", "lie", "lie", "fall", "lie", "lie", "lie", "lie", "lie", "lie", "lie"], p_fall=0.9) == []
+    assert fu2.pop_commands() == [] and fu2.tick(T0 + 60_000) == []
 
 
 def test_fusion_sos():
