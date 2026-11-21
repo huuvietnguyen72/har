@@ -86,7 +86,7 @@ Sau `rotate-key`: sửa `VPS_DEVICE_KEY` trong `~/har/edge/.env` trên Pi, rồi
 
 ### Không vào được Pi
 
-Pi không có RTC và nhật ký mặc định nằm trong RAM: sau mất điện, `journalctl --list-boots` chỉ thấy lần khởi động hiện tại, mốc đầu tiên là giờ lưu lần cuối trước khi mất điện.
+Pi không có RTC và nhật ký mặc định nằm trong RAM: sau khi Pi tắt (`sudo poweroff` hay mất điện), `journalctl --list-boots` chỉ thấy lần khởi động hiện tại, mốc đầu tiên là giờ lưu lần cuối trước khi tắt. Tắt Pi đúng cách: `sudo poweroff`, chờ đèn ACT tắt hẳn rồi mới rút điện.
 
 `ping 192.168.12.19` không trả lời và dashboard "offline": kiểm tra Pi còn điện (đèn đỏ PWR), đèn ACT nháy; rút điện cắm lại. Mọi dịch vụ tự chạy khi khởi động. Bộ đeo vẫn tự kêu còi khi té (ngưỡng trên bộ đeo), nhưng không có Telegram và dashboard cho tới khi Pi chạy lại.
 
