@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 470" width="760" height="470" font-family="Segoe UI, Arial, sans-serif">
+<title>F1 từng lớp: chỉ IMU so với IMU + áp suất</title><rect width="760" height="470" fill="#fcfcfb"/>
+<text x="20" y="30" font-size="16" font-weight="700" fill="#0b0b0b">F1 từng hoạt động: thêm cảm biến áp suất giúp nhận cầu thang</text>
+<text x="20" y="50" font-size="12" fill="#52514e">Random Forest, LOSO trên S01–S04 (học thêm SisFall), chạy 20/11/2026. Nguồn: ml/results/A1, A2/metrics.json</text>
+<rect x="150" y="60" width="12" height="12" rx="2" fill="#2a78d6"/><text x="168" y="70" font-size="12" fill="#52514e">A1: chỉ IMU (macro-F1 0,833)</text>
+<rect x="400" y="60" width="12" height="12" rx="2" fill="#eb6834"/><text x="418" y="70" font-size="12" fill="#52514e">A2: IMU + áp suất, model v4 (macro-F1 0,889)</text>
+<line x1="150.0" y1="78" x2="150.0" y2="424" stroke="#e4e3df" stroke-width="1"/>
+<text x="150.0" y="442" font-size="11" fill="#898781" text-anchor="middle">0</text>
+<line x1="295.0" y1="78" x2="295.0" y2="424" stroke="#e4e3df" stroke-width="1"/>
+<text x="295.0" y="442" font-size="11" fill="#898781" text-anchor="middle">0,25</text>
+<line x1="440.0" y1="78" x2="440.0" y2="424" stroke="#e4e3df" stroke-width="1"/>
+<text x="440.0" y="442" font-size="11" fill="#898781" text-anchor="middle">0,5</text>
+<line x1="585.0" y1="78" x2="585.0" y2="424" stroke="#e4e3df" stroke-width="1"/>
+<text x="585.0" y="442" font-size="11" fill="#898781" text-anchor="middle">0,75</text>
+<line x1="730.0" y1="78" x2="730.0" y2="424" stroke="#e4e3df" stroke-width="1"/>
+<text x="730.0" y="442" font-size="11" fill="#898781" text-anchor="middle">1,0</text>
+<text x="440.0" y="462" font-size="11" fill="#898781" text-anchor="middle">F1 (1,0 = nhận đúng hoàn toàn)</text>
+<text x="140" y="106.71428571428572" font-size="12.5" fill="#0b0b0b" text-anchor="end">Đứng</text>
+<path d="M150 89.71428571428572 h432.0 a4 4 0 0 1 4 4 v4 a4 4 0 0 1 -4 4 h-432.0 z" fill="#2a78d6"/>
+<path d="M150 103.71428571428572 h435.8 a4 4 0 0 1 4 4 v4 a4 4 0 0 1 -4 4 h-435.8 z" fill="#eb6834"/>
+<text x="140" y="156.14285714285714" font-size="12.5" fill="#0b0b0b" text-anchor="end">Ngồi</text>
+<path d="M150 139.14285714285714 h572.7 a4 4 0 0 1 4 4 v4 a4 4 0 0 1 -4 4 h-572.7 z" fill="#2a78d6"/>
+<path d="M150 153.14285714285714 h571.6 a4 4 0 0 1 4 4 v4 a4 4 0 0 1 -4 4 h-571.6 z" fill="#eb6834"/>
+<text x="140" y="205.57142857142858" font-size="12.5" fill="#0b0b0b" text-anchor="end">Nằm</text>
+<path d="M150 188.57142857142858 h575.5 a4 4 0 0 1 4 4 v4 a4 4 0 0 1 -4 4 h-575.5 z" fill="#2a78d6"/>
+<path d="M150 202.57142857142858 h575.5 a4 4 0 0 1 4 4 v4 a4 4 0 0 1 -4 4 h-575.5 z" fill="#eb6834"/>
+<text x="140" y="255.0" font-size="12.5" fill="#0b0b0b" text-anchor="end">Đi</text>
+<path d="M150 238.0 h491.6 a4 4 0 0 1 4 4 v4 a4 4 0 0 1 -4 4 h-491.6 z" fill="#2a78d6"/>
+<path d="M150 252.0 h535.3 a4 4 0 0 1 4 4 v4 a4 4 0 0 1 -4 4 h-535.3 z" fill="#eb6834"/>
+<text x="140" y="304.42857142857144" font-size="12.5" fill="#0b0b0b" text-anchor="end">Lên cầu thang</text>
+<path d="M150 287.42857142857144 h262.5 a4 4 0 0 1 4 4 v4 a4 4 0 0 1 -4 4 h-262.5 z" fill="#2a78d6"/>
+<path d="M150 301.42857142857144 h335.4 a4 4 0 0 1 4 4 v4 a4 4 0 0 1 -4 4 h-335.4 z" fill="#eb6834"/>
+<text x="140" y="353.8571428571429" font-size="12.5" fill="#0b0b0b" text-anchor="end">Xuống cầu thang</text>
+<path d="M150 336.8571428571429 h445.5 a4 4 0 0 1 4 4 v4 a4 4 0 0 1 -4 4 h-445.5 z" fill="#2a78d6"/>
+<path d="M150 350.8571428571429 h555.3 a4 4 0 0 1 4 4 v4 a4 4 0 0 1 -4 4 h-555.3 z" fill="#eb6834"/>
+<text x="140" y="403.2857142857143" font-size="12.5" fill="#0b0b0b" text-anchor="end">Té</text>
+<path d="M150 386.2857142857143 h572.6 a4 4 0 0 1 4 4 v4 a4 4 0 0 1 -4 4 h-572.6 z" fill="#2a78d6"/>
+<path d="M150 400.2857142857143 h573.4 a4 4 0 0 1 4 4 v4 a4 4 0 0 1 -4 4 h-573.4 z" fill="#eb6834"/>
+</svg>

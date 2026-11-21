@@ -11,6 +11,7 @@ Trước khi đọc, xem bức tranh chung ở [`../kien-truc.md`](../kien-truc.
 | 3 | [03-cai-dat-pi.md](03-cai-dat-pi.md) | Cài Raspberry Pi OS, Mosquitto, chrony, tường lửa, 5 dịch vụ HAR, bot Telegram | Pi 4, thẻ nhớ ≥ 16 GB, Wi-Fi nhà |
 | 4 | [04-du-lieu-huan-luyen-kiem-thu.md](04-du-lieu-huan-luyen-kiem-thu.md) | Thu dữ liệu, huấn luyện, đánh giá, đưa model lên Pi, các bộ test | Bộ đeo + Pi đang chạy, laptop Python |
 | 5 | [05-deploy-cloudflare.md](05-deploy-cloudflare.md) | Tạo D1, deploy Worker + dashboard, bí mật, tài khoản, nối Pi lên cloud | Tài khoản Cloudflare, Node ≥ 18 |
+| 6 | [06-hoi-dap-bao-ve.md](06-hoi-dap-bao-ve.md) | Chuẩn bị bảo vệ: cấp độ IoT, cảm biến và ngưỡng, I2C/MQTT và độ trễ, dữ liệu và model (có biểu đồ), phân công 4 người và kịch bản demo | |
 
 Sau khi cài xong: [`../van-hanh.md`](../van-hanh.md) (việc hằng ngày, sự cố thường gặp khi đang chạy).
 

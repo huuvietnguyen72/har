@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 634" width="840" height="634" font-family="Segoe UI, Arial, sans-serif">
+<title>Ma trận nhầm lẫn model v4</title><rect width="840" height="634" fill="#fcfcfb"/>
+<text x="20" y="30" font-size="16" font-weight="700" fill="#0b0b0b">Ma trận nhầm lẫn, model v4 (A2), LOSO trên 4.047 cửa sổ</text>
+<text x="20" y="50" font-size="12" fill="#52514e">Mỗi ô: số cửa sổ; màu = tỉ lệ trong hàng. Hàng = nhãn thật, cột = model đoán. Nguồn: ml/results/A2/metrics.json</text>
+<text x="367.0" y="72" font-size="12" fill="#52514e" text-anchor="middle">Model đoán</text>
+<text x="24" y="337.0" font-size="12" fill="#52514e" text-anchor="middle" transform="rotate(-90 24 337.0)">Nhãn thật</text>
+<text x="181.0" y="110" font-size="12" fill="#0b0b0b" text-anchor="middle">Đứng</text>
+<text x="243.0" y="110" font-size="12" fill="#0b0b0b" text-anchor="middle">Ngồi</text>
+<text x="305.0" y="110" font-size="12" fill="#0b0b0b" text-anchor="middle">Nằm</text>
+<text x="367.0" y="110" font-size="12" fill="#0b0b0b" text-anchor="middle">Đi</text>
+<text x="429.0" y="110" font-size="12" fill="#0b0b0b" text-anchor="middle">Lên CT</text>
+<text x="491.0" y="110" font-size="12" fill="#0b0b0b" text-anchor="middle">Xuống CT</text>
+<text x="553.0" y="110" font-size="12" fill="#0b0b0b" text-anchor="middle">Té</text>
+<text x="140" y="155.0" font-size="12" fill="#0b0b0b" text-anchor="end">Đứng (1065)</text>
+<rect x="151" y="121" width="60" height="60" rx="3" fill="#256abf" stroke="#256abf"/>
+<text x="181.0" y="156.0" font-size="13" text-anchor="middle" fill="#ffffff">670</text>
+<rect x="213" y="121" width="60" height="60" rx="3" fill="#fcfcfb" stroke="#e4e3df"/>
+<rect x="275" y="121" width="60" height="60" rx="3" fill="#fcfcfb" stroke="#e4e3df"/>
+<rect x="337" y="121" width="60" height="60" rx="3" fill="#cde2fb" stroke="#cde2fb"/>
+<text x="367.0" y="156.0" font-size="13" text-anchor="middle" fill="#0b0b0b">35</text>
+<rect x="399" y="121" width="60" height="60" rx="3" fill="#6da7ec" stroke="#6da7ec"/>
+<text x="429.0" y="156.0" font-size="13" text-anchor="middle" fill="#0b0b0b">360</text>
+<rect x="461" y="121" width="60" height="60" rx="3" fill="#fcfcfb" stroke="#e4e3df"/>
+<rect x="523" y="121" width="60" height="60" rx="3" fill="#fcfcfb" stroke="#e4e3df"/>
+<text x="140" y="217.0" font-size="12" fill="#0b0b0b" text-anchor="end">Ngồi (528)</text>
+<rect x="151" y="183" width="60" height="60" rx="3" fill="#fcfcfb" stroke="#e4e3df"/>
+<rect x="213" y="183" width="60" height="60" rx="3" fill="#0d366b" stroke="#0d366b"/>
+<text x="243.0" y="218.0" font-size="13" text-anchor="middle" fill="#ffffff">522</text>
+<rect x="275" y="183" width="60" height="60" rx="3" fill="#fcfcfb" stroke="#e4e3df"/>
+<rect x="337" y="183" width="60" height="60" rx="3" fill="#fcfcfb" stroke="#e4e3df"/>
+<rect x="399" y="183" width="60" height="60" rx="3" fill="#cde2fb" stroke="#cde2fb"/>
+<text x="429.0" y="218.0" font-size="13" text-anchor="middle" fill="#0b0b0b">4</text>
+<rect x="461" y="183" width="60" height="60" rx="3" fill="#fcfcfb" stroke="#e4e3df"/>
+<rect x="523" y="183" width="60" height="60" rx="3" fill="#cde2fb" stroke="#cde2fb"/>
+<text x="553.0" y="218.0" font-size="13" text-anchor="middle" fill="#0b0b0b">2</text>
+<text x="140" y="279.0" font-size="12" fill="#0b0b0b" text-anchor="end">Nằm (621)</text>
+<rect x="151" y="245" width="60" height="60" rx="3" fill="#fcfcfb" stroke="#e4e3df"/>
+<rect x="213" y="245" width="60" height="60" rx="3" fill="#fcfcfb" stroke="#e4e3df"/>
+<rect x="275" y="245" width="60" height="60" rx="3" fill="#0d366b" stroke="#0d366b"/>
+<text x="305.0" y="280.0" font-size="13" text-anchor="middle" fill="#ffffff">620</text>
+<rect x="337" y="245" width="60" height="60" rx="3" fill="#fcfcfb" stroke="#e4e3df"/>
+<rect x="399" y="245" width="60" height="60" rx="3" fill="#fcfcfb" stroke="#e4e3df"/>
+<rect x="461" y="245" width="60" height="60" rx="3" fill="#fcfcfb" stroke="#e4e3df"/>
+<rect x="523" y="245" width="60" height="60" rx="3" fill="#cde2fb" stroke="#cde2fb"/>
+<text x="553.0" y="280.0" font-size="13" text-anchor="middle" fill="#0b0b0b">1</text>
+<text x="140" y="341.0" font-size="12" fill="#0b0b0b" text-anchor="end">Đi (815)</text>
+<rect x="151" y="307" width="60" height="60" rx="3" fill="#cde2fb" stroke="#cde2fb"/>
+<text x="181.0" y="342.0" font-size="13" text-anchor="middle" fill="#0b0b0b">9</text>
+<rect x="213" y="307" width="60" height="60" rx="3" fill="#fcfcfb" stroke="#e4e3df"/>
+<rect x="275" y="307" width="60" height="60" rx="3" fill="#fcfcfb" stroke="#e4e3df"/>
+<rect x="337" y="307" width="60" height="60" rx="3" fill="#0d366b" stroke="#0d366b"/>
+<text x="367.0" y="342.0" font-size="13" text-anchor="middle" fill="#ffffff">781</text>
+<rect x="399" y="307" width="60" height="60" rx="3" fill="#cde2fb" stroke="#cde2fb"/>
+<text x="429.0" y="342.0" font-size="13" text-anchor="middle" fill="#0b0b0b">18</text>
+<rect x="461" y="307" width="60" height="60" rx="3" fill="#cde2fb" stroke="#cde2fb"/>
+<text x="491.0" y="342.0" font-size="13" text-anchor="middle" fill="#0b0b0b">7</text>
+<rect x="523" y="307" width="60" height="60" rx="3" fill="#fcfcfb" stroke="#e4e3df"/>
+<text x="140" y="403.0" font-size="12" fill="#0b0b0b" text-anchor="end">Lên cầu thang (370)</text>
+<rect x="151" y="369" width="60" height="60" rx="3" fill="#cde2fb" stroke="#cde2fb"/>
+<text x="181.0" y="404.0" font-size="13" text-anchor="middle" fill="#0b0b0b">23</text>
+<rect x="213" y="369" width="60" height="60" rx="3" fill="#cde2fb" stroke="#cde2fb"/>
+<text x="243.0" y="404.0" font-size="13" text-anchor="middle" fill="#0b0b0b">2</text>
+<rect x="275" y="369" width="60" height="60" rx="3" fill="#fcfcfb" stroke="#e4e3df"/>
+<rect x="337" y="369" width="60" height="60" rx="3" fill="#cde2fb" stroke="#cde2fb"/>
+<text x="367.0" y="404.0" font-size="13" text-anchor="middle" fill="#0b0b0b">34</text>
+<rect x="399" y="369" width="60" height="60" rx="3" fill="#184f95" stroke="#184f95"/>
+<text x="429.0" y="404.0" font-size="13" text-anchor="middle" fill="#ffffff">311</text>
+<rect x="461" y="369" width="60" height="60" rx="3" fill="#fcfcfb" stroke="#e4e3df"/>
+<rect x="523" y="369" width="60" height="60" rx="3" fill="#fcfcfb" stroke="#e4e3df"/>
+<text x="140" y="465.0" font-size="12" fill="#0b0b0b" text-anchor="end">Xuống cầu thang (312)</text>
+<rect x="151" y="431" width="60" height="60" rx="3" fill="#fcfcfb" stroke="#e4e3df"/>
+<rect x="213" y="431" width="60" height="60" rx="3" fill="#fcfcfb" stroke="#e4e3df"/>
+<rect x="275" y="431" width="60" height="60" rx="3" fill="#fcfcfb" stroke="#e4e3df"/>
+<rect x="337" y="431" width="60" height="60" rx="3" fill="#cde2fb" stroke="#cde2fb"/>
+<text x="367.0" y="466.0" font-size="13" text-anchor="middle" fill="#0b0b0b">15</text>
+<rect x="399" y="431" width="60" height="60" rx="3" fill="#fcfcfb" stroke="#e4e3df"/>
+<rect x="461" y="431" width="60" height="60" rx="3" fill="#0d366b" stroke="#0d366b"/>
+<text x="491.0" y="466.0" font-size="13" text-anchor="middle" fill="#ffffff">297</text>
+<rect x="523" y="431" width="60" height="60" rx="3" fill="#fcfcfb" stroke="#e4e3df"/>
+<text x="140" y="527.0" font-size="12" fill="#0b0b0b" text-anchor="end">Té (336)</text>
+<rect x="151" y="493" width="60" height="60" rx="3" fill="#fcfcfb" stroke="#e4e3df"/>
+<rect x="213" y="493" width="60" height="60" rx="3" fill="#fcfcfb" stroke="#e4e3df"/>
+<rect x="275" y="493" width="60" height="60" rx="3" fill="#fcfcfb" stroke="#e4e3df"/>
+<rect x="337" y="493" width="60" height="60" rx="3" fill="#fcfcfb" stroke="#e4e3df"/>
+<rect x="399" y="493" width="60" height="60" rx="3" fill="#fcfcfb" stroke="#e4e3df"/>
+<rect x="461" y="493" width="60" height="60" rx="3" fill="#fcfcfb" stroke="#e4e3df"/>
+<rect x="523" y="493" width="60" height="60" rx="3" fill="#0d366b" stroke="#0d366b"/>
+<text x="553.0" y="528.0" font-size="13" text-anchor="middle" fill="#ffffff">336</text>
+<text x="20" y="614" font-size="12" fill="#52514e">Nhầm lớn nhất: đứng → lên cầu thang (360). Lượt để riêng S01 có cả vị trí đeo lạ E–H mà người khác chưa có;</text>
+<text x="20" y="630" font-size="12" fill="#52514e">trên các phiên đeo vị trí chuẩn, F1 lớp đứng của v4 là 0,97.</text>
+</svg>
