@@ -1,6 +1,6 @@
 # Kế hoạch dự án HAR
 
-Cập nhật 21/11/2026, theo hệ thống đang chạy thật. Phần cứng: [`hardware/Datasheet_HAR01.html`](../hardware/Datasheet_HAR01.html), bảng chân: [`pinout.md`](pinout.md), nhật ký tích hợp (24 mục, mọi vấn đề và cách sửa): [`firmware-integration.md`](firmware-integration.md), vận hành hằng ngày: [`van-hanh.md`](van-hanh.md).
+Cập nhật 21/11/2026, theo hệ thống đang chạy thật. Cấu trúc hệ thống: [`kien-truc.md`](kien-truc.md), phần cứng (sơ đồ mạch, hộp): [`hardware/README.md`](../hardware/README.md), bảng chân: [`pinout.md`](pinout.md), nhật ký tích hợp (24 mục, mọi vấn đề và cách sửa): [`firmware-integration.md`](firmware-integration.md), vận hành hằng ngày: [`van-hanh.md`](van-hanh.md).
 
 ## Mục tiêu
 
@@ -12,7 +12,7 @@ Cập nhật 21/11/2026, theo hệ thống đang chạy thật. Phần cứng: [
 
 | Phần | Trạng thái |
 | --- | --- |
-| Bộ đeo `har01` | ESP32-D0WD-V3; một bus I2C GPIO21/22: MPU6050 (0x68), AHT20 + BMP280 (0x38 + 0x77), OLED (0x3C); nút GPIO19; loa GPIO25; LED xanh GPIO26, đỏ GPIO27. Pin Li-ion qua mạch sạc và tăng áp 5 V, không đo áp pin. Firmware 1.0.0, 50 Hz. Nút: 1 lần bật màn hình, đúp `marker`, **3 lần hiệu chỉnh hướng đứng**, giữ 3 s SOS |
+| Bộ đeo `har01` | ESP32-D0WD-V3; một bus I2C GPIO21/22: MPU6050 (0x68), AHT20 + BMP280 (0x38 + 0x77), OLED (0x3C); nút GPIO19; loa GPIO25; LED xanh GPIO26, đỏ GPIO27. Pin LiPo 1000 mAh → TP4056 → công tắc → MT3608 5 V, không đo áp pin. Hộp in 3D 95 × 60 × 40 mm, kẹp thắt lưng hông phải. Firmware 1.0.0, 50 Hz. Nút: 1 lần bật màn hình, đúp `marker`, **3 lần hiệu chỉnh hướng đứng**, giữ 3 s SOS |
 | Mạng | ESP32 và Pi cùng Wi-Fi nhà (2,4 GHz), dải 192.168.12.0/24. Pi `raspivn` (192.168.12.19) |
 | Pi 4 | Mosquitto, chrony, `har-ingest`, `har-infer`, `har-uplink`, `har-notify`, `har-bot` (systemd) |
 | Model | **v4**: Random Forest, IMU + BMP280, cửa sổ 2,5 s, xoay tín hiệu về hướng đứng + đặc trưng thẳng đứng/nằm ngang; học trên S01–S04 + SisFall. Bộ chặn cầu thang khi độ cao không đổi (0,3 m/10 s) |
@@ -58,7 +58,8 @@ Cập nhật 21/11/2026, theo hệ thống đang chạy thật. Phần cứng: [
 ### 3. Bộ đeo
 
 - [ ] Đo dòng tiêu thụ bằng USB tester.
-- [ ] Ghi mã linh kiện chưa đối chiếu (transistor loa, điện trở LED, module sạc và tăng áp), chụp ảnh mạch và hộp.
+- [x] Sơ đồ lắp mạch và cấu trúc hộp theo mạch thật ([`hardware/`](../hardware/README.md), 21/11).
+- [ ] Ghi mã linh kiện chưa đối chiếu (transistor loa, điện trở LED và chân B).
 - [ ] Tùy chọn: hiệu chỉnh gia tốc kế 6 mặt (SVM nằm yên 0,942 g).
 
 ### 4. Model (tùy chọn)

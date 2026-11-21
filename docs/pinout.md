@@ -1,6 +1,6 @@
 # Bảng chân ESP32 DevKit
 
-Theo mạch đang hàn, đo trên thiết bị ngày 17/11/2026: quét I2C, đọc ID chip, đo tải trên từng chân. Chi tiết số đo: [`hardware/Datasheet_HAR01.html`](../hardware/Datasheet_HAR01.html). Firmware: [`firmware/include/pins.h`](../firmware/include/pins.h).
+Theo mạch đang hàn, đo trên thiết bị ngày 17/11/2026: quét I2C, đọc ID chip, đo tải trên từng chân. Sơ đồ mạch và hộp: [`hardware/README.md`](../hardware/README.md). Chi tiết số đo: [`hardware/Datasheet_HAR01.html`](../hardware/Datasheet_HAR01.html). Firmware: [`firmware/include/pins.h`](../firmware/include/pins.h).
 
 | Chức năng | Chân | Ghi chú |
 | --- | --- | --- |
@@ -12,8 +12,8 @@ Theo mạch đang hàn, đo trên thiết bị ngày 17/11/2026: quét I2C, đ�
 
 Chân trống (đo thả nổi): GPIO18, 32, 33, 34, 35, 36, 39.
 
-MPU6050: đeo ở hông phải, đứng thẳng thì trục X chỉ xuống đất (ax ≈ −1 g).
+MPU6050 hàn trên PCB chính; hộp kẹp thắt lưng ở hông phải, đứng thẳng thì trục X chỉ xuống đất (ax ≈ −1 g).
 
-Nguồn: USB 5 V hoặc pin Li-ion → mạch sạc → tăng áp 5 V → VIN. Không có cầu chia áp đo pin: firmware đọc GPIO34 (`PIN_BATTERY`), đọc dưới 2,5 V nên gửi `battery_v: null`, OLED hiện giờ thay cho %, không có cảnh báo pin yếu. Không có motor rung (`USE_VIBRATION 0`).
+Nguồn: USB 5 V, hoặc pin LiPo 3,7 V 1000 mAh (803040) → TP4056 → công tắc → MT3608 (5,0 V) → VIN. Không có cầu chia áp đo pin: firmware đọc GPIO34 (`PIN_BATTERY`), đọc dưới 2,5 V nên gửi `battery_v: null`, OLED hiện giờ thay cho %, không có cảnh báo pin yếu. Không có motor rung (`USE_VIBRATION 0`).
 
-Giá trị điện trở, mã transistor và tên module sạc/tăng áp chưa đối chiếu trên mạch nên chưa ghi.
+Giá trị điện trở và mã transistor loa chưa đối chiếu trên mạch nên chưa ghi.
