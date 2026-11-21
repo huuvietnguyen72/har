@@ -1,0 +1,47 @@
+{
+  "v": 1,
+  "experiment": "D",
+  "model": "threshold vs rf vs fusion",
+  "features": "imu+baro",
+  "window_s": 2.5,
+  "accuracy": null,
+  "macro_f1": null,
+  "f1_per_class": null,
+  "confusion": null,
+  "n_windows": null,
+  "n_subjects": 4,
+  "extra": {
+    "methods": {
+      "threshold": {
+        "sensitivity": 0.7826,
+        "false_alarms_per_hour": 0.0,
+        "specificity_recordings": 1.0,
+        "detect_delay_ms_median": -40.0,
+        "n_falls": 23,
+        "false_alarms": 0
+      },
+      "model": {
+        "sensitivity": 1.0,
+        "false_alarms_per_hour": 0.0,
+        "specificity_recordings": 1.0,
+        "detect_delay_ms_median": 520.0,
+        "n_falls": 23,
+        "false_alarms": 0
+      },
+      "combined": {
+        "sensitivity": 1.0,
+        "false_alarms_per_hour": 0.0,
+        "specificity_recordings": 1.0,
+        "detect_delay_ms_median": -20.0,
+        "n_falls": 23,
+        "false_alarms": 0
+      }
+    },
+    "adl_hours": 1.46,
+    "p_model_only": 0.5,
+    "p_confirm": 0.5,
+    "cv": "leave-one-subject-out trên người tự thu; huấn luyện thêm SisFall (38 người)",
+    "synthetic": false,
+    "note": "Thời gian chờ hủy 10 s của ESP32 không tính vào độ trễ phát hiện."
+  }
+}
