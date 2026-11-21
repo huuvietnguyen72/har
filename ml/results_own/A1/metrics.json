@@ -1,0 +1,124 @@
+{
+  "v": 1,
+  "experiment": "A1",
+  "model": "rf-imu-2.5s-v1",
+  "features": "imu",
+  "window_s": 2.5,
+  "accuracy": 0.8038,
+  "macro_f1": 0.7154,
+  "f1_per_class": {
+    "stand": 0.818,
+    "sit": 0.9773,
+    "lie": 0.9902,
+    "walk": 0.9167,
+    "stairs_up": 0.4821,
+    "stairs_down": 0.8233,
+    "fall": 0.0
+  },
+  "confusion": {
+    "labels": [
+      "stand",
+      "sit",
+      "lie",
+      "walk",
+      "stairs_up",
+      "stairs_down",
+      "fall"
+    ],
+    "matrix": [
+      [
+        418,
+        0,
+        0,
+        8,
+        134,
+        0,
+        0
+      ],
+      [
+        9,
+        517,
+        0,
+        2,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        11,
+        609,
+        1,
+        0,
+        0,
+        0
+      ],
+      [
+        7,
+        0,
+        0,
+        528,
+        8,
+        1,
+        0
+      ],
+      [
+        28,
+        2,
+        0,
+        30,
+        222,
+        9,
+        2
+      ],
+      [
+        0,
+        0,
+        0,
+        19,
+        8,
+        226,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        20,
+        256,
+        60,
+        0
+      ]
+    ]
+  },
+  "n_windows": 3135,
+  "n_subjects": 4,
+  "extra": {
+    "cv": "leave-one-subject-out trên 4 người tự thu, dự đoán out-of-fold",
+    "external": {},
+    "params": {
+      "n_estimators": 100,
+      "max_depth": 12
+    },
+    "infer_ms_train_machine": 17.87,
+    "feature_importance": {
+      "tilt_deg": 0.0831,
+      "ax_min": 0.0574,
+      "ax_max": 0.0448,
+      "ax_rms": 0.0441,
+      "svm_e_0_3hz": 0.038,
+      "svm_dom_freq": 0.0378,
+      "svm_std": 0.0349,
+      "svm_max": 0.0327,
+      "ay_mean": 0.0322,
+      "svm_e_total": 0.0301,
+      "ax_std": 0.0285,
+      "ax_mean": 0.0239,
+      "gmag_mean": 0.0223,
+      "ay_min": 0.0214,
+      "gx_mean": 0.0209
+    },
+    "synthetic": false,
+    "created": "2026-11-17T19:24:39+00:00"
+  }
+}

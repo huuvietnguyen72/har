@@ -71,10 +71,25 @@ Lý do: thử trực tiếp 19/11, người đeo đứng 2 phút nhưng model c�
 
 Chỉ S01 thu té, nên khi để riêng S01 làm tập kiểm tra, cột "chỉ tự thu" không có cú té nào để học (F1 té = 0). Với SisFall, F1 té trên S01 là 0,99–1,00 (RF) và 0,91 (CNN). Chỉ có 4 người nên số liệu còn dao động. Với RF, siêu tham số được chọn trên chính các dự đoán out-of-fold, nên kết quả hơi lạc quan.
 
-Mỗi thí nghiệm ghi `results/<thí nghiệm>/metrics.json` (accuracy, macro-F1, F1 từng lớp, ma trận nhầm lẫn, số cửa sổ, số người, phiên bản model). Đẩy lên VPS để trang **Đánh giá model** hiển thị:
+### Kết quả trong repo
+
+Mô tả dataset, số phiên theo người và hoạt động, link Google Drive: [`data/README.md`](data/README.md). Các file `metrics.json` của dữ liệu thật được commit (số liệu cho báo cáo); mỗi file ghi tên model, ngày chạy và các tùy chọn đặc trưng (`extra`):
+
+| Thí nghiệm | `results/`: tự thu + SisFall | `results_own/`: chỉ tự thu |
+| --- | --- | --- |
+| A1 RF chỉ IMU | 0,833 (20/11) | 0,715 (18/11) |
+| A2 RF IMU + BMP280 | **0,889** (20/11, model v4 đang chạy trên Pi) | 0,717 (18/11) |
+| B1 CNN chỉ IMU | 0,881 (18/11) | 0,717 (18/11) |
+| B2 CNN IMU + BMP280 | 0,904 (18/11) | 0,697 (18/11) |
+| C RF IMU + BMP280, 2,0 s | 0,881 (20/11) | 0,734 (18/11) |
+| D phát hiện té, S01 | Ngưỡng 18/23, model 23/23, kết hợp 23/23 (20/11) | Ngưỡng 18/23, model 0/23: không có té để học (18/11) |
+
+Số là macro-F1 LOSO in ra bởi script. Bản 20/11 dùng đặc trưng xoay về hướng đứng + thẳng đứng/nằm ngang và học thêm S01 ở vị trí E–H, nên tập chấm của S01 khó hơn bảng 18/11 ở trên (xem đoạn "Model v4"). B1, B2 (CNN) chưa chạy lại với đặc trưng mới. Trang Đánh giá model trên dashboard đang hiện A1, A2, C, D của `results/`.
+
+Mỗi thí nghiệm ghi `results/<thí nghiệm>/metrics.json` (accuracy, macro-F1, F1 từng lớp, ma trận nhầm lẫn, số cửa sổ, số người, phiên bản model). Đẩy lên cloud để trang **Đánh giá model** hiển thị:
 
 ```bash
-python push_metrics.py                       # đọc VPS_API_URL, VPS_DEVICE_KEY từ edge/.env
+python push_metrics.py                       # đọc VPS_API_URL, VPS_DEVICE_KEY từ edge/.env (URL Worker Cloudflare)
 python push_metrics.py --system pin.json     # số liệu hệ thống, ví dụ [{"dev":"har01","day":"2026-12-01","battery_hours":16.2}]
 ```
 

@@ -1,0 +1,131 @@
+{
+  "v": 1,
+  "experiment": "C",
+  "model": "rf-imu+baro-2s-v1",
+  "features": "imu+baro",
+  "window_s": 2.0,
+  "accuracy": 0.8594,
+  "macro_f1": 0.8815,
+  "f1_per_class": {
+    "stand": 0.7418,
+    "sit": 0.9931,
+    "lie": 0.9994,
+    "walk": 0.9153,
+    "stairs_up": 0.5702,
+    "stairs_down": 0.9566,
+    "fall": 0.9941
+  },
+  "confusion": {
+    "labels": [
+      "stand",
+      "sit",
+      "lie",
+      "walk",
+      "stairs_up",
+      "stairs_down",
+      "fall"
+    ],
+    "matrix": [
+      [
+        810,
+        0,
+        0,
+        45,
+        473,
+        0,
+        0
+      ],
+      [
+        0,
+        652,
+        0,
+        0,
+        5,
+        0,
+        2
+      ],
+      [
+        0,
+        0,
+        787,
+        0,
+        0,
+        0,
+        1
+      ],
+      [
+        13,
+        0,
+        0,
+        946,
+        43,
+        16,
+        0
+      ],
+      [
+        33,
+        2,
+        0,
+        40,
+        396,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        18,
+        1,
+        386,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        253
+      ]
+    ]
+  },
+  "n_windows": 4922,
+  "n_subjects": 4,
+  "extra": {
+    "cv": "leave-one-subject-out trên 4 người tự thu, dự đoán out-of-fold; mỗi lượt huấn luyện thêm SisFall (38 người, 26981 cửa sổ), không chấm điểm trên SisFall",
+    "external": {
+      "SisFall": {
+        "subjects": 38,
+        "windows": 26981
+      }
+    },
+    "params": {
+      "n_estimators": 400,
+      "max_depth": null
+    },
+    "infer_ms_train_machine": 39.46,
+    "feature_importance": {
+      "tilt_deg": 0.0672,
+      "p_slope_pa_s": 0.0647,
+      "alt_change_m": 0.0636,
+      "av_mean": 0.0636,
+      "av_max": 0.0526,
+      "ah_mean": 0.0475,
+      "ah_rms": 0.0424,
+      "p_resid_std": 0.0391,
+      "ah_max": 0.0388,
+      "av_min": 0.0388,
+      "svm_e_0_3hz": 0.0381,
+      "ah_min": 0.0334,
+      "svm_p2p": 0.0275,
+      "svm_max": 0.025,
+      "av_rms": 0.0239
+    },
+    "synthetic": false,
+    "align_upright": true,
+    "yaw_invariant": true,
+    "created": "2026-11-20T13:43:39+00:00"
+  }
+}

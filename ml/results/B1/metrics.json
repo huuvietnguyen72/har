@@ -1,0 +1,108 @@
+{
+  "v": 1,
+  "experiment": "B1",
+  "model": "cnn-imu-2.5s-v1",
+  "features": "imu",
+  "window_s": 2.5,
+  "accuracy": 0.896,
+  "macro_f1": 0.8808,
+  "f1_per_class": {
+    "stand": 0.9433,
+    "sit": 0.9849,
+    "lie": 0.9302,
+    "walk": 0.8283,
+    "stairs_up": 0.7508,
+    "stairs_down": 0.8151,
+    "fall": 0.913
+  },
+  "confusion": {
+    "labels": [
+      "stand",
+      "sit",
+      "lie",
+      "walk",
+      "stairs_up",
+      "stairs_down",
+      "fall"
+    ],
+    "matrix": [
+      [
+        541,
+        0,
+        0,
+        5,
+        14,
+        0,
+        0
+      ],
+      [
+        5,
+        521,
+        0,
+        2,
+        0,
+        0,
+        0
+      ],
+      [
+        9,
+        9,
+        540,
+        0,
+        0,
+        0,
+        63
+      ],
+      [
+        2,
+        0,
+        0,
+        456,
+        75,
+        11,
+        0
+      ],
+      [
+        30,
+        0,
+        0,
+        28,
+        232,
+        2,
+        1
+      ],
+      [
+        0,
+        0,
+        0,
+        66,
+        4,
+        183,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        336
+      ]
+    ]
+  },
+  "n_windows": 3135,
+  "n_subjects": 4,
+  "extra": {
+    "cv": "leave-one-subject-out trên 4 người tự thu, dự đoán out-of-fold; mỗi lượt huấn luyện thêm SisFall (38 người, 34416 cửa sổ), không chấm điểm trên SisFall",
+    "external": {
+      "SisFall": {
+        "subjects": 38,
+        "windows": 34416
+      }
+    },
+    "epochs_max": 40,
+    "synthetic": false,
+    "created": "2026-11-17T19:54:35+00:00"
+  }
+}

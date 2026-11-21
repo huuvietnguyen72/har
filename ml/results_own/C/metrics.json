@@ -1,0 +1,124 @@
+{
+  "v": 1,
+  "experiment": "C",
+  "model": "rf-imu+baro-2s-v1",
+  "features": "imu+baro",
+  "window_s": 2.0,
+  "accuracy": 0.8497,
+  "macro_f1": 0.7338,
+  "f1_per_class": {
+    "stand": 0.824,
+    "sit": 0.9736,
+    "lie": 0.9871,
+    "walk": 0.9355,
+    "stairs_up": 0.7243,
+    "stairs_down": 0.692,
+    "fall": 0.0
+  },
+  "confusion": {
+    "labels": [
+      "stand",
+      "sit",
+      "lie",
+      "walk",
+      "stairs_up",
+      "stairs_down",
+      "fall"
+    ],
+    "matrix": [
+      [
+        522,
+        0,
+        0,
+        13,
+        165,
+        0,
+        0
+      ],
+      [
+        11,
+        646,
+        0,
+        2,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        19,
+        768,
+        1,
+        0,
+        0,
+        0
+      ],
+      [
+        7,
+        0,
+        0,
+        653,
+        14,
+        6,
+        0
+      ],
+      [
+        27,
+        3,
+        0,
+        27,
+        314,
+        0,
+        1
+      ],
+      [
+        0,
+        0,
+        0,
+        18,
+        1,
+        309,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        2,
+        1,
+        250,
+        0
+      ]
+    ]
+  },
+  "n_windows": 3780,
+  "n_subjects": 4,
+  "extra": {
+    "cv": "leave-one-subject-out trên 4 người tự thu, dự đoán out-of-fold",
+    "external": {},
+    "params": {
+      "n_estimators": 400,
+      "max_depth": null
+    },
+    "infer_ms_train_machine": 36.41,
+    "feature_importance": {
+      "tilt_deg": 0.0672,
+      "ax_rms": 0.0545,
+      "svm_e_0_3hz": 0.0519,
+      "p_slope_pa_s": 0.0496,
+      "ax_min": 0.0494,
+      "alt_change_m": 0.0446,
+      "ax_mean": 0.0422,
+      "svm_max": 0.033,
+      "ax_max": 0.0302,
+      "svm_std": 0.0301,
+      "gz_rms": 0.0298,
+      "svm_e_total": 0.0287,
+      "svm_p2p": 0.0286,
+      "ay_mean": 0.0267,
+      "ax_std": 0.0267
+    },
+    "synthetic": false,
+    "created": "2026-11-17T19:26:32+00:00"
+  }
+}
