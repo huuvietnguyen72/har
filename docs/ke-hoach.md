@@ -5,7 +5,7 @@ Cập nhật 21/11/2026, theo hệ thống đang chạy thật. Cấu trúc hệ
 ## Mục tiêu
 
 - Bộ đeo hông nhận dạng 7 hoạt động ([`labels.md`](labels.md)) và phát hiện té ngã cho người cao tuổi, prototype giám sát trong nhà.
-- IoT Level 5, 3 tầng: bộ đeo ESP32 → Raspberry Pi 4 (edge, chạy model) → cloud (Cloudflare: lưu trữ, dashboard). Mọi số liệu đánh giá xem được trên cloud.
+- IoT Level 2 (một node giám sát, phân tích cục bộ, lưu trữ và ứng dụng trên cloud), 3 tầng: bộ đeo ESP32 → Raspberry Pi 4 (edge, chạy model) → cloud (Cloudflare: lưu trữ, dashboard). Mọi số liệu đánh giá xem được trên cloud.
 - Cảnh báo té: còi trên bộ đeo (người đeo có 10 s tự hủy), Telegram, dashboard.
 
 ## Hệ thống hiện có

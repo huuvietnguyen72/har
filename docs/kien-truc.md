@@ -2,7 +2,7 @@
 
 Hệ thống đang chạy thật, cập nhật 21/11/2026. Phần cứng bộ đeo: [`hardware/README.md`](../hardware/README.md). Hợp đồng dữ liệu: [`mqtt.md`](mqtt.md), [`api.md`](api.md), [`data-schema.md`](data-schema.md).
 
-Hệ thống IoT mức 5 (Bahga & Madisetti), gồm 3 tầng:
+Hệ thống IoT cấp 2 theo Bahga & Madisetti ([lý do](#cấp-độ-iot)), gồm 3 tầng:
 
 - **Bộ đeo** `har01`: đọc cảm biến, tự phát hiện té bằng ngưỡng, bật còi.
 - **Raspberry Pi 4** (edge): thu dữ liệu, chạy model nhận dạng hoạt động, hợp nhất cảnh báo, gửi Telegram.
@@ -67,6 +67,28 @@ flowchart TB
 | Cloud | Cloudflare Worker `har-cloud`, D1 `har-db` (APAC), assets web app | API ghi/đọc, lưu trạng thái, đoạn hoạt động, sự kiện, số liệu đánh giá; dashboard; Cron kiểm tra Pi mất kết nối | Trình duyệt (JWT), Telegram Bot API |
 
 Dữ liệu thô 50 Hz chỉ nằm trên Pi (`~/har/edge/data/`) và trong dataset của nhóm. Cloud chỉ nhận kết quả đã xử lý: hoạt động hiện tại, các đoạn hoạt động, sự kiện, độ trễ, tỉ lệ mất gói và kết quả đánh giá model.
+
+## Cấp độ IoT
+
+**Cấp 2** theo Bahga & Madisetti: **một node** giám sát, **phân tích cục bộ**, **lưu trữ và ứng dụng trên cloud**. Node gồm bộ đeo và Pi: Pi là phần xử lý cục bộ của node (Controller Service và phân tích), không điều phối nhiều node.
+
+| Thành phần cấp 2 | Trong HAR |
+| --- | --- |
+| Device | Bộ đeo `har01`: ESP32, MPU6050, AHT20 + BMP280, còi, LED, nút, OLED |
+| Resource | Firmware: đọc cảm biến, gửi MQTT, điều khiển còi |
+| Controller Service (cục bộ) | Dịch vụ trên Pi: `har-ingest`, `har-uplink` (gửi lên cloud qua HTTPS), `har-bot` (lệnh xuống bộ đeo) |
+| Analysis (cục bộ) | `har-infer` trên Pi: model v4, hợp nhất cảnh báo té |
+| Database (cloud) | D1 `har-db` |
+| Web service (cloud) | Worker `har-cloud`: REST API `/api/*` |
+| Application (cloud) | Dashboard trên Cloudflare; người thân nhận cảnh báo qua Telegram (bot `har-bot` chạy trên Pi, cảnh báo Pi mất kết nối do Cron trên cloud gửi) |
+
+Không phải cấp khác vì:
+
+- **Cấp 1:** lưu trữ và ứng dụng cục bộ. HAR lưu trên D1, xem qua Internet.
+- **Cấp 3:** phân tích trên cloud. HAR phân tích ở Pi; cloud chỉ tổng hợp thống kê.
+- **Cấp 4, 5, 6:** cần nhiều node. HAR có một bộ đeo.
+
+Phân tích đặt cục bộ vì cảnh báo té cần độ trễ thấp và phải chạy khi mất Internet. Mỗi bộ đeo có mã `{dev}` riêng trong MQTT và API, nên thêm bộ đeo thì Pi trở thành node điều phối và hệ thống lên cấp 5 (hướng phát triển, chưa làm).
 
 ## Bộ đeo
 
