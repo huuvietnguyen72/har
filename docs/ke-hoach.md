@@ -51,9 +51,9 @@ Cập nhật 21/11/2026, theo hệ thống đang chạy thật. Phần cứng: [
 
 - [x] Sửa DNS trên Pi (21/11): kết nối "BIGHOME 02" dùng `192.168.12.1`, `1.1.1.1`, bỏ `192.168.102.1` do router cấp; phân giải tên 5,03 s → 0,01 s ([`van-hanh.md`](van-hanh.md#dns-chậm)).
 - [x] Gỡ trang tạm 8080 trên Pi, đóng cổng tường lửa (21/11): đã có dashboard cloud.
-- [ ] Bật lưu nhật ký qua các lần khởi động (`/var/log/journal`): 21/11 Pi mất điện lúc 01:53, nhật ký nằm trong RAM nên không biết nguyên nhân.
+- [ ] Tùy chọn: bật lưu nhật ký qua các lần khởi động (`/var/log/journal`). Nhật ký đang nằm trong RAM, nên sau khi Pi tắt (dù `sudo poweroff` hay mất điện) không xem lại được.
 - [ ] Đặt IP cố định cho Pi trên router (mDNS `raspivn.local` thỉnh thoảng không trả lời).
-- [x] Pi khởi động lại sau mất điện (21/11): 7 dịch vụ tự chạy, đồng hồ tự đồng bộ. Còn cần xác nhận ESP32 tự nối lại khi Pi lên sau nó.
+- [x] Pi tắt bằng `sudo poweroff` rồi bật lại (21/11): 7 dịch vụ tự chạy, đồng hồ tự đồng bộ, bộ đeo bật sau tự nối lại.
 
 ### 3. Bộ đeo
 
@@ -95,7 +95,7 @@ Theo 10 bước thiết kế hệ thống IoT của Bahga & Madisetti. Bước 9
 | Rủi ro | Cách xử lý |
 | --- | --- |
 | Không đo được áp pin, không có cảnh báo pin yếu | Biết thời lượng pin đã đo; sạc đầy trước demo |
-| Pi mất điện hoặc mất mạng (21/11: ngừng gửi từ 01:53) | Kiểm tra đèn, khởi động lại; dashboard hiện "offline" sau 30 s; bộ đeo vẫn tự kêu còi khi té |
+| Pi tắt (`poweroff`, mất điện) hoặc mất mạng | Bật lại, dịch vụ tự chạy; dashboard hiện "offline" sau 30 s; bộ đeo vẫn tự kêu còi khi té nhưng không có Telegram và dashboard cho tới khi Pi chạy lại |
 | Pi không có RTC, mDNS không ổn định | Internet cho Pi khi demo; IP cố định |
 | Telegram lỗi phía máy chủ (20/11: 502 trong 19 phút) | Bot tự kết nối lại; dashboard và còi bộ đeo vẫn chạy |
 | Gói miễn phí Cloudflare giới hạn request/ngày, CPU 10 ms/request | Dashboard ngừng hỏi khi tab ẩn; theo dõi mức dùng trên dashboard Cloudflare |
