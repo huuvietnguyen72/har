@@ -21,9 +21,13 @@ flowchart LR
 - Cấu trúc hệ thống, luồng dữ liệu, luồng cảnh báo té: [`docs/kien-truc.md`](docs/kien-truc.md).
 - Phần cứng bộ đeo (sơ đồ lắp mạch, cấu trúc hộp, vị trí đeo): [`hardware/README.md`](hardware/README.md).
 
-| Sơ đồ lắp mạch | Cấu trúc hộp đeo |
-| --- | --- |
-| [![Sơ đồ lắp mạch](hardware/so-do-mach.svg)](hardware/so-do-mach.svg) | [![Cấu trúc hộp đeo](hardware/hop-deo.svg)](hardware/hop-deo.svg) |
+### Sơ đồ lắp mạch
+
+[![Sơ đồ lắp mạch](hardware/so-do-mach.svg)](hardware/so-do-mach.svg)
+
+### Cấu trúc hộp đeo
+
+[![Cấu trúc hộp đeo](hardware/hop-deo.svg)](hardware/hop-deo.svg)
 
 ## Cấu trúc thư mục
 
