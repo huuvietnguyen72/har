@@ -53,6 +53,8 @@ flowchart LR
 
 ## Thứ tự triển khai thật
 
+Hướng dẫn từng bước cho thành viên nhóm, mỗi bước có phần sự cố đã gặp: [`docs/huong-dan/`](docs/huong-dan/README.md).
+
 1. Mạch bộ đeo: [`hardware/README.md`](hardware/README.md), bảng chân [`docs/pinout.md`](docs/pinout.md). Kế hoạch và việc tiếp theo: [`docs/ke-hoach.md`](docs/ke-hoach.md).
 2. Nạp firmware ([`firmware/README.md`](firmware/README.md)).
 3. Cài Pi: `sudo HOTSPOT_PASS=... bash edge/deploy/setup-pi.sh` ([`edge/README.md`](edge/README.md)).

@@ -2,6 +2,7 @@
 
 | File | Nội dung |
 | --- | --- |
+| [huong-dan/](huong-dan/README.md) | **Hướng dẫn cho thành viên nhóm**: lắp mạch, nạp firmware, cài Pi, huấn luyện và kiểm thử, deploy Cloudflare, kèm sự cố đã gặp |
 | [kien-truc.md](kien-truc.md) | **Cấu trúc hệ thống**: 3 tầng, dịch vụ, luồng dữ liệu, luồng cảnh báo té, bảo mật |
 | [ke-hoach.md](ke-hoach.md) | Kế hoạch dự án: hệ thống hiện có, việc tiếp theo, chỉ số đánh giá |
 | [labels.md](labels.md) | 8 mã nhãn hoạt động, dùng giống nhau ở mọi nơi |

@@ -1,5 +1,7 @@
 # HAR cloud trên Cloudflare
 
+Hướng dẫn từng bước cho thành viên nhóm, kèm sự cố đã gặp: [`docs/huong-dan/05-deploy-cloudflare.md`](../docs/huong-dan/05-deploy-cloudflare.md).
+
 Một **Cloudflare Worker** phục vụ cả API `/api/*` lẫn web app (dashboard), dữ liệu nằm trong **D1** (SQLite của Cloudflare). Kết quả nhận dạng, cảnh báo, metrics và dashboard đều nằm trên cloud; Pi chỉ đẩy dữ liệu lên.
 
 ```
@@ -9,7 +11,7 @@ Trình duyệt ─────HTTPS, JWT────────────► 
 ```
 
 - Giữ **nguyên hợp đồng API** của bản VPS (`backend/api`): Pi chỉ đổi `VPS_API_URL`, web app giữ `VITE_API_URL=/api`.
-- Không có WebSocket: web app build với `VITE_REALTIME=polling` (`webapp/.env.cloudflare`), hỏi lại mỗi 5 s.
+- Không có WebSocket: web app build với `VITE_REALTIME=polling` (`webapp/.env.cloudflare`), hỏi `/api/live` (trạng thái + cảnh báo trong một request) mỗi 2 s, ngừng khi tab ẩn.
 - Tài khoản do quản trị tạo (không tự đăng ký); mật khẩu PBKDF2-SHA256; khóa thiết bị lưu dạng sha256.
 
 | File | Nội dung |
@@ -37,9 +39,11 @@ node -e "process.stdout.write(require('crypto').randomBytes(32).toString('hex'))
 Cảnh báo "Pi mất kết nối" (Cron Trigger mỗi 5 phút, `checkPiOffline`): Pi (`har-uplink`) gửi nhịp tim `/api/ingest/heartbeat` mỗi 60 s, độc lập với bộ đeo. Pi im quá `PI_OFFLINE_MIN` (10 phút) → Worker nhắn Telegram một lần và ghi sự kiện `offline` (nguồn `cloud`); Pi gửi lại → nhắn "đã kết nối lại". Cần token và chat của cùng bot với `har-notify` (chép thẳng từ Pi, không hiện ra):
 
 ```bash
-ssh pi@192.168.12.19 "sed -n 's/^TELEGRAM_BOT_TOKEN=//p' ~/har/edge/.env" | tr -d ' 
+ssh pi@192.168.12.19 "sed -n 's/^TELEGRAM_BOT_TOKEN=//p' ~/har/edge/.env" | tr -d ' 
+
 ' | npx wrangler secret put TELEGRAM_BOT_TOKEN
-ssh pi@192.168.12.19 "sed -n 's/^TELEGRAM_CHAT_ID=//p' ~/har/edge/.env" | tr -d ' 
+ssh pi@192.168.12.19 "sed -n 's/^TELEGRAM_CHAT_ID=//p' ~/har/edge/.env" | tr -d ' 
+
 ' | npx wrangler secret put TELEGRAM_CHAT_ID
 ```
 
@@ -84,6 +88,6 @@ npm run typecheck
 
 ## Giới hạn gói miễn phí (kiểm tra lại trang giá của Cloudflare)
 
-- Worker: số request mỗi ngày có hạn. File tĩnh của web app không đi qua Worker (`run_worker_first` chỉ gồm `/api/*`). Pi gửi trạng thái khoảng 5 s/lần, một tab dashboard mở hỏi 2 API mỗi 5 s.
+- Worker: số request mỗi ngày có hạn. File tĩnh của web app không đi qua Worker (`run_worker_first` chỉ gồm `/api/*`, `/ws`, `/__scheduled`). Pi gửi trạng thái khoảng 5 s/lần và nhịp tim mỗi 60 s; một tab dashboard đang hiện hỏi `/api/live` mỗi 2 s.
 - CPU mỗi request khoảng 10 ms: vì vậy PBKDF2 dùng 20 000 vòng (lưu kèm mỗi mật khẩu, tăng được sau).
 - D1: dung lượng và số dòng đọc/ghi mỗi ngày có hạn; một bộ đeo dùng ít.
