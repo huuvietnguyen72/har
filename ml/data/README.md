@@ -4,7 +4,20 @@ Dữ liệu thô **không nằm trong repo** (`.gitignore`). Bản đầy đủ 
 
 **https://drive.google.com/drive/folders/1Uf1RFXNZ9EDUjotQG3zLrP9KjUrTptzd?usp=sharing**
 
-Tải về rồi đặt đúng chỗ dưới đây, sau đó chạy lệnh huấn luyện trong [`../README.md`](../README.md).
+Trên Drive có 2 file nén, giữ nguyên cấu trúc thư mục, và bản sao file này:
+
+| File | Nội dung | Dung lượng |
+| --- | --- | --- |
+| `har-dataset-raw.zip` | `raw/`: 160 phiên huấn luyện | 5,5 MB |
+| `har-dataset-test.zip` | `test/`: 41 phiên thử T01 + 2 log áp suất liên tục (`test/raw/`) | 1,4 MB |
+
+Tải về rồi giải nén ngay trong thư mục này (`ml/data/`), sau đó chạy lệnh huấn luyện trong [`../README.md`](../README.md):
+
+```bash
+cd ml/data
+unzip har-dataset-raw.zip      # -> raw/
+unzip har-dataset-test.zip     # -> test/
+```
 
 | Thư mục | Nội dung | Dùng để | Trong repo |
 | --- | --- | --- | --- |
@@ -70,6 +83,6 @@ D01, D02 (đi bộ) → `walk`; F01–F15 → `fall`; hoạt động khác → `
 
 ## Quy tắc
 
-- Phiên mới: thu xong thì chép thêm vào Drive (cùng cấu trúc thư mục), không commit vào repo.
+- Phiên mới: thu xong thì nén lại `raw/` (hoặc `test/`) và thay file zip trên Drive, cập nhật bảng số phiên ở trên; không commit vào repo.
 - Phiên lỗi (đeo sai, thu nhầm nhãn): xóa cả thư mục phiên ở máy và trên Drive.
 - `test/` không bao giờ đưa vào huấn luyện, kể cả khi đổi model.
