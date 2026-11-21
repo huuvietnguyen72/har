@@ -36,6 +36,7 @@ export const SOURCE_VI: Record<string, string> = {
   model: "Model (Pi)",
   device: "Nút trên thiết bị",
   edge: "Pi",
+  cloud: "Cloud (Pi im lặng)",
 };
 
 export const STAGE_VI: Record<string, string> = {

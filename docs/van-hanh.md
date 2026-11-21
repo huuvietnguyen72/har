@@ -66,13 +66,15 @@ npx wrangler d1 export har-db --remote --output ../har-db-$(date +%F).sql   # sa
 npx wrangler tail                                                     # xem log Worker trực tiếp
 ```
 
+Cloud tự báo Telegram **"Pi mất kết nối"** khi Pi im quá 10 phút (tắt, mất điện, mất Internet) và báo khi Pi kết nối lại; Pi gửi nhịp tim mỗi 60 s kể cả khi bộ đeo tắt. Đổi token Telegram thì cũng chạy lại 2 lệnh `wrangler secret put TELEGRAM_*` trong [`cloud/README.md`](../cloud/README.md).
+
 Sau `rotate-key`: sửa `VPS_DEVICE_KEY` trong `~/har/edge/.env` trên Pi, rồi `sudo systemctl restart har-uplink`.
 
 Đẩy kết quả thí nghiệm lên trang Đánh giá model: chép `ml/results/<thí nghiệm>/metrics.json` lên Pi, gửi bằng `HttpPublisher.publish_metrics` (khóa thiết bị chỉ nằm trên Pi), hoặc `python ml/push_metrics.py` trên máy có khóa trong `edge/.env`.
 
 ## Telegram
 
-- Đổi token (lộ token): @BotFather `/revoke` → điền token mới vào `TELEGRAM_BOT_TOKEN` trong `.env` (giữ nguyên `TELEGRAM_CHAT_ID`) → `sudo systemctl restart har-notify har-bot`.
+- Đổi token (lộ token): @BotFather `/revoke` → điền token mới vào `TELEGRAM_BOT_TOKEN` trong `.env` (giữ nguyên `TELEGRAM_CHAT_ID`) → `sudo systemctl restart har-notify har-bot` → cập nhật bí mật `TELEGRAM_BOT_TOKEN` của Worker (cảnh báo Pi mất kết nối).
 - Thêm nhóm người thân: thêm bot vào nhóm, gửi `/start@harnoti_bot`, lấy `chat.id` (số âm) từ `getUpdates`, đặt vào `TELEGRAM_CHAT_ID` (hoặc thêm vào `TELEGRAM_ALLOWED_IDS` để nhóm cũng ra lệnh được).
 - Telegram trả `502` hoặc hết thời gian chờ (lỗi phía máy chủ Telegram): bot tự kết nối lại; lệnh gửi trong lúc lỗi mà cũ hơn 2 phút bị bỏ (gõ lại); cảnh báo không mất, `har-notify` gửi khi Telegram ổn và ghi "gửi trễ".
 

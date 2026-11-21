@@ -23,6 +23,7 @@ from .publisher import Publisher, PublishError, RejectedError, make_publisher
 log = logging.getLogger("har-uplink")
 BATCH = 50
 LATE_MS = 60_000
+HEARTBEAT_S = 60  # nhịp tim Pi -> cloud, độc lập với bộ đeo; cloud báo "Pi mất kết nối" khi im quá 10 phút
 
 
 class Uplink:
@@ -94,6 +95,15 @@ class Uplink:
         store.outbox_mark_sent(self.conn, [row["id"]])
         return resp or {}
 
+    def heartbeat(self) -> bool:
+        """Báo cloud "Pi còn sống" (kể cả khi bộ đeo tắt). Lỗi mạng chỉ ghi log: outbox vẫn giữ dữ liệu."""
+        try:
+            self.pub.publish_heartbeat({"v": 1, "t": store.now_ms()})
+            return True
+        except (PublishError, RejectedError) as e:
+            log.debug("Nhịp tim lỗi: %s", e)
+            return False
+
     def step(self) -> float:
         """Một vòng: trả số giây nên chờ trước vòng sau."""
         try:
@@ -145,6 +155,7 @@ def main() -> None:
     signal.signal(signal.SIGTERM, lambda *_: stop.set())
     signal.signal(signal.SIGINT, lambda *_: stop.set())
     last_sys = 0.0
+    last_beat = 0.0
     import time
 
     while not stop.is_set():
@@ -153,6 +164,9 @@ def main() -> None:
             for item in compute_system_metrics(conn):
                 store.outbox_put(conn, "system_metrics", f"{item['dev']}:{item['day']}", item, item["dev"])
             store.outbox_purge(conn)
+        if time.time() - last_beat > HEARTBEAT_S:
+            last_beat = time.time()
+            up.heartbeat()
         stop.wait(up.step())
     up.pub.close()
 

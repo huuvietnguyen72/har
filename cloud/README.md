@@ -34,6 +34,15 @@ npm run deploy                          # build web app + deploy; in ra https://
 node -e "process.stdout.write(require('crypto').randomBytes(32).toString('hex'))" | npx wrangler secret put JWT_SECRET
 ```
 
+Cảnh báo "Pi mất kết nối" (Cron Trigger mỗi 5 phút, `checkPiOffline`): Pi (`har-uplink`) gửi nhịp tim `/api/ingest/heartbeat` mỗi 60 s, độc lập với bộ đeo. Pi im quá `PI_OFFLINE_MIN` (10 phút) → Worker nhắn Telegram một lần và ghi sự kiện `offline` (nguồn `cloud`); Pi gửi lại → nhắn "đã kết nối lại". Cần token và chat của cùng bot với `har-notify` (chép thẳng từ Pi, không hiện ra):
+
+```bash
+ssh pi@192.168.12.19 "sed -n 's/^TELEGRAM_BOT_TOKEN=//p' ~/har/edge/.env" | tr -d ' 
+' | npx wrangler secret put TELEGRAM_BOT_TOKEN
+ssh pi@192.168.12.19 "sed -n 's/^TELEGRAM_CHAT_ID=//p' ~/har/edge/.env" | tr -d ' 
+' | npx wrangler secret put TELEGRAM_CHAT_ID
+```
+
 Tạo tài khoản đăng nhập và khóa cho bộ đeo:
 
 ```bash
@@ -55,7 +64,7 @@ VPS_DEVICE_KEY=<API key vừa in>
 
 ```bash
 npm run deploy                          # code Worker hoặc web app đổi
-npm run db:migrate                      # khi có file mới trong migrations/
+npm run db:migrate                      # khi có file mới trong migrations/ (0002: nhịp tim Pi)
 npm run admin -- rotate-key --dev har01 --remote   # lộ khóa thiết bị: cấp khóa mới, sửa .env trên Pi
 ```
 
@@ -67,6 +76,7 @@ npm run build:web && npm run db:migrate:local
 npm run admin -- create-user --email test@har.local --role admin --password matkhau-thu-123 --local
 npm run admin -- create-device --dev har01 --local                 # ghi lại API key
 npx wrangler dev --local --port 8787                               # http://127.0.0.1:8787
+# thử Cron: thêm --test-scheduled --var PI_OFFLINE_MIN:0.05 rồi CLOUD_TEST_SCHEDULED=1 khi chạy pytest
 CLOUD_DEVICE_KEY=<key> CLOUD_EMAIL=test@har.local CLOUD_PASSWORD=matkhau-thu-123 \
   ../edge/.venv/Scripts/python -m pytest -q test/test_e2e.py
 npm run typecheck

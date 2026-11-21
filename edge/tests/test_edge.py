@@ -503,3 +503,25 @@ def test_status_sent_right_after_activity_changes(conn):
     for t_change, lbl in changes:
         shown = [now for now, t, p in log if t.endswith("/display") and p["label"] == lbl and now >= t_change]
         assert shown and shown[0] - t_change <= 1000, (lbl, shown[:1], t_change)
+
+
+def test_uplink_heartbeat_independent_of_wearable(conn):
+    from har_edge.publisher import PublishError
+
+    class Pub(ConsolePublisher):
+        def __init__(self):
+            super().__init__()
+            self.beats = []
+            self.fail = False
+
+        def publish_heartbeat(self, body):
+            if self.fail:
+                raise PublishError("mất mạng")
+            self.beats.append(body)
+            return {"ok": True}
+
+    pub = Pub()
+    up = Uplink(conn, pub)
+    assert up.heartbeat() is True and pub.beats[0]["v"] == 1 and pub.beats[0]["t"] > 0  # outbox trống vẫn gửi
+    pub.fail = True
+    assert up.heartbeat() is False  # lỗi mạng không làm hỏng vòng uplink

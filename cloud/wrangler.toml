@@ -8,7 +8,7 @@ compatibility_date = "2026-11-01"
 directory = "../webapp/dist"
 binding = "ASSETS"
 not_found_handling = "single-page-application"   # /history, /alerts... trả index.html cho React Router
-run_worker_first = ["/api/*", "/ws"]              # chỉ API qua Worker; file tĩnh phục vụ thẳng, không tính request Worker
+run_worker_first = ["/api/*", "/ws", "/__scheduled"]  # chỉ API qua Worker (/__scheduled: gọi tay Cron khi wrangler dev --test-scheduled)
 
 [[d1_databases]]
 binding = "DB"
@@ -21,7 +21,11 @@ JWT_EXPIRE_HOURS = "12"
 STATUS_STALE_S = "30"        # trạng thái cũ hơn số giây này -> coi như offline
 STATUS_LOG_EVERY_S = "60"    # lịch sử pin/nhiệt độ: tối đa 1 dòng mỗi 60 s
 TZ_OFFSET_MIN = "420"        # giờ Việt Nam (UTC+7) để chia "ngày" cho trang Lịch sử
-# JWT_SECRET là bí mật: npx wrangler secret put JWT_SECRET (chạy local: ghi vào cloud/.dev.vars)
+PI_OFFLINE_MIN = "10"        # Pi không gọi cloud quá 10 phút -> Telegram "Pi mất kết nối"
+# Bí mật (npx wrangler secret put ...; chạy local: cloud/.dev.vars): JWT_SECRET, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+
+[triggers]
+crons = ["*/5 * * * *"]      # kiểm tra Pi mất kết nối mỗi 5 phút (checkPiOffline)
 
 [observability]
 enabled = true

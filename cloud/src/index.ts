@@ -17,6 +17,9 @@ export interface Env {
   STATUS_LOG_EVERY_S?: string;
   TZ_OFFSET_MIN?: string; // múi giờ chia "ngày" cho Lịch sử; Việt Nam = 420
   CORS_ORIGINS?: string; // chỉ khi chạy web app dev ở cổng khác
+  PI_OFFLINE_MIN?: string; // Pi im lặng quá số phút này -> cảnh báo "Pi mất kết nối" (Cron Trigger)
+  TELEGRAM_BOT_TOKEN?: string; // bí mật (wrangler secret put): cùng bot với har-notify trên Pi
+  TELEGRAM_CHAT_ID?: string;
 }
 
 const LABELS = ["stand", "sit", "lie", "walk", "stairs_up", "stairs_down", "fall"];
@@ -137,12 +140,21 @@ async function readJson(req: Request): Promise<unknown> {
 }
 
 // ---------------- ingest (Pi) ----------------
+/** Pi (har-uplink) gọi mỗi 60 s, kể cả khi bộ đeo tắt: cloud biết Pi còn sống. */
+async function ingestHeartbeat(req: Request, env: Env) {
+  const device = await currentDevice(req, env);
+  const now = nowMs();
+  await env.DB.prepare("UPDATE devices SET pi_seen_at = ? WHERE dev = ?").bind(now, device.dev).run();
+  return json({ ok: true, received_at: now });
+}
+
 async function ingestStatus(req: Request, env: Env) {
   const device = await currentDevice(req, env);
   const b = check(await readJson(req), STATUS_IN);
   checkDev(device, b.dev);
   const now = nowMs();
   const stmts = [
+    env.DB.prepare("UPDATE devices SET pi_seen_at = ? WHERE dev = ?").bind(now, b.dev),
     env.DB.prepare(
       `INSERT INTO status (dev, t, label, conf, online, battery_v, battery_pct, temp_c, rh, rssi, model, received_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -322,6 +334,7 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
   }
   // --- Pi ---
   if (m === "POST" && p === "/api/ingest/status") return ingestStatus(req, env);
+  if (m === "POST" && p === "/api/ingest/heartbeat") return ingestHeartbeat(req, env);
   if (m === "POST" && p === "/api/ingest/segments") return ingestSegments(req, env);
   if (m === "POST" && p === "/api/ingest/events") return ingestEvents(req, env);
   if (m === "POST" && p === "/api/ingest/metrics") return ingestMetrics(req, env);
@@ -343,7 +356,7 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
   if (p.startsWith("/api/")) {
     const user = await currentUser(req, env);
     if (m === "GET" && p === "/api/devices") {
-      const r = await env.DB.prepare("SELECT dev, alias, position, fw, model, created_at FROM devices").all();
+      const r = await env.DB.prepare("SELECT dev, alias, position, fw, model, created_at, pi_seen_at, pi_offline_since FROM devices").all();
       return json(r.results);
     }
     if (m === "GET" && p === "/api/status") return json(await allStatus(env));
@@ -432,7 +445,65 @@ function cors(env: Env, req: Request, res: Response): Response {
   return new Response(res.body, { status: res.status, headers: h });
 }
 
+// ---------------- Cron: cảnh báo "Pi mất kết nối" ----------------
+const hhmm = (t: number, offMin: number) => new Date(t + offMin * 60_000).toISOString().slice(11, 16);
+const fmtDur = (ms: number) => {
+  const m = Math.round(ms / 60_000);
+  return m < 60 ? `${m} phút` : `${Math.floor(m / 60)} giờ ${m % 60} phút`;
+};
+
+async function telegram(env: Env, text: string): Promise<boolean> {
+  if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) return false;
+  const r = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ chat_id: env.TELEGRAM_CHAT_ID, text, parse_mode: "HTML", disable_web_page_preview: true }),
+  });
+  if (!r.ok) console.error("Telegram", r.status, (await r.text()).slice(0, 200)); // không in token
+  return r.ok;
+}
+
+/**
+ * Pi không gọi cloud quá PI_OFFLINE_MIN phút (tắt, mất điện, mất Internet) -> báo một lần qua Telegram và ghi sự kiện
+ * "offline" (nguồn cloud) cho dashboard; Pi gọi lại -> báo đã kết nối lại. Cảnh báo "bộ đeo mất kết nối" vẫn do
+ * Pi gửi (Pi còn sống mới biết bộ đeo im).
+ */
+export async function checkPiOffline(env: Env, now = nowMs()) {
+  const limitMs = num(env.PI_OFFLINE_MIN, 10) * 60_000;
+  const off = num(env.TZ_OFFSET_MIN, 420);
+  const devs = (await env.DB.prepare("SELECT dev, alias, pi_seen_at, pi_offline_since FROM devices WHERE pi_seen_at IS NOT NULL").all<any>()).results;
+  const out: string[] = [];
+  for (const d of devs) {
+    const name = d.alias ? `${d.alias} (${d.dev})` : d.dev;
+    const silent = now - d.pi_seen_at;
+    if (silent > limitMs && d.pi_offline_since == null) {
+      await env.DB.batch([
+        env.DB.prepare("UPDATE devices SET pi_offline_since = ? WHERE dev = ?").bind(d.pi_seen_at, d.dev),
+        env.DB.prepare(
+          `INSERT INTO events (id, dev, t, type, severity, source, cancelled, received_at) VALUES (?, ?, ?, 'offline', 'info', 'cloud', 0, ?)
+           ON CONFLICT(id) DO NOTHING`,
+        ).bind(`${d.dev}-pi-offline-${d.pi_seen_at}`, d.dev, d.pi_seen_at, now),
+      ]);
+      await telegram(env, `📴 <b>Pi mất kết nối</b>\nThiết bị: <code>${name}</code>\nKhông có dữ liệu từ Pi từ ${hhmm(d.pi_seen_at, off)} ` +
+        `(${fmtDur(silent)}).\nBộ đeo vẫn tự kêu còi khi té, nhưng không có Telegram, dashboard và model cho tới khi Pi chạy lại. ` +
+        `Kiểm tra Pi còn điện và Internet.`);
+      out.push(`${d.dev}: offline`);
+    } else if (silent <= limitMs && d.pi_offline_since != null) {
+      await env.DB.prepare("UPDATE devices SET pi_offline_since = NULL WHERE dev = ?").bind(d.dev).run();
+      await telegram(env, `✅ <b>Pi đã kết nối lại</b>\nThiết bị: <code>${name}</code>\nMất kết nối khoảng ${fmtDur(d.pi_seen_at - d.pi_offline_since)} ` +
+        `(từ ${hhmm(d.pi_offline_since, off)} đến ${hhmm(d.pi_seen_at, off)}).`);
+      out.push(`${d.dev}: online again`);
+    }
+  }
+  return out;
+}
+
 export default {
+  async scheduled(_ev: ScheduledController, env: Env) {
+    const r = await checkPiOffline(env); // chờ xong mới kết thúc lượt Cron
+    if (r.length) console.log("pi-offline:", r.join(", "));
+  },
+
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
     if (req.method === "OPTIONS") return cors(env, req, new Response(null, { status: 204 }));
