@@ -3,7 +3,9 @@
 Đồ án IoT: bộ đeo hông nhận dạng 7 hoạt động và phát hiện té ngã cho người cao tuổi (prototype giám sát trong nhà).
 Model chạy trên Raspberry Pi 4 (edge); kết quả, số liệu đánh giá và dashboard nằm trên cloud (Cloudflare Worker + D1, [`cloud/`](cloud/)), không xem bằng localhost.
 
-## Kiến trúc (IoT Level 5)
+## Kiến trúc (IoT Level 2)
+
+Một node giám sát (bộ đeo + gateway Pi), phân tích cục bộ trên Pi, lưu trữ và ứng dụng trên cloud. Lý do chọn cấp 2: [`docs/kien-truc.md`](docs/kien-truc.md#cấp-độ-iot).
 
 ```mermaid
 flowchart LR
