@@ -49,9 +49,11 @@ Cập nhật 21/11/2026, theo hệ thống đang chạy thật. Phần cứng: [
 
 ### 2. Pi và mạng
 
-- [ ] Sửa DNS trên Pi: router cấp `192.168.102.1` (không dùng được) làm DNS đầu tiên, mỗi lần phân giải chờ thêm 5 s ([`van-hanh.md`](van-hanh.md#dns-chậm)).
+- [x] Sửa DNS trên Pi (21/11): kết nối "BIGHOME 02" dùng `192.168.12.1`, `1.1.1.1`, bỏ `192.168.102.1` do router cấp; phân giải tên 5,03 s → 0,01 s ([`van-hanh.md`](van-hanh.md#dns-chậm)).
+- [x] Gỡ trang tạm 8080 trên Pi, đóng cổng tường lửa (21/11): đã có dashboard cloud.
+- [ ] Bật lưu nhật ký qua các lần khởi động (`/var/log/journal`): 21/11 Pi mất điện lúc 01:53, nhật ký nằm trong RAM nên không biết nguyên nhân.
 - [ ] Đặt IP cố định cho Pi trên router (mDNS `raspivn.local` thỉnh thoảng không trả lời).
-- [ ] Khởi động lại Pi, xác nhận ESP32 tự nối lại và mọi dịch vụ tự chạy.
+- [x] Pi khởi động lại sau mất điện (21/11): 7 dịch vụ tự chạy, đồng hồ tự đồng bộ. Còn cần xác nhận ESP32 tự nối lại khi Pi lên sau nó.
 
 ### 3. Bộ đeo
 

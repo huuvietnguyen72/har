@@ -86,11 +86,13 @@ Sau `rotate-key`: sửa `VPS_DEVICE_KEY` trong `~/har/edge/.env` trên Pi, rồi
 
 ### Không vào được Pi
 
+Pi không có RTC và nhật ký mặc định nằm trong RAM: sau mất điện, `journalctl --list-boots` chỉ thấy lần khởi động hiện tại, mốc đầu tiên là giờ lưu lần cuối trước khi mất điện.
+
 `ping 192.168.12.19` không trả lời và dashboard "offline": kiểm tra Pi còn điện (đèn đỏ PWR), đèn ACT nháy; rút điện cắm lại. Mọi dịch vụ tự chạy khi khởi động. Bộ đeo vẫn tự kêu còi khi té (ngưỡng trên bộ đeo), nhưng không có Telegram và dashboard cho tới khi Pi chạy lại.
 
 ### DNS chậm
 
-Router cấp cho Pi DNS đầu tiên `192.168.102.1` (không dùng được), nên mỗi lần phân giải tên chờ thêm ~5 s. Đã né một phần bằng cách giữ kết nối HTTP tới cloud 60 s. Sửa tận gốc chỉ cho kết nối Wi-Fi nhà:
+Router cấp cho Pi DNS đầu tiên `192.168.102.1` (không dùng được), nên mỗi lần phân giải tên chờ thêm ~5 s. **Đã sửa ngày 21/11** cho kết nối "BIGHOME 02" (5,03 s → 0,01 s). Nếu cài lại Pi hoặc đổi Wi-Fi, chạy lại:
 
 ```bash
 nmcli -t -f NAME,DEVICE con show --active                         # tên kết nối, vd "BIGHOME 02"
