@@ -95,7 +95,7 @@ Theo 10 bước thiết kế hệ thống IoT của Bahga & Madisetti. Bước 9
 | Rủi ro | Cách xử lý |
 | --- | --- |
 | Không đo được áp pin, không có cảnh báo pin yếu | Biết thời lượng pin đã đo; sạc đầy trước demo |
-| Pi tắt (`poweroff`, mất điện) hoặc mất mạng | Bật lại, dịch vụ tự chạy; dashboard hiện "offline" sau 30 s; bộ đeo vẫn tự kêu còi khi té nhưng không có Telegram và dashboard cho tới khi Pi chạy lại |
+| Pi tắt (`poweroff`, mất điện) hoặc mất mạng | Cloud nhắn Telegram "Pi mất kết nối" sau 10 phút và khi Pi lên lại; bộ đeo vẫn tự kêu còi khi té nhưng không có Telegram về té, dashboard và model cho tới khi Pi chạy lại |
 | Pi không có RTC, mDNS không ổn định | Internet cho Pi khi demo; IP cố định |
 | Telegram lỗi phía máy chủ (20/11: 502 trong 19 phút) | Bot tự kết nối lại; dashboard và còi bộ đeo vẫn chạy |
 | Gói miễn phí Cloudflare giới hạn request/ngày, CPU 10 ms/request | Dashboard ngừng hỏi khi tab ẩn; theo dõi mức dùng trên dashboard Cloudflare |

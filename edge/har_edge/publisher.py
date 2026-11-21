@@ -26,6 +26,10 @@ class Publisher:
     def publish_metrics(self, report: dict) -> dict: ...
     def publish_system_metrics(self, items: list[dict]) -> dict: ...
 
+    def publish_heartbeat(self, body: dict) -> dict:
+        """Nhịp tim Pi -> cloud (độc lập với bộ đeo); mặc định không làm gì."""
+        return {"ok": True}
+
     def publish_event(self, event: dict) -> dict:
         return self.publish_events([event])
 
@@ -69,6 +73,9 @@ class HttpPublisher(Publisher):
 
     def publish_system_metrics(self, items: list[dict]) -> dict:
         return self._post("/ingest/system_metrics", {"v": 1, "items": items})
+
+    def publish_heartbeat(self, body: dict) -> dict:
+        return self._post("/ingest/heartbeat", body)
 
     def close(self) -> None:
         self.client.close()

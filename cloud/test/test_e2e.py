@@ -139,3 +139,34 @@ def test_validation_errors(http, auth):
     assert http.get("/api/events", params={"limit": 5000}, headers=auth).status_code == 422
     assert http.get("/api/segments", params={"dev": "har01", "from": 0, "to": NOW}, headers=auth).status_code == 422  # > 8 ngày
     assert http.get("/api/segments", headers=auth).status_code == 422  # thiếu dev
+
+
+def test_heartbeat_marks_pi_alive(http, auth):
+    r = http.post("/api/ingest/heartbeat", json={"v": 1, "t": NOW}, headers={"X-Device-Key": KEY})
+    assert r.status_code == 200 and r.json()["ok"] is True
+    assert http.post("/api/ingest/heartbeat", json={}).status_code == 401
+    dev = [d for d in http.get("/api/devices", headers=auth).json() if d["dev"] == "har01"][0]
+    assert abs(dev["pi_seen_at"] - int(time.time() * 1000)) < 60_000
+
+
+@pytest.mark.skipif(os.environ.get("CLOUD_TEST_SCHEDULED") != "1",
+                    reason="cần wrangler dev --test-scheduled --var PI_OFFLINE_MIN:0.05 (3 s)")
+def test_cron_pi_offline_then_back(http, auth):
+    h = {"X-Device-Key": KEY}
+    cron = lambda: http.get("/__scheduled", params={"cron": "*/5 * * * *"})  # noqa: E731
+    dev = lambda: [d for d in http.get("/api/devices", headers=auth).json() if d["dev"] == "har01"][0]  # noqa: E731
+    http.post("/api/ingest/heartbeat", json={}, headers=h)
+    cron()
+    assert dev()["pi_offline_since"] is None  # vừa có nhịp tim: chưa báo
+    time.sleep(4)  # > PI_OFFLINE_MIN (3 s)
+    cron()
+    d = dev()
+    assert d["pi_offline_since"] == d["pi_seen_at"]
+    evs = http.get("/api/events", params={"dev": "har01", "limit": 5}, headers=auth).json()
+    assert any(e["type"] == "offline" and e["source"] == "cloud" and e["t"] == d["pi_seen_at"] for e in evs)
+    cron()  # vẫn im: không báo thêm lần nữa
+    assert sum(e["type"] == "offline" and e["source"] == "cloud" for e in http.get(
+        "/api/events", params={"dev": "har01", "limit": 20}, headers=auth).json() if e["t"] == d["pi_seen_at"]) == 1
+    http.post("/api/ingest/heartbeat", json={}, headers=h)  # Pi chạy lại
+    cron()
+    assert dev()["pi_offline_since"] is None
