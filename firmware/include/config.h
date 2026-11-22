@@ -35,6 +35,7 @@
 #define MAX_PUBLISH_PER_LOOP 8
 #define STATUS_PERIOD_MS 10000
 #define NTP_SYNC_MS 60000       // hỏi giờ Pi mỗi 60 s (mặc định ESP-IDF 1 giờ; tối thiểu 15 s)
+#define WIFI_RESCAN_MS 20000   // mất Wi-Fi quá 20 s và có nhiều mạng đã lưu: quét lại, chọn mạng ưu tiên
 #define EVENT_RESEND_MS 5000    // gửi lại sự kiện đến khi Pi trả har/{dev}/ack
 #define MAX_STORED_EVENTS 50
 

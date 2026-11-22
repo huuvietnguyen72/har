@@ -8,6 +8,7 @@
 #include "fall_detector.h"
 #include "gyro_cal.h"
 #include "upright_cal.h"
+#include "wifi_pick.h"
 
 void setUp() {}
 void tearDown() {}
@@ -342,6 +343,26 @@ void test_alarm_fsm_cancel_command() {
   TEST_ASSERT_TRUE(a.start(31010));  // phiên té kế tiếp không bị chặn
 }
 
+
+// Wi-Fi: chọn theo thứ tự cấu hình, không theo thứ tự quét (sóng mạnh)
+void test_wifi_pick_priority_order() {
+  const char* conf[] = {"Nha", "iPhone", ""};
+  const char* both[] = {"iPhone", "Hang xom", "Nha"};  // hotspot sóng mạnh hơn, quét thấy trước
+  TEST_ASSERT_EQUAL(0, pickNetwork(conf, 3, both, 3));
+  const char* away[] = {"Quan cafe", "iPhone"};
+  TEST_ASSERT_EQUAL(1, pickNetwork(conf, 3, away, 2));
+}
+
+void test_wifi_pick_none_and_empty_slots() {
+  const char* conf[] = {"Nha", "", nullptr};
+  const char* other[] = {"Quan cafe", ""};  // mạng ẩn quét ra tên rỗng: không được khớp ô trống
+  TEST_ASSERT_EQUAL(-1, pickNetwork(conf, 3, other, 2));
+  TEST_ASSERT_EQUAL(-1, pickNetwork(conf, 3, nullptr, 0));
+  TEST_ASSERT_EQUAL(1, countNetworks(conf, 3));
+  const char* conf2[] = {"Nha", "iPhone", ""};
+  TEST_ASSERT_EQUAL(2, countNetworks(conf2, 3));
+}
+
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_fall_detected);
@@ -365,5 +386,7 @@ int main() {
   RUN_TEST(test_button_triple_and_double_waits);
   RUN_TEST(test_cal_flow_countdown_measure_result);
   RUN_TEST(test_cal_flow_timeout_and_clock_order);
+  RUN_TEST(test_wifi_pick_priority_order);
+  RUN_TEST(test_wifi_pick_none_and_empty_slots);
   return UNITY_END();
 }

@@ -102,7 +102,7 @@ Firmware ESP32 (Arduino, FreeRTOS), mã nguồn ở [`firmware/`](../firmware/):
 | Giao diện | Nút (1 lần bật màn, 2 lần đánh dấu, 3 lần hiệu chỉnh hướng đứng, giữ 3 s SOS, nhấn khi đang báo động thì hủy), OLED, 2 LED, loa |
 | Lệnh từ Pi | `test_alarm`, `cancel_alarm`, `beep`, `calibrate_upright`, `set_upright`, `display` |
 
-Logic thuần C++ (nút, máy trạng thái cảnh báo, hiệu chỉnh) có 21 test chạy trên máy tính (`pio test -e native`).
+Logic thuần C++ (nút, máy trạng thái cảnh báo, hiệu chỉnh, chọn mạng Wi-Fi) có 23 test chạy trên máy tính (`pio test -e native`).
 
 ## Pi (edge)
 

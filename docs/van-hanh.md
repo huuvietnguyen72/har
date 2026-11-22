@@ -72,6 +72,50 @@ Sau `rotate-key`: sửa `VPS_DEVICE_KEY` trong `~/har/edge/.env` trên Pi, rồi
 
 Đẩy kết quả thí nghiệm lên trang Đánh giá model: chép `ml/results/<thí nghiệm>/metrics.json` lên Pi, gửi bằng `HttpPublisher.publish_metrics` (khóa thiết bị chỉ nằm trên Pi), hoặc `python ml/push_metrics.py` trên máy có khóa trong `edge/.env`.
 
+## Mạng Wi-Fi: nhà và hotspot iPhone
+
+Bộ đeo và Pi phải ở **cùng một mạng**. Bộ đeo lưu tối đa 3 mạng (`WIFI_SSID`, `WIFI_SSID_2`, `WIFI_SSID_3` trong `secrets.h`) và chọn theo **thứ tự ưu tiên**, không theo sóng mạnh nhất; Pi lưu nhiều mạng bằng NetworkManager với **cùng thứ tự** (`autoconnect-priority`), nên khi cả hai mạng cùng có sóng thì hai bên vào cùng một mạng.
+
+| Ưu tiên | Mạng | Pi | Địa chỉ Pi trong `secrets.h` |
+| --- | --- | --- | --- |
+| 1 | Wi-Fi nhà `BIGHOME 02` | DHCP (đặt giữ IP `192.168.12.19` trên router), priority 10 | `MQTT_HOST` |
+| 2 | Hotspot iPhone | IP cố định `172.20.10.14/28`, priority 5 | `MQTT_HOST_2 "172.20.10.14"` |
+
+Pi còn lưu mạng khác (priority 0). Bộ đeo không biết các mạng đó, nên ở đó bộ đeo không nối được Pi.
+
+**Trên iPhone** (Cài đặt → Điểm truy cập cá nhân):
+
+1. Bật **Tối đa hóa tương thích**: hotspot phát 2,4 GHz. ESP32 không vào được 5 GHz.
+2. Tên hotspot là tên iPhone (Cài đặt → Cài đặt chung → Giới thiệu → Tên). Đổi tên thì đổi cả trên Pi và trong `secrets.h`.
+3. Để màn hình Điểm truy cập cá nhân mở khi bật Pi và bộ đeo; hotspot tự tắt khi không có thiết bị nào nối một lúc.
+
+**Bộ đeo:** thêm vào `firmware/include/secrets.h` rồi nạp lại firmware:
+
+```c
+#define WIFI_SSID_2     "<tên iPhone>"
+#define WIFI_PASSWORD_2 "<mật khẩu hotspot>"
+#define MQTT_HOST_2     "172.20.10.14"
+```
+
+**Pi** (đã làm 22/11/2026; mạng hotspot đã lưu sẵn trên Pi):
+
+```bash
+sudo nmcli con mod "<tên iPhone>" ipv4.method manual ipv4.addresses 172.20.10.14/28   ipv4.gateway 172.20.10.1 ipv4.dns "172.20.10.1 1.1.1.1" connection.autoconnect-priority 5
+sudo nmcli con mod "BIGHOME 02" connection.autoconnect-priority 10
+sudo ufw allow from 172.20.10.0/28 to any port 1883 proto tcp comment "MQTT iPhone"
+sudo ufw allow from 172.20.10.0/28 to any port 123 proto udp comment "NTP iPhone"
+echo "allow 172.20.10.0/28" | sudo tee -a /etc/chrony/conf.d/har.conf && sudo systemctl restart chrony
+```
+
+Thêm một mạng mới cho Pi: gõ trực tiếp trên Pi `sudo nmcli dev wifi connect "<tên>" password "<mật khẩu>"`, không dán mật khẩu vào chat. Mạng mới có dải địa chỉ khác thì mở thêm dải đó trong `ufw` (cổng 1883, 123) và `/etc/chrony/conf.d/har.conf`; thiếu chrony thì bộ đeo không lấy được giờ (`ntp=0`) và không gửi dữ liệu.
+
+**Lưu ý:**
+
+- Đang ở mạng nào thì cả hai giữ mạng đó, kể cả khi mạng ưu tiên hơn xuất hiện. Về nhà mà vẫn bật hotspot thì hệ thống vẫn chạy trên hotspot (Internet qua 4G). Tắt hotspot: Pi tự sang Wi-Fi nhà, bộ đeo quét lại sau 20 s.
+- Pi đang ở mạng khác mà bộ đeo đã vào hotspot: hai bên không thấy nhau. Ép Pi sang hotspot bằng `sudo nmcli con up "<tên iPhone>"` (mất SSH nếu laptop không cùng mạng) hoặc tắt rồi bật lại Pi khi chỉ có hotspot.
+- `172.20.10.14` nằm trong dải iPhone cấp (`.2`–`.14`). iPhone cấp từ số nhỏ lên, nên chỉ trùng khi có rất nhiều thiết bị cùng nối.
+- Kiểm tra: OLED dòng hai `WiFi: <tên iPhone>`; Serial `[wifi] vào mạng 2/2: …`, `[net] broker … -> 172.20.10.14`, `ntp=1`.
+
 ## Telegram
 
 - Đổi token (lộ token): @BotFather `/revoke` → điền token mới vào `TELEGRAM_BOT_TOKEN` trong `.env` (giữ nguyên `TELEGRAM_CHAT_ID`) → `sudo systemctl restart har-notify har-bot` → cập nhật bí mật `TELEGRAM_BOT_TOKEN` của Worker (cảnh báo Pi mất kết nối).
