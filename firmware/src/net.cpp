@@ -8,6 +8,27 @@
 
 #include "app.h"
 #include "secrets.h"
+#include "wifi_pick.h"
+
+// Mạng thứ 2, 3 (tùy chọn) trong secrets.h, ví dụ hotspot iPhone. Không khai báo thì bộ đeo chỉ dùng WIFI_SSID.
+#ifndef WIFI_SSID_2
+#define WIFI_SSID_2 ""
+#endif
+#ifndef WIFI_PASSWORD_2
+#define WIFI_PASSWORD_2 ""
+#endif
+#ifndef MQTT_HOST_2
+#define MQTT_HOST_2 MQTT_HOST
+#endif
+#ifndef WIFI_SSID_3
+#define WIFI_SSID_3 ""
+#endif
+#ifndef WIFI_PASSWORD_3
+#define WIFI_PASSWORD_3 ""
+#endif
+#ifndef MQTT_HOST_3
+#define MQTT_HOST_3 MQTT_HOST
+#endif
 
 namespace {
 
@@ -21,9 +42,51 @@ uint32_t lastStatus = 0, lastResend = 0, lastAttempt = 0;
 volatile bool statusRequested = false;
 const char* LWT = "{\"v\":1,\"online\":false}";
 
+// Các mạng theo thứ tự ưu tiên; mỗi mạng có địa chỉ Pi riêng (IP của Pi khác nhau giữa các mạng)
+struct WifiNet { const char* ssid; const char* pass; const char* mqttHost; };
+const WifiNet NETS[] = {{WIFI_SSID, WIFI_PASSWORD, MQTT_HOST},
+                        {WIFI_SSID_2, WIFI_PASSWORD_2, MQTT_HOST_2},
+                        {WIFI_SSID_3, WIFI_PASSWORD_3, MQTT_HOST_3}};
+constexpr int NET_COUNT = sizeof(NETS) / sizeof(NETS[0]);
+int curNet = 0;
+uint32_t wifiDownSince = 0;
+
+int configuredNets() {
+  const char* names[NET_COUNT];
+  for (int i = 0; i < NET_COUNT; i++) names[i] = NETS[i].ssid;
+  return countNetworks(names, NET_COUNT);
+}
+
+// Quét rồi vào mạng ưu tiên cao nhất đang có sóng. Chỉ một mạng thì vào thẳng, không quét.
+void connectBestWifi() {
+  int pick = 0;
+  if (configuredNets() > 1) {
+    WiFi.disconnect(false);
+    const int found = WiFi.scanNetworks();  // chặn ~2–3 s; chỉ chạy khi đang mất Wi-Fi
+    static String seen[32];
+    const char* visible[32];
+    const int m = found > 0 ? (found < 32 ? found : 32) : 0;
+    for (int j = 0; j < m; j++) {
+      seen[j] = WiFi.SSID(j);
+      visible[j] = seen[j].c_str();
+    }
+    const char* names[NET_COUNT];
+    for (int i = 0; i < NET_COUNT; i++) names[i] = NETS[i].ssid;
+    pick = pickNetwork(names, NET_COUNT, visible, m);
+    WiFi.scanDelete();
+    if (pick < 0) {
+      Serial.printf("[wifi] không thấy mạng nào đã lưu (quét được %d mạng), thử lại sau\n", m);
+      pick = curNet;  // vẫn thử mạng cũ; autoReconnect lo phần còn lại
+    }
+  }
+  curNet = pick;
+  Serial.printf("[wifi] vào mạng %d/%d: %s\n", curNet + 1, configuredNets(), NETS[curNet].ssid);
+  WiFi.begin(NETS[curNet].ssid, NETS[curNet].pass);
+}
+
 // --- giải tên Pi: "" -> gateway; *.local -> mDNS; còn lại -> DNS ---
 bool resolveBroker() {
-  String host = MQTT_HOST;
+  String host = NETS[curNet].mqttHost;
   IPAddress ip;
   if (host.length() == 0) {
     ip = WiFi.gatewayIP();
@@ -196,6 +259,8 @@ bool mqttConnect() {
 
 void requestStatusNow() { statusRequested = true; }
 
+const char* wifiSsid() { return NETS[curNet].ssid; }
+
 void netTask(void*) {
   const String base = String("har/") + DEVICE_ID + "/";
   tImu = base + "imu";
@@ -209,7 +274,7 @@ void netTask(void*) {
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);  // giảm trễ; tốn pin hơn một chút
   WiFi.setAutoReconnect(true);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  connectBestWifi();
   mqtt.setBufferSize(MQTT_BUFFER_SIZE);
   mqtt.setKeepAlive(15);
   mqtt.setSocketTimeout(3);
@@ -222,8 +287,15 @@ void netTask(void*) {
     if (!g.wifiUp) {
       g.mqttUp = false;
       brokerKnown = false;
+      // Mất Wi-Fi quá lâu và có nhiều mạng đã lưu: quét lại, có thể đổi sang mạng khác (về nhà / ra ngoài)
+      if (!wifiDownSince) wifiDownSince = millis();
+      if (configuredNets() > 1 && millis() - wifiDownSince > WIFI_RESCAN_MS) {
+        connectBestWifi();
+        wifiDownSince = millis();
+      }
       continue;
     }
+    wifiDownSince = 0;
     g.rssi = WiFi.RSSI();
     if (!brokerKnown) resolveBroker();
     if (brokerKnown && ntpNeedsStart()) startNtp();

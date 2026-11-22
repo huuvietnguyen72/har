@@ -35,7 +35,7 @@ flowchart LR
 
 | Thư mục | Nội dung | Trạng thái |
 | --- | --- | --- |
-| [`firmware/`](firmware/) | Firmware ESP32 (PlatformIO, FreeRTOS 5 task) | Chạy trên bộ đeo `har01`; 21 test native (nút, cảnh báo, hiệu chỉnh) |
+| [`firmware/`](firmware/) | Firmware ESP32 (PlatformIO, FreeRTOS 5 task) | Chạy trên bộ đeo `har01`; 23 test native (nút, cảnh báo, hiệu chỉnh, chọn Wi-Fi) |
 | [`edge/`](edge/) | Dịch vụ Pi: `har-ingest`, `har-infer`, `har-uplink`, `har-notify`, `har-bot`; `record.py`, `replay.py`, `fake_device.py`; systemd, `setup-pi.sh` | Chạy trên Pi; 45 test pytest |
 | [`ml/`](ml/) | Dataset, Random Forest, 1D-CNN (TFLite int8), thí nghiệm A1/A2/B1/B2/C/D, đẩy `metrics.json` | Model v4 (RF) trên dữ liệu thật S01–S04 + SisFall, đang chạy trên Pi |
 | [`cloud/`](cloud/) | **Cloud đang dùng:** Cloudflare Worker (TypeScript) + D1, phục vụ API và web app; công cụ tạo tài khoản, khóa thiết bị | Đang chạy tại `har-cloud.har-cloud.workers.dev`; 10 test đầu-cuối |

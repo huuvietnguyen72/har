@@ -109,6 +109,7 @@ void saveThresholds();
 // net.cpp
 void netTask(void*);
 void requestStatusNow();
+const char* wifiSsid();  // tên mạng Wi-Fi đang dùng (net.cpp)
 
 // ui.cpp
 void uiBegin();

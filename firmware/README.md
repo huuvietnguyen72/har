@@ -5,7 +5,7 @@ PlatformIO + Arduino framework (espressif32 6.9.0). Chân: [`include/pins.h`](in
 ## Bắt đầu
 
 1. VS Code + extension PlatformIO, **mở thư mục `firmware/`** (không phải gốc repo).
-2. Copy `include/secrets.example.h` thành `include/secrets.h`, điền SSID, mật khẩu Wi-Fi, MQTT (`secrets.h` nằm trong `.gitignore`).
+2. Copy `include/secrets.example.h` thành `include/secrets.h`, điền SSID, mật khẩu Wi-Fi, MQTT (`secrets.h` nằm trong `.gitignore`). Muốn thêm hotspot iPhone: `WIFI_SSID_2`, `WIFI_PASSWORD_2`, `MQTT_HOST_2` ([`docs/van-hanh.md`](../docs/van-hanh.md#mạng-wi-fi-nhà-và-hotspot-iphone)).
 3. `pio run -e esp32dev -t upload && pio device monitor`
 4. Test logic trên máy tính (cần gcc): `pio test -e native`
 
@@ -15,7 +15,7 @@ PlatformIO + Arduino framework (espressif32 6.9.0). Chân: [`include/pins.h`](in
 | --- | --- |
 | `src/main.cpp` | Tạo hàng đợi, mutex, 5 task FreeRTOS; in thống kê Serial mỗi 10 s |
 | `src/sensors.cpp` | **samplerTask** (core 1, ưu tiên 5): MPU6050 50 Hz bằng `vTaskDelayUntil`, BMP280 10 Hz, chạy bộ phát hiện té, đóng gói 25 mẫu. **slowTask**: AHT20 mỗi 10 s |
-| `src/net.cpp` | **netTask** (core 0): Wi-Fi, tìm Pi (`MQTT_HOST` qua mDNS → gateway), NTP từ Pi, MQTT (`setBufferSize(2048)`, Last Will), xả vòng đệm, gửi lại sự kiện đến khi có `ack`, nhận lệnh |
+| `src/net.cpp` | **netTask** (core 0): Wi-Fi (tối đa 3 mạng theo thứ tự ưu tiên, `lib/wifi_pick`; mất Wi-Fi 20 s thì quét lại), tìm Pi (`MQTT_HOST` của mạng đang dùng; `.local` qua mDNS → gateway), NTP từ Pi, MQTT (`setBufferSize(2048)`, Last Will), xả vòng đệm, gửi lại sự kiện đến khi có `ack`, nhận lệnh |
 | `src/ui.cpp` | **uiTask** (10 ms): nút, máy trạng thái cảnh báo, LED, loa |
 | `src/display.cpp` + `src/oled_layout.h` | **displayTask**: OLED (U8g2, chung bus I2C với cảm biến), nhãn tiếng Anh "Lie (70%)", cảnh báo té tiếng Việt; ≤ 2 lần/giây, luôn sáng (giảm sáng sau 60 s không nhấn nút; đổi trong `config.h`) |
 | `src/events.cpp` | Sự kiện lưu LittleFS (mỗi sự kiện một file), giờ hệ thống, ngưỡng lưu NVS |

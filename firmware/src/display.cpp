@@ -2,7 +2,6 @@
 // vẽ tối đa 2 lần/giây, luôn sáng (DISPLAY_TIMEOUT_MS = 0), giảm sáng sau DISPLAY_DIM_MS không nhấn nút.
 #include "app.h"
 #include "pins.h"
-#include "secrets.h"  // WIFI_SSID
 
 #if USE_OLED
 #include <U8g2lib.h>
@@ -74,7 +73,7 @@ void draw() {
   v.conn = g.mqttUp ? "MQTT" : (g.wifiUp ? "WiFi.." : "noWiFi");
   v.ntpOk = g.timeSynced;
   v.right = right;
-  v.ssid = WIFI_SSID;
+  v.ssid = wifiSsid();
   v.alarm = g.alarm == ALARM_SUSPECTED ? OLED_SUSPECTED : g.alarm == ALARM_CONFIRMED ? OLED_CONFIRMED : OLED_IDLE;
   v.alarmLeftS = (int)((int32_t)(g.alarmUntilMs - millis()) / 1000) + 1;
   v.recording = recording;
