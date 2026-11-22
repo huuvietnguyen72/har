@@ -81,6 +81,7 @@ const EVENT_IN: Spec = {
   id: need(str(64)), dev: need(str()), t: need(int), type: need(oneOf(EVENT_TYPES)), severity: withDefault(oneOf(SEVERITIES), "info"),
   source: opt(oneOf(SOURCES)), prob: opt(float(0, 1)), prev_label: opt(str()), battery_pct: opt(float()),
   cancelled: withDefault(bool, false), delivered_late: withDefault(bool, false),
+  wearer_ack_at: opt(int), // người đeo bấm nút sau khi té đã xác nhận (không phải "đã xử lý")
 };
 const METRIC_IN: Spec = {
   experiment: need(str(32)), model: need(str()), features: opt(str()), window_s: opt(float()), accuracy: opt(float()),
@@ -215,12 +216,14 @@ async function ingestEvents(req: Request, env: Env) {
     await env.DB.batch(
       evs.map((e) =>
         env.DB.prepare(
-          `INSERT INTO events (id, dev, t, type, severity, source, prob, prev_label, battery_pct, cancelled, delivered_late, received_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `INSERT INTO events (id, dev, t, type, severity, source, prob, prev_label, battery_pct, cancelled, delivered_late, wearer_ack_at, received_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET t=excluded.t, type=excluded.type, severity=excluded.severity, source=excluded.source,
              prob=excluded.prob, prev_label=excluded.prev_label, battery_pct=excluded.battery_pct,
-             cancelled=excluded.cancelled, delivered_late=excluded.delivered_late`,
-        ).bind(e.id, e.dev, e.t, e.type, e.severity, e.source, e.prob, e.prev_label, e.battery_pct, e.cancelled ? 1 : 0, e.delivered_late ? 1 : 0, now),
+             cancelled=excluded.cancelled, delivered_late=excluded.delivered_late,
+             wearer_ack_at=COALESCE(excluded.wearer_ack_at, events.wearer_ack_at)`,
+        ).bind(e.id, e.dev, e.t, e.type, e.severity, e.source, e.prob, e.prev_label, e.battery_pct, e.cancelled ? 1 : 0,
+          e.delivered_late ? 1 : 0, e.wearer_ack_at ?? null, now),
       ),
     );
   }

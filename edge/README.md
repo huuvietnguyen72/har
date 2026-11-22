@@ -33,6 +33,7 @@ Logic thuần (làm mượt, gộp đoạn, hợp nhất cảnh báo, cảnh bá
 | như trên, nhưng bộ đeo không bật cảnh báo trong 15 s (mất kết nối, hết pin) | | Báo thẳng, mức **trung bình**, nguồn `model`, `reason = device_no_response` |
 | `cancelled` | bất kỳ | Chỉ ghi lại và đẩy lên cloud (`cancelled = true`), không gửi Telegram |
 | `sos` | bất kỳ | Cảnh báo SOS ngay |
+| `silenced` (nhấn nút sau khi té đã xác nhận) | bất kỳ | Không hủy: ghi `wearer_ack_at` vào cảnh báo, đẩy lên cloud, gửi Telegram "Người đeo đã bấm nút". Người thân vẫn phải bấm Đã xử lý |
 
 ## Cài trên Pi
 

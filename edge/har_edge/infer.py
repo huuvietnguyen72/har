@@ -78,6 +78,37 @@ class Infer:
         return self.devs[dev]
 
     # ---------- đầu ra ----------
+    @staticmethod
+    def _cloud_event(a: dict) -> dict:
+        return {k: a.get(k) for k in ("id", "dev", "t", "type", "severity", "source", "prob", "prev_label",
+                                      "battery_pct", "cancelled", "wearer_ack_at")}
+
+    def _queue_ack_notice(self, a: dict, t: int) -> None:
+        """Tin Telegram bổ sung "người đeo đã bấm nút" (har-notify gửi như một cảnh báo riêng, không có nút)."""
+        notice = {"id": f"{a['id']}-ack", "dev": a["dev"], "t": t, "type": "wearer_ack", "ref": a["id"],
+                  "ref_t": a["t"], "cancelled": False, "notify": True}
+        self.conn.execute(
+            """INSERT OR IGNORE INTO alerts (id, dev, t, type, payload, notify, notified, created_at)
+               VALUES (?, ?, ?, 'wearer_ack', ?, 1, 0, ?)""",
+            (notice["id"], a["dev"], t, json.dumps(notice, ensure_ascii=False), store.now_ms()),
+        )
+
+    def _apply_wearer_ack(self, aid: str, t: int, out: list) -> None:
+        row = self.conn.execute("SELECT payload FROM alerts WHERE id = ?", (aid,)).fetchone()
+        if not row:
+            log.warning("Người đeo bấm nút nhưng không tìm thấy cảnh báo %s", aid)
+            return
+        a = json.loads(row["payload"])
+        if a.get("wearer_ack_at"):
+            return  # bộ đeo gửi lại cùng sự kiện
+        a["wearer_ack_at"] = t
+        # chỉ sửa nội dung, giữ trạng thái đã gửi Telegram (không báo té lại lần nữa)
+        self.conn.execute("UPDATE alerts SET payload = ? WHERE id = ?", (json.dumps(a, ensure_ascii=False), aid))
+        store.outbox_put(self.conn, "event", aid, self._cloud_event(a), a["dev"])
+        self._queue_ack_notice(a, t)
+        out.append((f"har/{a['dev']}/alert", a, 1, False))
+        log.warning("Người đeo đã bấm nút sau cảnh báo %s", aid)
+
     def _emit_alerts(self, st: DeviceState, alerts: list[dict], out: list) -> None:
         for a in alerts:
             a["battery_pct"] = battery_pct(st.esp.get("battery_v"))
@@ -87,9 +118,9 @@ class Infer:
                    VALUES (?, ?, ?, ?, ?, ?, 0, ?)""",
                 (a["id"], a["dev"], a["t"], a["type"], json.dumps(a, ensure_ascii=False), int(a["notify"]), now),
             )
-            event = {k: a.get(k) for k in ("id", "dev", "t", "type", "severity", "source", "prob", "prev_label",
-                                            "battery_pct", "cancelled")}
-            store.outbox_put(self.conn, "event", a["id"], event, a["dev"])
+            store.outbox_put(self.conn, "event", a["id"], self._cloud_event(a), a["dev"])
+            if a.get("wearer_ack_at"):  # người đeo bấm nút trước khi cảnh báo chốt
+                self._queue_ack_notice(a, a["wearer_ack_at"])
             out.append((f"har/{a['dev']}/alert", a, 1, False))
             log.warning("CẢNH BÁO %s", json.dumps(a, ensure_ascii=False))
         for cmd in st.fusion.pop_commands():  # vd model phát hiện té: nhờ bộ đeo bật còi + 10 s chờ hủy
@@ -131,7 +162,12 @@ class Infer:
                 if msg.get("rh") is not None:
                     st.rh = msg["rh"]
             elif kind == "event":
-                self._emit_alerts(st, st.fusion.on_device_event(msg, now), out)
+                if msg.get("type") == "silenced":
+                    aid = st.fusion.on_wearer_ack(msg)
+                    if aid:
+                        self._apply_wearer_ack(aid, int(msg.get("t") or now), out)
+                else:
+                    self._emit_alerts(st, st.fusion.on_device_event(msg, now), out)
             elif kind == "status":
                 st.esp.update(msg)
                 if msg.get("online") is False:

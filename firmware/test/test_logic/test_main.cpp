@@ -313,8 +313,10 @@ void test_alarm_fsm_cancel_window() {
   TEST_ASSERT_TRUE(a.start(20000));
   TEST_ASSERT_EQUAL(AlarmFsm::CONFIRMED_EVT, a.update(30000, false, false));
   TEST_ASSERT_FALSE(a.start(30500));  // đang xác nhận: bỏ qua cú ngã mới
-  a.update(31000, true, false);
+  TEST_ASSERT_EQUAL(AlarmFsm::SILENCED, a.update(31000, true, false));  // nhấn sau xác nhận: báo một lần
   TEST_ASSERT_TRUE(a.silenced());
+  TEST_ASSERT_EQUAL(AlarmFsm::CONFIRMED, a.state());  // vẫn là té đã xác nhận
+  TEST_ASSERT_EQUAL(AlarmFsm::NONE, a.update(32000, true, false));  // nhấn tiếp: không báo lại
   TEST_ASSERT_EQUAL(AlarmFsm::NONE, a.update(60000, false, false));  // hết 30 s
   TEST_ASSERT_EQUAL(AlarmFsm::IDLE, a.state());
 }

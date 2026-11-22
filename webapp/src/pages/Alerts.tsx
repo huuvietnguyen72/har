@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Badge, Card, Empty, ErrorNote, EventBadge, LabelChip } from "../components/ui";
 import { useLive } from "../context";
 import { dataSource } from "../data";
-import { fmtDateTime, fmtPct } from "../format";
+import { fmtDateTime, fmtPct, fmtTime } from "../format";
 import { useAsync } from "../hooks";
 import { SOURCE_VI } from "../labels";
 import type { HarEvent } from "../types";
@@ -127,6 +127,9 @@ export default function Alerts() {
                     {e.cancelled ? <Badge>Người đeo đã hủy</Badge> : e.acknowledged
                       ? <span title={e.acknowledged_at ?? ""}><Badge tone="ok">✓ Đã xử lý</Badge> <span className="small muted">{e.acknowledged_by}</span></span>
                       : <Badge tone="warn">Chưa xử lý</Badge>}
+                    {!e.cancelled && e.wearer_ack_at != null && (
+                      <div className="small muted">✋ Người đeo bấm nút {fmtTime(e.wearer_ack_at)}</div>
+                    )}
                   </td>
                   <td>
                     {!e.cancelled && (
@@ -142,7 +145,7 @@ export default function Alerts() {
           </table>
         </div>
       )}
-      <p className="muted small">Cảnh báo té/SOS cũng được gửi tới nhóm Telegram "Người thân". Cảnh báo đã hủy bằng nút trên thiết bị chỉ được ghi lại.</p>
+      <p className="muted small">Cảnh báo té/SOS cũng được gửi Telegram cho từng người nhận. Người đeo hủy trong 10 s chờ: chỉ ghi lại. Người đeo bấm nút sau khi té đã xác nhận: chỉ tắt còi, cảnh báo vẫn chờ người thân xử lý.</p>
     </Card>
   );
 }

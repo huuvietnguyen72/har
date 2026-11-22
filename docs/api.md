@@ -19,7 +19,7 @@ Cloud đang dùng là Cloudflare Worker ([`cloud/`](../cloud/)), giữ đúng h�
 | `GET /api/summary?dev=&day=&days=` | Web app | JWT | Tổng hợp theo ngày; `days=7` để so sánh 7 ngày |
 | `GET /api/live?limit=` | Web app | JWT | Chỉ Worker. `{"status":[...], "events":[...]}` trong một request; dashboard hỏi mỗi 2 s |
 | `GET /api/events?dev=&from=&to=&limit=` | Web app | JWT | Danh sách cảnh báo, mới nhất trước |
-| `PATCH /api/events/{id}` | Web app | JWT | `{"acknowledged":true}` đánh dấu đã xử lý |
+| `PATCH /api/events/{id}` | Web app | JWT | `{"acknowledged":true}` đánh dấu đã xử lý. `wearer_ack_at` (người đeo bấm nút sau khi té đã xác nhận) chỉ là thông tin, không làm cảnh báo thành đã xử lý |
 | `GET /api/metrics` | Web app | JWT | `{"experiments":[...], "system":[...], "running_models":{...}}` |
 | `WS /ws?token=` | Web app | JWT | Đẩy `{"type":"status"|"event","data":{...}}`; client gửi `ping` → `{"type":"pong"}` |
 | `GET /api/health` | Giám sát | — | API và DB còn sống |

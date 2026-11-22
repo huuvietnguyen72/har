@@ -6,7 +6,7 @@ Broker cổng 1883, bắt buộc user/mật khẩu; tường lửa chỉ mở ch
 | --- | --- | --- | --- |
 | `har/{dev}/imu` | ESP32 → Pi | 0 | Gói 25 mẫu IMU (0,5 s) |
 | `har/{dev}/env` | ESP32 → Pi | 0 | 5 mẫu áp suất (0,5 s), kèm nhiệt độ/độ ẩm khi có số mới |
-| `har/{dev}/event` | ESP32 → Pi | 0* | `suspected`, `cancelled`, `confirmed`, `sos`, `marker` |
+| `har/{dev}/event` | ESP32 → Pi | 0* | `suspected`, `cancelled`, `confirmed`, `silenced`, `sos`, `marker` |
 | `har/{dev}/ack` | Pi (`har-ingest`) → ESP32 | 1 | Xác nhận đã lưu sự kiện; ESP32 xóa khỏi LittleFS |
 | `har/{dev}/status` | ESP32 → Pi | 0, retained | Pin, RSSI, uptime, firmware; Last Will = `{"v":1,"online":false}` |
 | `har/{dev}/cmd` | Pi → ESP32 | 1 | Lệnh (xem dưới) |
@@ -30,7 +30,9 @@ Broker cổng 1883, bắt buộc user/mật khẩu; tường lửa chỉ mở ch
 // har/har01/env — p_pa theo Pa, 10 Hz
 {"v":1, "seq":2047, "t0":1763060000000, "dt":100, "p_pa":[/*5 số*/], "temp_c":29.4, "rh":71.2}
 
-// har/har01/event — t của suspected là thời điểm va chạm; cancelled/confirmed trỏ về suspected bằng "ref"
+// har/har01/event — t của suspected là thời điểm va chạm; cancelled/confirmed/silenced trỏ về suspected bằng "ref".
+// silenced: người đeo nhấn nút SAU khi té đã xác nhận (tắt còi). Không hủy cảnh báo; Pi ghi wearer_ack_at vào cảnh báo,
+// gửi Telegram "Người đeo đã bấm nút", cảnh báo vẫn chưa xử lý
 {"v":1, "id":"har01-1763060012345", "type":"suspected", "t":1763060012345, "peak_g":3.4}
 {"v":1, "id":"har01-1763060024400", "type":"confirmed", "t":1763060024400, "ref":"har01-1763060012345", "peak_g":3.4}
 {"v":1, "id":"har01-1763060100000", "type":"sos", "t":1763060100000}

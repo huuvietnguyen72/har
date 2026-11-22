@@ -3,7 +3,7 @@
 //   IDLE --start()--> SUSPECTED --(nhấn nút)--------------------> IDLE      phát CANCELLED
 //                               --(lệnh hủy từ Pi, record.py)----> IDLE      phát AUTO_CANCELLED
 //                               --(hết cancel_ms)----------------> CONFIRMED phát CONFIRMED
-//                     CONFIRMED --(nhấn nút)-----------------------> tắt còi (vẫn CONFIRMED)
+//                     CONFIRMED --(nhấn nút lần đầu)---------------> tắt còi (vẫn CONFIRMED) phát SILENCED
 //                               --(lệnh hủy / hết confirmed_ms)---> IDLE
 //
 // Mọi mốc thời gian dùng cùng một `now` do người gọi đưa vào, và phép trừ tính có dấu: bản cũ đặt mốc bằng
@@ -15,7 +15,9 @@
 class AlarmFsm {
  public:
   enum State : uint8_t { IDLE = 0, SUSPECTED = 1, CONFIRMED = 2 };  // cùng thứ tự với AlarmState (app.h)
-  enum Event : uint8_t { NONE, CANCELLED, AUTO_CANCELLED, CONFIRMED_EVT };
+  // SILENCED: người đeo nhấn nút sau khi té đã xác nhận. Không hủy cảnh báo (đã gửi người thân), chỉ báo thêm
+  // "người đeo còn phản hồi"; người thân vẫn phải kiểm tra rồi bấm Đã xử lý.
+  enum Event : uint8_t { NONE, CANCELLED, AUTO_CANCELLED, CONFIRMED_EVT, SILENCED };
 
   AlarmFsm(uint32_t cancel_ms, uint32_t confirmed_ms) : cancel_(cancel_ms), confirmed_(confirmed_ms) {}
 
@@ -48,8 +50,14 @@ class AlarmFsm {
         }
         break;
       case CONFIRMED:
-        if (pressed) silenced_ = true;  // tắt còi; cảnh báo đã gửi đi
-        if (cancel || el >= (int32_t)confirmed_) state_ = IDLE;
+        if (cancel || el >= (int32_t)confirmed_) {
+          state_ = IDLE;
+          break;
+        }
+        if (pressed && !silenced_) {  // tắt còi; cảnh báo đã gửi đi. Chỉ báo lần nhấn đầu
+          silenced_ = true;
+          return SILENCED;
+        }
         break;
       default:
         break;

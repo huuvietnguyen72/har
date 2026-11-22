@@ -54,6 +54,7 @@ export interface HarEvent {
   acknowledged_at: string | null;
   acknowledged_by: string | null;
   delivered_late: boolean;
+  wearer_ack_at?: number | null; // người đeo bấm nút sau khi té đã xác nhận: còn phản hồi, vẫn chưa xử lý
   received_at: number;
   new?: boolean;
 }
