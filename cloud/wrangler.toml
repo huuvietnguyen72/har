@@ -23,6 +23,7 @@ STATUS_LOG_EVERY_S = "60"    # lịch sử pin/nhiệt độ: tối đa 1 dòng 
 TZ_OFFSET_MIN = "420"        # giờ Việt Nam (UTC+7) để chia "ngày" cho trang Lịch sử
 PI_OFFLINE_MIN = "10"        # Pi không gọi cloud quá 10 phút -> Telegram "Pi mất kết nối"
 # Bí mật (npx wrangler secret put ...; chạy local: cloud/.dev.vars): JWT_SECRET, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+# TELEGRAM_CHAT_ID: nhiều người nhận thì ngăn bằng dấu phẩy, giống edge/.env
 
 [triggers]
 crons = ["*/5 * * * *"]      # kiểm tra Pi mất kết nối mỗi 5 phút (checkPiOffline)

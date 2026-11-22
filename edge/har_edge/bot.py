@@ -33,7 +33,7 @@ from html import escape
 import httpx
 
 from . import store
-from .config import Config, load_config
+from .config import Config, chat_ids, load_config
 from .logutil import setup_logging
 from .mqtt import make_client, publish_json, topic_parts
 
@@ -131,8 +131,8 @@ class Bot:
         self.publish = publish  # publish(topic, dict)
         self.client = client or httpx.Client(timeout=60)
         self.now = now
-        ids = [cfg.telegram_chat_id, *cfg.telegram_allowed_ids.split(",")]
-        self.allowed = {i.strip() for i in ids if i.strip()}
+        self.chats = chat_ids(cfg.telegram_chat_id)  # người nhận thông báo; ai cũng ra lệnh được
+        self.allowed = set(self.chats) | set(chat_ids(cfg.telegram_allowed_ids))
         self.status: dict[str, dict] = {}  # dev -> status mới nhất (retained từ ESP32)
         self.beep_until: dict[str, int] = {}  # dev -> lúc còi /coi tự dừng
         self.cal_pending: dict[str, dict] = {}  # id lệnh /hieuchinh -> {chat, who, dev, t}
@@ -151,6 +151,14 @@ class Bot:
         return r.json()
 
     def reply(self, chat_id, text: str, **kw) -> None:
+        """chat_id là một chat, hoặc danh sách chat (báo mọi người nhận; một người lỗi không chặn người khác)."""
+        if isinstance(chat_id, list):
+            for c in chat_id:
+                try:
+                    self.api("sendMessage", chat_id=c, text=text, parse_mode="HTML", disable_web_page_preview=True, **kw)
+                except httpx.HTTPError as e:
+                    log.warning("Không gửi được cho %s: %s", c, e)
+            return
         self.api("sendMessage", chat_id=chat_id, text=text, parse_mode="HTML", disable_web_page_preview=True, **kw)
 
     def register_commands(self) -> None:
@@ -373,7 +381,7 @@ class Bot:
         if pend:
             chat, src = pend["chat"], f"theo lệnh của <b>{escape(pend['who'])}</b>"
         elif req.startswith("btn-"):
-            chat, src = self.cfg.telegram_chat_id, "bằng <b>nút trên bộ đeo</b> (nhấn 3 lần)"
+            chat, src = self.chats, "bằng <b>nút trên bộ đeo</b> (nhấn 3 lần)"  # báo mọi người nhận
         else:
             return  # record.py (thu dữ liệu) hoặc lệnh khác: không báo
         who = "bộ đeo" if req.startswith("btn-") else (pend or {}).get("who", "")

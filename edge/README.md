@@ -48,7 +48,7 @@ Mạng đang dùng: Pi (`raspivn`, 192.168.12.19) và ESP32 cùng vào Wi-Fi nh�
 
 ## Bot Telegram
 
-Tạo bot bằng @BotFather, điền `TELEGRAM_BOT_TOKEN` trong `.env`, bấm **Start** với bot (nhóm: gửi `/start@tên_bot`), rồi lấy `chat.id` từ `https://api.telegram.org/bot<token>/getUpdates` và điền `TELEGRAM_CHAT_ID`. `har-notify` gửi cảnh báo; `har-bot` nhận lệnh (long polling, không cần mở cổng):
+Tạo bot bằng @BotFather, điền `TELEGRAM_BOT_TOKEN` trong `.env`, bấm **Start** với bot (nhóm: gửi `/start@tên_bot`), rồi lấy `chat.id` từ `https://api.telegram.org/bot<token>/getUpdates` và điền `TELEGRAM_CHAT_ID`. Nhiều người nhận: `TELEGRAM_CHAT_ID=<chat 1>,<chat 2>` (mỗi người phải bấm Start với bot trước; cách lấy chat ID: [`docs/van-hanh.md`](../docs/van-hanh.md#telegram)). `har-notify` gửi cảnh báo cho từng người, ghi ai đã nhận trong bảng `alert_deliveries`; `har-bot` nhận lệnh (long polling, không cần mở cổng):
 
 | Lệnh | Việc |
 | --- | --- |

@@ -274,3 +274,26 @@ def test_thu_usage_and_stop_without_session(env):
     assert published == [] and "Cách dùng" in sent_texts(calls)[-1]
     bot.handle_update(msg("/dung"))  # bot vừa khởi động lại: vẫn gửi lệnh dừng cho har-ingest
     assert ("har/har01/session", {"action": "stop", "id": None}) in published
+
+
+def test_multiple_recipients_command_and_button_calibration(tmp_path):
+    """TELEGRAM_CHAT_ID nhiều người: ai cũng ra lệnh được; hiệu chỉnh bằng nút trên bộ đeo báo cho tất cả."""
+    conn = store.connect(tmp_path / "edge.db")
+    calls = []
+
+    def handler(req):
+        body = json.loads(req.content)
+        calls.append((req.url.path.rsplit("/", 1)[-1], body))
+        if str(body.get("chat_id")) == "888":  # người này chặn bot: không làm hỏng tin của người khác
+            return httpx.Response(403, json={"ok": False, "description": "Forbidden: bot was blocked by the user"})
+        return httpx.Response(200, json={"ok": True, "result": []})
+
+    bot = Bot(Config(telegram_bot_token="t", telegram_chat_id=f"{CHAT}, 777,888"), conn, publish=lambda t, p: None,
+              client=httpx.Client(transport=httpx.MockTransport(handler)), now=lambda: NOW)
+    bot.handle_update(msg("/trangthai", chat="777"))
+    assert [b["chat_id"] for m, b in calls if m == "sendMessage"] == ["777"]
+    calls.clear()
+    bot.on_status("har/har01/status", {"online": True, "upright": [-1, 0, 0], "upright_req": "", "upright_result": "none"})
+    bot.on_status("har/har01/status", {"online": True, "upright": [-1, 0, 0], "upright_req": "btn-1", "upright_result": "moving"})
+    assert sorted(str(b["chat_id"]) for m, b in calls if m == "sendMessage") == sorted([CHAT, "777", "888"])
+

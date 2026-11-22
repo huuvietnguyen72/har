@@ -24,7 +24,7 @@ class Config:
     vps_api_url: str = ""
     vps_device_key: str = ""
     telegram_bot_token: str = ""
-    telegram_chat_id: str = ""
+    telegram_chat_id: str = ""  # người nhận cảnh báo; nhiều người: ngăn bằng dấu phẩy
     telegram_allowed_ids: str = ""  # thêm chat được ra lệnh cho har-bot, ngăn bằng dấu phẩy
     webapp_url: str = ""
     # Ngưỡng hợp nhất cảnh báo té (chọn lại theo thí nghiệm D)
@@ -73,3 +73,13 @@ def load_config(env_file: str | os.PathLike | None = None) -> Config:
         offline_alert_s=_f("OFFLINE_ALERT_S", 120.0),
         status_every_s=_f("STATUS_EVERY_S", 5.0),
     )
+
+
+def chat_ids(value: str) -> list[str]:
+    """TELEGRAM_CHAT_ID có thể là nhiều chat ngăn bằng dấu phẩy: "123,456,-100789". Bỏ khoảng trắng, ô rỗng, trùng."""
+    out: list[str] = []
+    for c in value.split(","):
+        c = c.strip()
+        if c and c not in out:
+            out.append(c)
+    return out

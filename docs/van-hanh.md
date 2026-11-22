@@ -119,6 +119,12 @@ Thêm một mạng mới cho Pi: gõ trực tiếp trên Pi `sudo nmcli dev wifi
 ## Telegram
 
 - Đổi token (lộ token): @BotFather `/revoke` → điền token mới vào `TELEGRAM_BOT_TOKEN` trong `.env` (giữ nguyên `TELEGRAM_CHAT_ID`) → `sudo systemctl restart har-notify har-bot` → cập nhật bí mật `TELEGRAM_BOT_TOKEN` của Worker (cảnh báo Pi mất kết nối).
+- **Thêm người nhận cảnh báo** (mỗi người nhận tin riêng):
+  1. Người mới mở `@harnoti_bot`, bấm **Start** (Telegram không cho bot nhắn người chưa bấm Start), rồi gửi `/trangthai`. Bot chưa trả lời vì người này chưa được phép.
+  2. Trên Pi lấy chat ID của họ: `journalctl -u har-bot -n 50 | grep "không được phép"` (dòng `Bỏ lệnh từ chat không được phép <chat ID>`).
+  3. Thêm vào `TELEGRAM_CHAT_ID` trong `~/har/edge/.env`, ngăn bằng dấu phẩy: `TELEGRAM_CHAT_ID=<người cũ>,<người mới>`, rồi `sudo systemctl restart har-notify har-bot`.
+  4. Cập nhật bí mật của Worker cho tin "Pi mất kết nối": `cd cloud && npx wrangler secret put TELEGRAM_CHAT_ID`, dán cùng danh sách.
+  5. Mọi người trong danh sách nhận cảnh báo, bấm được nút dưới tin và ra lệnh được. Người chặn bot hoặc sai chat ID bị bỏ qua (ghi log), không làm kẹt tin của người khác; lỗi mạng thì chỉ gửi lại cho người chưa nhận.
 - Thêm nhóm người thân: thêm bot vào nhóm, gửi `/start@harnoti_bot`, lấy `chat.id` (số âm) từ `getUpdates`, đặt vào `TELEGRAM_CHAT_ID` (hoặc thêm vào `TELEGRAM_ALLOWED_IDS` để nhóm cũng ra lệnh được).
 - Telegram trả `502` hoặc hết thời gian chờ (lỗi phía máy chủ Telegram): bot tự kết nối lại; lệnh gửi trong lúc lỗi mà cũ hơn 2 phút bị bỏ (gõ lại); cảnh báo không mất, `har-notify` gửi khi Telegram ổn và ghi "gửi trễ".
 
