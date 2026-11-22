@@ -156,6 +156,10 @@ void uiTask(void*) {
       case AlarmFsm::CONFIRMED_EVT:
         finishAlarm("confirmed");
         break;
+      case AlarmFsm::SILENCED:  // người đeo nhấn nút sau khi té đã xác nhận: tắt còi, báo Pi "còn phản hồi"
+        finishAlarm("silenced");
+        buzzerPulse(80);
+        break;
       default:
         break;
     }

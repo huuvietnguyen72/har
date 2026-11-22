@@ -223,6 +223,56 @@ def test_fusion_model_only_threshold_and_lying_gate():
     assert fu2.pop_commands() == [] and fu2.tick(T0 + 60_000) == []
 
 
+def test_fusion_wearer_ack_links_alert_ids():
+    """Người đeo bấm nút sau khi té đã xác nhận: tìm đúng cảnh báo cả nhánh ngưỡng lẫn nhánh model."""
+    fu = FallFusion("har01")
+    fu.on_device_event({"id": "har01-s1", "type": "suspected", "t": T0, "peak_g": 3.5}, T0 + 100)
+    out = fu.on_device_event({"id": "har01-c1", "type": "confirmed", "t": T0 + 10_000, "ref": "har01-s1"}, T0 + 10_100)
+    assert out[0]["id"] == "har01-s1" and "wearer_ack_at" not in out[0]
+    assert fu.on_wearer_ack({"id": "har01-k1", "type": "silenced", "t": T0 + 14_000, "ref": "har01-s1"}) == "har01-s1"
+    # nhánh model: bộ đeo kêu theo lệnh test_alarm, cảnh báo mang id har01-m<t>
+    fm = FallFusion("har01")
+    _model_fall(fm, p_fall=0.8)
+    t_req = T0 + 8000
+    fm.on_device_event({"id": "har01-a", "type": "suspected", "t": t_req + 300, "peak_g": 0.0}, t_req + 400)
+    fm.on_device_event({"id": "har01-b", "type": "confirmed", "t": t_req + 10_400, "ref": "har01-a"}, t_req + 10_500)
+    assert fm.on_wearer_ack({"type": "silenced", "t": t_req + 12_000, "ref": "har01-a"}) == f"har01-m{T0 + 1000}"
+    # bấm nút khi Pi chưa nhận confirmed: giữ lại, gắn vào cảnh báo lúc chốt
+    fp = FallFusion("har01")
+    fp.on_device_event({"id": "har01-s2", "type": "suspected", "t": T0, "peak_g": 4.0}, T0 + 100)
+    assert fp.on_wearer_ack({"type": "silenced", "t": T0 + 11_000, "ref": "har01-s2"}) is None
+    out = fp.on_device_event({"id": "har01-c2", "type": "confirmed", "t": T0 + 10_000, "ref": "har01-s2"}, T0 + 11_500)
+    assert out[0]["wearer_ack_at"] == T0 + 11_000
+    assert fp.on_wearer_ack({"type": "silenced", "ref": ""}) is None
+
+
+def test_infer_wearer_ack_keeps_alert_unhandled_and_notifies(conn):
+    """Cảnh báo không bị gửi lại; cloud nhận wearer_ack_at; har-notify gửi thêm một tin, không có nút."""
+    inf = Infer(Config(), conn, HeuristicModel())
+    inf.handle("har/har01/event", {"id": "har01-s1", "type": "suspected", "t": T0, "peak_g": 3.5}, T0 + 100)
+    inf.handle("har/har01/event", {"id": "har01-c1", "type": "confirmed", "t": T0 + 10_000, "ref": "har01-s1"}, T0 + 10_100)
+    conn.execute("UPDATE alerts SET notified = 1 WHERE id = 'har01-s1'")  # đã gửi Telegram
+    ev = {"id": "har01-k1", "type": "silenced", "t": T0 + 14_000, "ref": "har01-s1"}
+    inf.handle("har/har01/event", ev, T0 + 14_100)
+    inf.handle("har/har01/event", ev, T0 + 19_100)  # bộ đeo gửi lại tới khi có ack: không nhân đôi
+    row = conn.execute("SELECT notified, payload FROM alerts WHERE id = 'har01-s1'").fetchone()
+    assert row["notified"] == 1 and json.loads(row["payload"])["wearer_ack_at"] == T0 + 14_000
+    cloud = json.loads(conn.execute("SELECT payload FROM outbox WHERE id = 'event:har01-s1'").fetchone()["payload"])
+    assert cloud["wearer_ack_at"] == T0 + 14_000 and cloud["type"] == "fall"
+    notices = conn.execute("SELECT id, notified FROM alerts WHERE type = 'wearer_ack'").fetchall()
+    assert [(r["id"], r["notified"]) for r in notices] == [("har01-s1-ack", 0)]
+    sent = []
+
+    def handler(req):
+        sent.append(json.loads(req.content))
+        return httpx.Response(200, json={"ok": True})
+
+    Notifier(Config(telegram_bot_token="t", telegram_chat_id="1"), conn,
+             client=httpx.Client(transport=httpx.MockTransport(handler))).step(T0 + 20_000)
+    assert len(sent) == 1 and "bấm nút" in sent[0]["text"] and "vẫn cần gọi" in sent[0]["text"]
+    assert "reply_markup" not in sent[0]
+
+
 def test_fusion_sos():
     out = FallFusion("har01").on_device_event({"id": "s", "type": "sos", "t": T0}, T0)
     assert out[0]["type"] == "sos" and out[0]["severity"] == "high"

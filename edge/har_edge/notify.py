@@ -32,7 +32,7 @@ LATE_MS = 60_000
 VI = {"stand": "Đứng", "sit": "Ngồi", "lie": "Nằm", "walk": "Đi", "stairs_up": "Lên cầu thang",
       "stairs_down": "Xuống cầu thang", "fall": "Té"}
 TITLE = {"fall": "🚨 PHÁT HIỆN TÉ NGÃ", "sos": "🆘 GỌI TRỢ GIÚP (SOS)", "low_battery": "🔋 Pin yếu",
-         "offline": "📴 Thiết bị mất kết nối"}
+         "offline": "📴 Thiết bị mất kết nối", "wearer_ack": "✋ Người đeo đã bấm nút"}
 SEVERITY = {"high": "cao", "medium": "trung bình", "info": "thông tin"}
 SOURCE = {"both": "ngưỡng + model", "threshold": "ngưỡng trên thiết bị", "model": "model trên Pi",
           "device": "nút trên thiết bị", "edge": "Pi"}
@@ -45,6 +45,10 @@ def _hms(t_ms: int) -> str:
 def format_message(a: dict, now: int, webapp_url: str = "") -> str:
     lines = [f"<b>{TITLE.get(a['type'], a['type'])}</b>", f"Thiết bị: <code>{escape(a['dev'])}</code>",
              f"Thời điểm: {_hms(a['t'])}"]
+    if a["type"] == "wearer_ack":
+        if a.get("ref_t"):
+            lines.append(f"Sau cảnh báo té lúc {_hms(a['ref_t'])}, người đeo đã bấm nút trên bộ đeo và tắt còi.")
+        lines.append("Người đeo còn phản hồi, nhưng <b>vẫn cần gọi hoặc đến kiểm tra</b> rồi bấm Đã xử lý.")
     if a["type"] == "fall":
         lines.append(f"Mức: {SEVERITY.get(a.get('severity'), a.get('severity'))} · Nguồn: {SOURCE.get(a.get('source'), a.get('source'))}")
         if a.get("prob") is not None:

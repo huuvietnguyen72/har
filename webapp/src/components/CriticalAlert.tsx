@@ -90,7 +90,14 @@ export function CriticalAlert() {
           {e.prev_label && <li>Hoạt động trước đó: {LABEL_VI[e.prev_label as Label] ?? e.prev_label}</li>}
           {e.severity === "high" && <li>Mức: cao</li>}
         </ul>
-        <p className="critical-hint">Hãy liên lạc ngay với người đeo hoặc đến kiểm tra.</p>
+        {e.wearer_ack_at != null && (
+          <p className="critical-wearer">
+            ✋ Người đeo đã bấm nút tắt còi lúc <strong>{fmtTime(e.wearer_ack_at)}</strong>: còn phản hồi.
+          </p>
+        )}
+        <p className="critical-hint">
+          {e.wearer_ack_at != null ? "Vẫn cần gọi hoặc đến kiểm tra trước khi bấm Đã xử lý." : "Hãy liên lạc ngay với người đeo hoặc đến kiểm tra."}
+        </p>
         {err && <p className="critical-err">{err}</p>}
         <div className="critical-actions">
           <button className="btn critical-ack" onClick={ack} disabled={busy} autoFocus>

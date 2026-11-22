@@ -126,6 +126,8 @@ class FallFusion:
         self.candidate: dict | None = None
         self.model_requests: dict[str, dict] = {}  # id cảnh báo model -> {t, p, requested}: chờ bộ đeo bật còi
         self.commands: list[dict] = []  # lệnh gửi bộ đeo (har/{dev}/cmd), infer lấy bằng pop_commands()
+        self.alert_of: dict[str, str] = {}  # id "suspected" của bộ đeo -> id cảnh báo (nhánh model: har01-m<t>)
+        self.pending_ack: dict[str, int] = {}  # người đeo bấm nút trước khi cảnh báo chốt: id suspected -> lúc bấm
 
     def pop_commands(self) -> list[dict]:
         out, self.commands = self.commands, []
@@ -155,14 +157,31 @@ class FallFusion:
         if m:  # bộ đeo kêu theo lệnh của Pi (model phát hiện), người đeo không hủy -> mức cao
             self.done.add(inc["id"])
             a = self._alert(m["id"], m["t"], "fall", "high", "model", m["p"])
-            a["reason"] = reason
-            return a
-        p = self._p_fall_near(inc["t"])
-        high = p is not None and p >= self.p.p_confirm
-        a = self._alert(inc["id"], inc["t"], "fall", "high" if high else "medium", "both" if high else "threshold", p)
-        a["peak_g"] = inc.get("peak_g")
+        else:
+            p = self._p_fall_near(inc["t"])
+            high = p is not None and p >= self.p.p_confirm
+            a = self._alert(inc["id"], inc["t"], "fall", "high" if high else "medium", "both" if high else "threshold", p)
+            a["peak_g"] = inc.get("peak_g")
         a["reason"] = reason
+        self.alert_of[inc["id"]] = a["id"]
+        if inc["id"] in self.pending_ack:
+            a["wearer_ack_at"] = self.pending_ack.pop(inc["id"])
         return a
+
+    def on_wearer_ack(self, ev: dict) -> str | None:
+        """Sự kiện "silenced": người đeo nhấn nút sau khi té đã xác nhận (còi tắt, cảnh báo vẫn giữ).
+
+        Trả id cảnh báo cần gắn "người đeo đã bấm nút", hoặc None nếu cảnh báo chưa chốt (giữ lại, gắn khi chốt).
+        """
+        ref = ev.get("ref")
+        if not ref:
+            return None
+        if ref in self.alert_of:
+            return self.alert_of[ref]
+        if ref in self.incidents:  # confirmed chưa tới hoặc chưa hết giờ chờ: gắn khi _finalize
+            self.pending_ack[ref] = int(ev.get("t") or 0)
+            return None
+        return ref  # Pi vừa khởi động lại: nhánh ngưỡng dùng chính id suspected làm id cảnh báo
 
     # ---------- đầu vào ----------
     def on_device_event(self, ev: dict, now: int) -> list[dict]:

@@ -94,6 +94,8 @@ export function LiveProvider({ children }: { children: ReactNode }) {
       onEventState: (e) => {
         // đã xử lý ở máy khác, hoặc người đeo đã hủy: đóng hộp
         if (!isCritical(e)) setCritical((cur) => (cur && cur.id === e.id ? null : cur));
+        // người đeo vừa bấm nút trên bộ đeo: cập nhật hộp đang mở (vẫn chưa xử lý)
+        else setCritical((cur) => (cur && cur.id === e.id && cur.wearer_ack_at !== e.wearer_ack_at ? e : cur));
       },
       onEvent: (e) => {
         setLastEvent(e);

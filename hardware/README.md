@@ -80,7 +80,7 @@ Có thể cắm USB 5 V thẳng vào ESP32 để nạp firmware và chạy thử
 | Nhấn đúp | Đánh dấu (`marker`) |
 | Nhấn 3 lần | Hiệu chỉnh hướng đứng |
 | Giữ 3 s | SOS |
-| Nhấn khi đang báo động | Hủy cảnh báo té (trong 10 s) |
+| Nhấn khi đang báo động | Trong 10 s chờ: hủy cảnh báo té. Sau khi té đã xác nhận: tắt còi, báo người thân "người đeo đã bấm nút" (cảnh báo vẫn chưa xử lý) |
 | LED xanh sáng / nháy chậm | Đã nối MQTT / đang nối |
 | LED đỏ nháy nhanh / sáng | Đang báo động / lỗi MPU6050 |
 | Còi ngắt quãng → liên tục | Nghi té, chờ hủy 10 s → đã xác nhận té (kêu 30 s) |

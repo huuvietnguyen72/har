@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { ActivityBand, Badge, Card, Empty, ErrorNote, EventBadge, LabelChip, Legend, Stat } from "../components/ui";
 import { useLive, useNow } from "../context";
 import { dataSource } from "../data";
-import { fmtAgo, fmtDateTime, fmtNum } from "../format";
+import { fmtAgo, fmtDateTime, fmtNum, fmtTime } from "../format";
 import { useAsync } from "../hooks";
 import { LABEL_VI, SOURCE_VI, labelColor } from "../labels";
 import type { HarEvent, Label, Segment } from "../types";
@@ -118,6 +118,9 @@ export default function Overview() {
                 <span className="muted">{e.source ? SOURCE_VI[e.source] : ""}</span>
                 {e.prev_label && <span className="muted">trước đó: <LabelChip label={e.prev_label} /></span>}
                 {e.acknowledged ? <Badge tone="ok">Đã xử lý</Badge> : !e.cancelled && <Badge tone="warn">Chưa xử lý</Badge>}
+                {!e.acknowledged && !e.cancelled && e.wearer_ack_at != null && (
+                  <span className="muted small">✋ người đeo bấm nút {fmtTime(e.wearer_ack_at)}</span>
+                )}
               </li>
             ))}
           </ul>

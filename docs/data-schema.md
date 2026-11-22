@@ -8,7 +8,7 @@ Dữ liệu thô 50 Hz **không** lên VPS; chỉ nằm trên Pi và trong datas
 | `status` (1 dòng/thiết bị, ghi đè) | `dev` | `t`, `label`, `conf`, `online`, `battery_v`, `battery_pct`, `temp_c`, `rh`, `rssi`, `model`, `received_at` |
 | `status_log` | `id` | `dev`, `t`, `online`, `battery_v`, `battery_pct`, `temp_c`, `rh` — tối đa 1 dòng/phút, cho đồ thị pin |
 | `segments` | `dev` + `start` | `start`, `end`, `label`, `conf_avg` |
-| `events` | `id` (từ thiết bị, chống trùng) | `dev`, `t`, `type`, `severity`, `source`, `prob`, `prev_label`, `battery_pct`, `cancelled`, `acknowledged`, `acknowledged_at`, `acknowledged_by`, `delivered_late`, `received_at` |
+| `events` | `id` (từ thiết bị, chống trùng) | `dev`, `t`, `type`, `severity`, `source`, `prob`, `prev_label`, `battery_pct`, `cancelled`, `acknowledged`, `acknowledged_at`, `acknowledged_by`, `delivered_late`, `wearer_ack_at` (người đeo bấm nút sau khi té đã xác nhận; Cloudflare D1, migration 0003), `received_at` |
 | `metrics` | `experiment` | `model`, `features`, `window_s`, `accuracy`, `macro_f1`, `f1_per_class` (JSON), `confusion` (JSON `{"labels","matrix"}`), `n_windows`, `n_subjects`, `extra` (JSON), `created_at` |
 | `system_metrics` | `dev` + `day` | `latency` (JSON `{chặng: {median, p95, n}}`), `packet_loss` (0..1), `packets`, `battery_hours`, `extra` |
 | `users` | `id` | `email`, `password_hash` (bcrypt), `role` (`admin`/`viewer`) |
