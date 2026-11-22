@@ -66,7 +66,7 @@ Có thể cắm USB 5 V thẳng vào ESP32 để nạp firmware và chạy thử
 
 ### Vị trí đeo
 
-- Kẹp vào thắt lưng ở **hông phải**.
+- Kẹp **chặt** vào thắt lưng. Vị trí chuẩn: **hông phải** (phần lớn dữ liệu huấn luyện thu ở đây). Hông trái, trước bụng hoặc sau lưng cũng dùng được sau khi hiệu chỉnh hướng đứng (nhấn nút 3 lần): model v4 đạt 95 % trên dữ liệu thử ở 4 cách đeo khác. Không đeo ở cổ tay, trong túi hoặc kẹp lỏng.
 - Đứng thẳng thì **trục X của MPU6050 chỉ xuống đất** (ax ≈ −1 g). Firmware gửi giá trị thô theo trục chip; Pi xoay tín hiệu về hướng đứng theo kết quả hiệu chỉnh, nên đeo lệch một chút vẫn nhận đúng.
 - MPU6050 hàn cố định trên PCB, nên hướng trục gắn liền với hộp. Kẹp chặt để hộp không lắc hay lật.
 - Đổi người đeo hoặc cách kẹp: nhấn nút 3 lần rồi đứng thẳng yên ~2 s (bíp dài = đạt), hoặc gõ `/hieuchinh` trên Telegram.
