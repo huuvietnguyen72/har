@@ -428,6 +428,39 @@ def test_notify_dedup_merge_cancel(conn, tmp_path):
     assert "/alerts" in format_message({"id": "x", "dev": "d", "t": now, "type": "fall"}, now, "https://h")
 
 
+def test_notify_multiple_recipients_retry_and_skip(conn):
+    """Nhiều người nhận: lỗi mạng giữa chừng thì lần sau chỉ gửi cho người còn thiếu; người chặn bot bị bỏ qua."""
+    got, fail = [], {"2": [502]}
+
+    def handler(req):
+        chat = str(json.loads(req.content)["chat_id"])
+        got.append(chat)
+        if chat == "3":
+            return httpx.Response(403, json={"ok": False, "description": "Forbidden: bot was blocked by the user"})
+        if fail.get(chat):
+            return httpx.Response(fail[chat].pop(0), json={"ok": False, "description": "Bad Gateway"})
+        return httpx.Response(200, json={"ok": True})
+
+    n = Notifier(Config(telegram_bot_token="t", telegram_chat_id=" 1, 2,3,1 ,"), conn,
+                 client=httpx.Client(transport=httpx.MockTransport(handler)))
+    assert n.chats == ["1", "2", "3"]
+    now = store.now_ms()
+    a = {"id": "m1", "dev": "har01", "t": now, "type": "fall", "severity": "high", "source": "both", "cancelled": False}
+    conn.execute("INSERT INTO alerts (id, dev, t, type, payload, notify, created_at) VALUES ('m1', 'har01', ?, 'fall', ?, 1, ?)",
+                 (now, json.dumps(a), now))
+    with pytest.raises(httpx.HTTPStatusError):
+        n.step(now)  # người 2 lỗi 502
+    assert got == ["1", "2"]
+    assert conn.execute("SELECT notified FROM alerts WHERE id = 'm1'").fetchone()[0] == 0
+    n.step(now + 2000)
+    assert got == ["1", "2", "2", "3"]  # người 1 không nhận lại; người 3 chặn bot
+    states = {r["chat_id"]: r["state"] for r in conn.execute("SELECT chat_id, state FROM alert_deliveries WHERE alert_id = 'm1'")}
+    assert states == {"1": 1, "2": 1, "3": 2}
+    assert conn.execute("SELECT notified FROM alerts WHERE id = 'm1'").fetchone()[0] == 1
+    n.step(now + 3000)
+    assert len(got) == 4
+
+
 def test_stairs_gate_and_altitude():
     from har_edge.logic import altitude_change_m, stairs_gate
 

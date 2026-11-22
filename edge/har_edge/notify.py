@@ -5,6 +5,9 @@
   hai cú té cách nhau xa hơn vẫn có tin riêng (thử 21/11: cú té thứ hai sau 46 s từng bị gộp mất)
 - Mất Internet: giữ trong hàng, gửi khi có mạng, ghi rõ "gửi trễ" và giờ thật
 - Cảnh báo đã hủy (cancelled) chỉ ghi lại, không gửi
+- Nhiều người nhận (TELEGRAM_CHAT_ID="a,b,c"): gửi lần lượt, ghi từng người đã nhận (bảng alert_deliveries), nên
+  lỗi mạng giữa chừng thì lần sau chỉ gửi cho người còn thiếu. Người nhận lỗi vĩnh viễn (chặn bot, chưa bấm Start,
+  sai chat ID) bị bỏ qua và ghi log, không làm kẹt cảnh báo của người khác
 
 Chạy: python -m har_edge.notify
 """
@@ -19,7 +22,7 @@ import httpx
 
 from . import store
 from .bot import fall_buttons
-from .config import Config, load_config
+from .config import Config, chat_ids, load_config
 from .logutil import setup_logging
 
 log = logging.getLogger("har-notify")
@@ -59,20 +62,34 @@ def format_message(a: dict, now: int, webapp_url: str = "") -> str:
     return "\n".join(lines)
 
 
+def _describe(e: httpx.HTTPStatusError) -> str:
+    try:
+        return f"{e.response.status_code} {e.response.json().get('description', '')}".strip()
+    except ValueError:
+        return str(e.response.status_code)
+
+
+def _permanent(e: httpx.HTTPStatusError) -> bool:
+    """Lỗi do người nhận, gửi lại cũng vô ích: 403 (chặn bot, chưa bấm Start, tài khoản bị xóa), 400 sai chat ID."""
+    code = e.response.status_code
+    return code == 403 or (code == 400 and "chat not found" in _describe(e).lower())
+
+
 class Notifier:
     def __init__(self, cfg: Config, conn, client: httpx.Client | None = None):
         self.cfg = cfg
         self.conn = conn
         self.client = client or httpx.Client(timeout=10)
-        self.enabled = bool(cfg.telegram_bot_token and cfg.telegram_chat_id)
+        self.chats = chat_ids(cfg.telegram_chat_id)
+        self.enabled = bool(cfg.telegram_bot_token and self.chats)
         if not self.enabled:
             log.warning("Chưa cấu hình TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID — chỉ in ra màn hình")
 
-    def send(self, text: str, reply_markup: dict | None = None) -> None:
+    def send(self, text: str, reply_markup: dict | None = None, chat_id: str | None = None) -> None:
         if not self.enabled:
             print(text, flush=True)
             return
-        body = {"chat_id": self.cfg.telegram_chat_id, "text": text, "parse_mode": "HTML",
+        body = {"chat_id": chat_id or self.chats[0], "text": text, "parse_mode": "HTML",
                 "disable_web_page_preview": True}
         if reply_markup:
             body["reply_markup"] = reply_markup
@@ -96,18 +113,41 @@ class Notifier:
                 log.info("Gộp cảnh báo %s vào cảnh báo trước (< %d s)", r["id"], MERGE_MS // 1000)
                 self._mark(r["id"], now, 3)
                 continue
-            try:
-                # nút "Tắt còi" / "Đã kiểm tra, ổn" do har-bot xử lý
-                buttons = fall_buttons(r["id"]) if a.get("type") in ("fall", "sos") else None
-                self.send(format_message(a, now, self.cfg.webapp_url), buttons)
-            except httpx.HTTPError as e:
-                self.conn.execute("UPDATE alerts SET attempts = attempts + 1 WHERE id = ?", (r["id"],))
-                log.warning("Gửi Telegram lỗi (%s), sẽ thử lại", e)
-                raise  # giữ thứ tự; vòng ngoài chờ lâu dần rồi thử lại
+            # nút "Tắt còi" / "Đã kiểm tra, ổn" do har-bot xử lý
+            buttons = fall_buttons(r["id"]) if a.get("type") in ("fall", "sos") else None
+            text = format_message(a, now, self.cfg.webapp_url)
+            if not self.enabled:
+                self.send(text, buttons)
+            else:
+                done = {d["chat_id"] for d in self.conn.execute(
+                    "SELECT chat_id FROM alert_deliveries WHERE alert_id = ?", (r["id"],))}
+                for chat in self.chats:
+                    if chat in done:
+                        continue
+                    try:
+                        self.send(text, buttons, chat)
+                    except httpx.HTTPStatusError as e:
+                        if _permanent(e):
+                            log.warning("Bỏ người nhận %s: Telegram từ chối (%s)", chat, _describe(e))
+                            self._deliver(r["id"], chat, now, 2, _describe(e))
+                            continue
+                        self._retry_later(r["id"], e)
+                    except httpx.HTTPError as e:
+                        self._retry_later(r["id"], e)
+                    self._deliver(r["id"], chat, now, 1)
             self._mark(r["id"], now, 1)
             sent += 1
-            log.info("Đã báo %s (%s)", r["id"], "Telegram" if self.enabled else "màn hình")
+            log.info("Đã báo %s (%s)", r["id"], f"Telegram, {len(self.chats)} người nhận" if self.enabled else "màn hình")
         return sent
+
+    def _retry_later(self, aid: str, e: Exception):
+        self.conn.execute("UPDATE alerts SET attempts = attempts + 1 WHERE id = ?", (aid,))
+        log.warning("Gửi Telegram lỗi (%s), sẽ thử lại", e)
+        raise e  # giữ thứ tự; vòng ngoài chờ lâu dần rồi thử lại, chỉ gửi cho người còn thiếu
+
+    def _deliver(self, aid: str, chat: str, now: int, state: int, detail: str | None = None) -> None:
+        self.conn.execute("INSERT OR REPLACE INTO alert_deliveries (alert_id, chat_id, state, at, detail) VALUES (?, ?, ?, ?, ?)",
+                          (aid, chat, state, now, detail))
 
     def _mark(self, aid: str, now: int, state: int) -> None:
         # 1 = đã gửi, 2 = không cần gửi (đã hủy), 3 = gộp với cảnh báo trước

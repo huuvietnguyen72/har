@@ -452,15 +452,28 @@ const fmtDur = (ms: number) => {
   return m < 60 ? `${m} phút` : `${Math.floor(m / 60)} giờ ${m % 60} phút`;
 };
 
+// TELEGRAM_CHAT_ID: một hoặc nhiều chat ngăn bằng dấu phẩy (giống edge/.env); bỏ khoảng trắng, ô rỗng, trùng
+export const chatIds = (v?: string) => [...new Set((v ?? "").split(",").map((c) => c.trim()).filter(Boolean))];
+
+/** Gửi cho mọi người nhận; một người lỗi (chặn bot, sai chat ID) không chặn người khác. true nếu ít nhất một người nhận được. */
 async function telegram(env: Env, text: string): Promise<boolean> {
-  if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) return false;
-  const r = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ chat_id: env.TELEGRAM_CHAT_ID, text, parse_mode: "HTML", disable_web_page_preview: true }),
-  });
-  if (!r.ok) console.error("Telegram", r.status, (await r.text()).slice(0, 200)); // không in token
-  return r.ok;
+  const chats = chatIds(env.TELEGRAM_CHAT_ID);
+  if (!env.TELEGRAM_BOT_TOKEN || !chats.length) return false;
+  const results = await Promise.all(chats.map(async (chat_id) => {
+    try {
+      const r = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ chat_id, text, parse_mode: "HTML", disable_web_page_preview: true }),
+      });
+      if (!r.ok) console.error("Telegram", chat_id, r.status, (await r.text()).slice(0, 200)); // không in token
+      return r.ok;
+    } catch (e) {
+      console.error("Telegram", chat_id, String(e).slice(0, 200));
+      return false;
+    }
+  }));
+  return results.some(Boolean);
 }
 
 /**

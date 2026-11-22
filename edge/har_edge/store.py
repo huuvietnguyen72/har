@@ -43,6 +43,17 @@ CREATE TABLE IF NOT EXISTS alerts (
 );
 CREATE INDEX IF NOT EXISTS ix_alerts_pending ON alerts (notified, notify, t);
 
+-- mỗi người nhận một dòng: gửi lại sau lỗi không gửi trùng cho người đã nhận (state 1 = đã gửi, 2 = bỏ qua vì lỗi
+-- vĩnh viễn: người nhận chặn bot, chưa bấm Start, sai chat ID)
+CREATE TABLE IF NOT EXISTS alert_deliveries (
+    alert_id TEXT NOT NULL,
+    chat_id TEXT NOT NULL,
+    state INTEGER NOT NULL,
+    at INTEGER NOT NULL,
+    detail TEXT,
+    PRIMARY KEY (alert_id, chat_id)
+);
+
 CREATE TABLE IF NOT EXISTS device_events (
     id TEXT PRIMARY KEY,
     dev TEXT NOT NULL,
