@@ -38,7 +38,7 @@ flowchart TB
   subgraph C["Cloudflare"]
     WK["Worker har-cloud<br/>API + Cron 5 phút"]
     D1[("D1 har-db")]
-    WA["Web app React<br/>4 trang, đăng nhập"]
+    WA["Web app React<br/>5 trang, đăng nhập"]
     WK <--> D1
     WK --> WA
   end
@@ -131,7 +131,7 @@ Mã nguồn ở [`cloud/`](../cloud/). Một Worker vừa phục vụ API, vừa
 | `GET /api/{devices, status, live, status/history, segments, summary, events, metrics, system_metrics}`, xử lý cảnh báo | Web app | JWT |
 | Cron `*/5 * * * *` | Cloudflare | Pi im quá 10 phút → Telegram "Pi mất kết nối", ghi sự kiện; Pi gửi lại → "đã kết nối lại" |
 
-Web app ([`webapp/`](../webapp/)) có 4 trang: Tổng quan, Lịch sử, Cảnh báo, Đánh giá model. Trang hỏi `/api/live` mỗi 2 s và ngừng khi tab ẩn. Khi có té, hộp cảnh báo hiện giữa màn hình kèm âm báo. Bản backend VPS (FastAPI + PostgreSQL, [`backend/`](../backend/)) dùng cùng API, giữ làm dự phòng.
+Web app ([`webapp/`](../webapp/)) có 5 trang: Tổng quan, Cảm biến (biểu đồ gia tốc, con quay, độ cao trực tiếp 2 phút và lịch sử 24 giờ), Lịch sử, Cảnh báo, Đánh giá model. Trang hỏi `/api/live` mỗi 2 s và ngừng khi tab ẩn. Khi có té, hộp cảnh báo hiện giữa màn hình kèm âm báo. Bản backend VPS (FastAPI + PostgreSQL, [`backend/`](../backend/)) dùng cùng API, giữ làm dự phòng.
 
 ## Luồng dữ liệu
 

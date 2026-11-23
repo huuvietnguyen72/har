@@ -40,7 +40,7 @@ flowchart LR
 | [`ml/`](ml/) | Dataset, Random Forest, 1D-CNN (TFLite int8), thí nghiệm A1/A2/B1/B2/C/D, đẩy `metrics.json` | Model v4 (RF) trên dữ liệu thật S01–S04 + SisFall, đang chạy trên Pi |
 | [`cloud/`](cloud/) | **Cloud đang dùng:** Cloudflare Worker (TypeScript) + D1, phục vụ API và web app; công cụ tạo tài khoản, khóa thiết bị | Đang chạy tại `har-cloud.har-cloud.workers.dev`; 10 test đầu-cuối |
 | [`backend/`](backend/) | Bản VPS dự phòng (cùng API): FastAPI + PostgreSQL + Caddy, Docker Compose, Alembic, sao lưu | 9 test pytest |
-| [`webapp/`](webapp/) | React + Vite + TypeScript: Tổng quan, Lịch sử, Cảnh báo, Đánh giá model | Build sạch; chạy thử với API thật |
+| [`webapp/`](webapp/) | React + Vite + TypeScript: Tổng quan, Cảm biến, Lịch sử, Cảnh báo, Đánh giá model | Build sạch; chạy thử với API thật |
 | [`hardware/`](hardware/) | Sơ đồ lắp mạch, cấu trúc hộp đeo, datasheet số đo | Theo mạch thật |
 | [`docs/`](docs/) | Cấu trúc hệ thống, hợp đồng dữ liệu (MQTT, schema, API, nhãn, bảng chân), kế hoạch, vận hành | |
 

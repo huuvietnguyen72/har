@@ -567,6 +567,48 @@ def test_yaw_invariant_features_ignore_rotation_about_vertical():
     assert not np.allclose(a0, a1, atol=1e-3)
 
 
+def test_sensor_decimator_keeps_peaks():
+    from har_edge.logic import SensorDecimator
+
+    d = SensorDecimator(200, 600)
+    for i in range(50):  # 1 s ở 50 Hz: đứng yên 1 g, một mẫu va chạm 4,2 g ở mẫu 23
+        d.add(T0 + i * 20, 4.2 if i == 23 else 1.0, 5.0)
+    d.add(T0 + 1000, 1.0, 5.0)  # sang khoảng mới -> chốt khoảng cuối
+    pts = list(d.points)
+    assert [p[0] - T0 for p in pts] == [100, 300, 500, 700, 900]  # 5 Hz, t giữa khoảng
+    assert pts[2][2] == 4.2 and pts[2][1] < 2  # đỉnh còn nguyên dù trung bình thấp
+    assert all(abs(p[3] - 5.0) < 1e-9 for p in pts)
+    d.add(T0 + 100, 9.9)  # gói tới trễ thuộc khoảng cũ: bỏ
+    assert max(p[2] for p in d.points) == 4.2
+    assert [p[0] for p in d.since(T0 + 500)] == [T0 + 700, T0 + 900]
+
+
+def test_status_carries_sensor_chart_points(conn):
+    """Trạng thái gửi cloud có điểm biểu đồ 5 Hz mới (không lặp lại) và số liệu 1 phút cho lịch sử."""
+    inf = Infer(Config(status_every_s=5), conn, HeuristicModel())
+    rng = np.random.default_rng(7)
+    acc, gyr, pres = generate("walk", 12, rng)
+    sent = []
+    for topic, msg in packets(acc, gyr, pres):
+        now = msg["t0"] + 520
+        inf.handle(topic, msg, now)
+        before = conn.execute("SELECT payload FROM outbox WHERE kind = 'status'").fetchone()
+        inf.tick(now)
+        after = conn.execute("SELECT payload FROM outbox WHERE kind = 'status'").fetchone()
+        if after and (not before or after["payload"] != before["payload"]):
+            sent.append(json.loads(after["payload"]))
+    with_pts = [s for s in sent if s.get("sensors")]
+    assert len(with_pts) >= 2
+    ts = [r[0] for s in with_pts for r in s["sensors"]["imu"]]
+    assert ts == sorted(ts) and len(ts) == len(set(ts))  # không gửi trùng điểm giữa các lần
+    assert all(b - a == 200 for a, b in zip(ts, ts[1:]))
+    t, svm, svm_max, gyro = with_pts[-1]["sensors"]["imu"][-1]
+    assert 0.5 < svm < 2 and svm_max >= svm and gyro >= 0
+    assert with_pts[-1]["sensors"]["baro"] and 90_000 < with_pts[-1]["sensors"]["baro"][-1][1] < 110_000
+    last = sent[-1]
+    assert 0.5 < last["svm_mean"] < 2 and last["svm_max"] >= last["svm_mean"] and 900 < last["p_hpa"] < 1100
+
+
 def test_status_sent_right_after_activity_changes(conn):
     """Hoạt động đổi -> trạng thái (cloud + OLED) phát ở vòng tick kế tiếp, không chờ chu kỳ 5 s."""
     inf = Infer(Config(status_every_s=5), conn, HeuristicModel())

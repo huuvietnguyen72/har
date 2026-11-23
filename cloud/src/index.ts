@@ -71,11 +71,34 @@ function list(v: unknown, p: string, max: number): unknown[] {
   return v as unknown[];
 }
 
+// Điểm biểu đồ cảm biến (Pi gom 5 Hz): imu [[t, svm, svm_max, gyro]], baro [[t, p_pa]]
+const points = (width: number, max: number) => (v: unknown, p: string) =>
+  list(v, p, max).map((r, i) => {
+    if (!Array.isArray(r) || r.length !== width || !r.every((x) => typeof x === "number" && Number.isFinite(x))) {
+      fail(`${p}[${i}]`, `phải là mảng ${width} số`);
+    }
+    return r as number[];
+  });
+const SENSORS_IN: Spec = { imu: withDefault(points(4, 200), []), baro: withDefault(points(2, 200), []) };
 const STATUS_IN: Spec = {
   dev: need(str()), t: need(int), label: opt(oneOf(LABELS)), conf: opt(float(0, 1)), online: withDefault(bool, true),
   battery_v: opt(float()), battery_pct: opt(float(0, 100)), temp_c: opt(float()), rh: opt(float()), rssi: opt(int),
   model: opt(str()), fw: opt(str()),
+  sensors: opt((v, p) => check(v, SENSORS_IN, p)),
+  svm_mean: opt(float()), svm_max: opt(float()), gyro_mean: opt(float()), p_hpa: opt(float()),
 };
+const SENSOR_WINDOW_MS = 120_000; // biểu đồ trực tiếp: giữ 2 phút
+
+/** Nối điểm mới vào cửa sổ, bỏ điểm cũ hơn 2 phút. Đồng hồ lùi xa (Pi đồng bộ lại giờ) thì bắt đầu cửa sổ mới. */
+export function mergeWindow(old: number[][], add: number[][], windowMs = SENSOR_WINDOW_MS): number[][] {
+  if (!add.length) return old;
+  const lastT = old.length ? old[old.length - 1][0] : -Infinity;
+  const base = add[0][0] < lastT - windowMs ? [] : old;
+  const tail = base.length ? base[base.length - 1][0] : -Infinity;
+  const merged = base.concat(add.filter((r) => r[0] > tail));
+  const cut = merged[merged.length - 1][0] - windowMs;
+  return merged.filter((r) => r[0] >= cut);
+}
 const SEGMENT_IN: Spec = { dev: need(str()), start: need(int), end: need(int), label: need(oneOf(LABELS)), conf_avg: opt(float(0, 1)) };
 const EVENT_IN: Spec = {
   id: need(str(64)), dev: need(str()), t: need(int), type: need(oneOf(EVENT_TYPES)), severity: withDefault(oneOf(SEVERITIES), "info"),
@@ -172,8 +195,23 @@ async function ingestStatus(req: Request, env: Env) {
   const last = await env.DB.prepare("SELECT MAX(t) AS t FROM status_log WHERE dev = ?").bind(b.dev).first<{ t: number | null }>();
   if (last?.t == null || b.t - last.t >= everyMs) {
     stmts.push(
-      env.DB.prepare("INSERT INTO status_log (dev, t, online, battery_v, battery_pct, temp_c, rh) VALUES (?, ?, ?, ?, ?, ?, ?)")
-        .bind(b.dev, b.t, b.online ? 1 : 0, b.battery_v, b.battery_pct, b.temp_c, b.rh),
+      env.DB.prepare(
+        `INSERT INTO status_log (dev, t, online, battery_v, battery_pct, temp_c, rh, svm_mean, svm_max, gyro_mean, p_hpa)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).bind(b.dev, b.t, b.online ? 1 : 0, b.battery_v, b.battery_pct, b.temp_c, b.rh, b.svm_mean, b.svm_max, b.gyro_mean, b.p_hpa),
+    );
+  }
+  // biểu đồ trực tiếp: nối điểm mới vào cửa sổ 2 phút (1 dòng mỗi thiết bị)
+  if (b.sensors && (b.sensors.imu.length || b.sensors.baro.length)) {
+    const cur = await env.DB.prepare("SELECT imu, baro FROM sensor_live WHERE dev = ?").bind(b.dev).first<{ imu: string; baro: string }>();
+    const imu = mergeWindow(cur ? JSON.parse(cur.imu) : [], b.sensors.imu);
+    const baro = mergeWindow(cur ? JSON.parse(cur.baro) : [], b.sensors.baro);
+    const newest = Math.max(imu.length ? imu[imu.length - 1][0] : 0, baro.length ? baro[baro.length - 1][0] : 0);
+    stmts.push(
+      env.DB.prepare(
+        `INSERT INTO sensor_live (dev, t, imu, baro) VALUES (?, ?, ?, ?)
+         ON CONFLICT(dev) DO UPDATE SET t=excluded.t, imu=excluded.imu, baro=excluded.baro`,
+      ).bind(b.dev, newest, JSON.stringify(imu), JSON.stringify(baro)),
     );
   }
   await env.DB.batch(stmts);
@@ -375,9 +413,20 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
     if (m === "GET" && p === "/api/status/history") {
       const dev = needDev(url);
       const [frm, to] = range(url, 24 * 3600_000);
-      const r = await env.DB.prepare("SELECT dev, t, online, battery_v, battery_pct, temp_c, rh FROM status_log WHERE dev = ? AND t >= ? AND t < ? ORDER BY t")
+      const r = await env.DB.prepare(
+        `SELECT dev, t, online, battery_v, battery_pct, temp_c, rh, svm_mean, svm_max, gyro_mean, p_hpa
+         FROM status_log WHERE dev = ? AND t >= ? AND t < ? ORDER BY t`,
+      )
         .bind(dev, frm, to).all<any>();
       return json(r.results.map((x) => ({ ...x, online: B(x.online) })));
+    }
+    if (m === "GET" && p === "/api/sensors") {
+      // biểu đồ trực tiếp: chỉ trả điểm mới hơn `since` (trang Cảm biến hỏi định kỳ, lần đầu lấy cả 2 phút)
+      const dev = needDev(url);
+      const since = qInt(url, "since", 0, 0) ?? 0;
+      const row = await env.DB.prepare("SELECT t, imu, baro FROM sensor_live WHERE dev = ?").bind(dev).first<{ t: number; imu: string; baro: string }>();
+      const pick = (s?: string) => (s ? (JSON.parse(s) as number[][]).filter((r) => r[0] > since) : []);
+      return json({ dev, t: row?.t ?? null, window_ms: SENSOR_WINDOW_MS, imu: pick(row?.imu), baro: pick(row?.baro) });
     }
     if (m === "GET" && p === "/api/segments") {
       const dev = needDev(url);

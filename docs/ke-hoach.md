@@ -16,7 +16,7 @@ Cập nhật 21/11/2026, theo hệ thống đang chạy thật. Cấu trúc hệ
 | Mạng | ESP32 và Pi cùng Wi-Fi nhà (2,4 GHz), dải 192.168.12.0/24. Pi `raspivn` (192.168.12.19) |
 | Pi 4 | Mosquitto, chrony, `har-ingest`, `har-infer`, `har-uplink`, `har-notify`, `har-bot` (systemd) |
 | Model | **v4**: Random Forest, IMU + BMP280, cửa sổ 2,5 s, xoay tín hiệu về hướng đứng + đặc trưng thẳng đứng/nằm ngang; học trên S01–S04 + SisFall. Bộ chặn cầu thang khi độ cao không đổi (0,3 m/10 s) |
-| Cloud | **Cloudflare Worker + D1** ([`cloud/`](../cloud/)): API + dashboard 4 trang tại `https://har-cloud.har-cloud.workers.dev`, cập nhật mỗi 2 s, hộp cảnh báo té giữa màn hình. Bản VPS (`backend/`) giữ làm dự phòng |
+| Cloud | **Cloudflare Worker + D1** ([`cloud/`](../cloud/)): API + dashboard 5 trang tại `https://har-cloud.har-cloud.workers.dev`, cập nhật mỗi 2 s, hộp cảnh báo té giữa màn hình. Bản VPS (`backend/`) giữ làm dự phòng |
 | Telegram | `har-notify` gửi cảnh báo; `har-bot` nhận lệnh `/trangthai`, `/homnay`, `/coi`, `/tatcoi`, `/hieuchinh`, `/thu`, `/dung` |
 | Dataset | S01–S04 (đứng, ngồi, nằm, đi, lên/xuống cầu thang; té chỉ S01: 23 cú) + S01 ở 4 vị trí đeo lạ (E–H) + SisFall (1.798 cú té, 38 người) cho huấn luyện. T01: 41 phiên ở 4 vị trí đeo (A–D), chỉ để chấm điểm |
 
