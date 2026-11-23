@@ -98,6 +98,20 @@ export interface StatusLogRow {
   battery_pct: number | null;
   temp_c: number | null;
   rh: number | null;
+  // số liệu 1 phút gần nhất (trang Cảm biến); null với dữ liệu cũ trước khi Pi gửi
+  svm_mean?: number | null;
+  svm_max?: number | null;
+  gyro_mean?: number | null;
+  p_hpa?: number | null;
+}
+
+/** Biểu đồ trực tiếp: điểm 5 Hz trong 2 phút gần nhất (GET /api/sensors). */
+export interface SensorLive {
+  dev: string;
+  t: number | null;
+  window_ms: number;
+  imu: number[][]; // [t, svm trung bình (g), svm đỉnh (g), con quay trung bình (°/s)]
+  baro: number[][]; // [t, áp suất (Pa)]
 }
 
 export interface Session {
@@ -119,6 +133,8 @@ export interface DataSource {
   login(email: string, password: string): Promise<Session>;
   getStatus(): Promise<Status[]>;
   getStatusHistory(dev: string, from: number, to: number): Promise<StatusLogRow[]>;
+  /** Điểm cảm biến mới hơn `since` (epoch ms) trong cửa sổ 2 phút. */
+  getSensors(dev: string, since: number): Promise<SensorLive>;
   getSegments(dev: string, from: number, to: number): Promise<Segment[]>;
   getSummary(dev: string, day: string, days?: number): Promise<DaySummary[]>;
   getEvents(dev?: string, limit?: number): Promise<HarEvent[]>;

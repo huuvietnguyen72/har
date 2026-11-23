@@ -6,7 +6,8 @@ Dữ liệu thô 50 Hz **không** lên VPS; chỉ nằm trên Pi và trong datas
 | --- | --- | --- |
 | `devices` | `dev` | `alias` (bí danh người đeo), `position`, `fw`, `model` (model đang chạy), `key_hash` (sha256 API key) |
 | `status` (1 dòng/thiết bị, ghi đè) | `dev` | `t`, `label`, `conf`, `online`, `battery_v`, `battery_pct`, `temp_c`, `rh`, `rssi`, `model`, `received_at` |
-| `status_log` | `id` | `dev`, `t`, `online`, `battery_v`, `battery_pct`, `temp_c`, `rh` — tối đa 1 dòng/phút, cho đồ thị pin |
+| `status_log` | `id` | `dev`, `t`, `online`, `battery_v`, `battery_pct`, `temp_c`, `rh`, và (Cloudflare D1, migration 0004) `svm_mean`, `svm_max` (g), `gyro_mean` (°/s), `p_hpa` của 1 phút gần nhất — tối đa 1 dòng/phút, cho đồ thị pin và lịch sử 24 giờ trang Cảm biến |
+| `sensor_live` (chỉ D1) | `dev` | `t`, `imu` (JSON `[[t, svm, svm_max, gyro]]`), `baro` (JSON `[[t, p_pa]]`): 2 phút gần nhất, điểm 5 Hz, ghi đè — biểu đồ trực tiếp trang Cảm biến |
 | `segments` | `dev` + `start` | `start`, `end`, `label`, `conf_avg` |
 | `events` | `id` (từ thiết bị, chống trùng) | `dev`, `t`, `type`, `severity`, `source`, `prob`, `prev_label`, `battery_pct`, `cancelled`, `acknowledged`, `acknowledged_at`, `acknowledged_by`, `delivered_late`, `wearer_ack_at` (người đeo bấm nút sau khi té đã xác nhận; Cloudflare D1, migration 0003), `received_at` |
 | `metrics` | `experiment` | `model`, `features`, `window_s`, `accuracy`, `macro_f1`, `f1_per_class` (JSON), `confusion` (JSON `{"labels","matrix"}`), `n_windows`, `n_subjects`, `extra` (JSON), `created_at` |

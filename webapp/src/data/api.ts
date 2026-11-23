@@ -68,6 +68,7 @@ export const apiDataSource: DataSource = {
 
   getStatus: () => req("/status"),
   getStatusHistory: (dev, from, to) => req(`/status/history?dev=${dev}&from=${from}&to=${to}`),
+  getSensors: (dev, since) => req(`/sensors?dev=${encodeURIComponent(dev)}&since=${Math.max(0, Math.floor(since))}`),
   getSegments: (dev, from, to) => req(`/segments?dev=${dev}&from=${from}&to=${to}`),
   getSummary: (dev, day, days = 1) => req(`/summary?dev=${dev}&day=${day}&days=${days}`),
   getEvents: (dev, limit = 200) => req(`/events?limit=${limit}${dev ? `&dev=${dev}` : ""}`),

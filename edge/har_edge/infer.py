@@ -20,13 +20,15 @@ from . import store
 from .config import Config, load_config
 from .logutil import setup_logging
 from .features import smooth_pressure
-from .logic import FallFusion, FusionParams, Segmenter, Smoother, TechMonitor, altitude_change_m, stairs_gate
+from .logic import (FallFusion, FusionParams, Segmenter, SensorDecimator, Smoother, TechMonitor, altitude_change_m,
+                    stairs_gate)
 from .model import BaseModel, load_model
 from .units import battery_pct, env_packet_to_array, imu_packet_to_array
 
 log = logging.getLogger("har-infer")
 
 PRED_EVERY_MS = 1000
+SENSOR_PERIOD_MS = 200  # điểm biểu đồ cảm biến trên dashboard (5 Hz)
 GAP_MS = 1000  # khoảng trống dữ liệu lớn hơn -> bỏ bộ đệm, đóng đoạn
 ONLINE_TIMEOUT_MS = 10_000
 
@@ -48,11 +50,16 @@ class DeviceState:
     temp_c: float | None = None
     rh: float | None = None
     n_pred: int = 0
+    sensor_sent_t: int = 0  # điểm biểu đồ IMU mới nhất đã gửi cloud
+    baro_sent_t: int = 0
 
     def __post_init__(self):
         self.imu = deque(maxlen=self.n + 50)
         self.smoother = Smoother(3)
         self.segmenter = Segmenter(self.dev)
+        # biểu đồ cảm biến trên dashboard: 5 Hz, giữ 2 phút (gửi kèm bản trạng thái 5 s)
+        self.imu_dec = SensorDecimator(SENSOR_PERIOD_MS, 600)
+        self.baro_dec = SensorDecimator(SENSOR_PERIOD_MS, 600)
         self.fusion = FallFusion(
             self.dev,
             FusionParams(p_confirm=self.cfg.fall_p_confirm, p_model_only=self.cfg.fall_p_model_only,
@@ -127,6 +134,30 @@ class Infer:
             out.append((f"har/{st.dev}/cmd", cmd, 1, False))
             log.warning("LỆNH bộ đeo %s: %s", st.dev, json.dumps(cmd))
 
+    @staticmethod
+    def _sensor_summary(st: DeviceState) -> dict:
+        """Điểm biểu đồ mới (từ lần gửi trước) + số liệu 1 phút gần nhất cho lịch sử 24 giờ trên dashboard."""
+        out: dict = {}
+        imu = st.imu_dec.since(st.sensor_sent_t)
+        baro = st.baro_dec.since(st.baro_sent_t)
+        if imu or baro:
+            out["sensors"] = {
+                "imu": [[t, round(a, 3), round(m, 3), round(g, 1)] for t, a, m, g in imu],
+                "baro": [[t, round(p, 1)] for t, p, _, _ in baro],
+            }
+            st.sensor_sent_t = imu[-1][0] if imu else st.sensor_sent_t
+            st.baro_sent_t = baro[-1][0] if baro else st.baro_sent_t
+        ref = st.last_sample_t
+        last_min = st.imu_dec.window(ref - 60_000) if ref else []
+        if last_min:
+            out["svm_mean"] = round(sum(p[1] for p in last_min) / len(last_min), 3)
+            out["svm_max"] = round(max(p[2] for p in last_min), 3)
+            out["gyro_mean"] = round(sum(p[3] for p in last_min) / len(last_min), 1)
+        p_min = st.baro_dec.window(ref - 60_000) if ref else []
+        if p_min:
+            out["p_hpa"] = round(sum(p[1] for p in p_min) / len(p_min) / 100, 2)
+        return out
+
     def _close_segment(self, st: DeviceState, seg: dict | None) -> None:
         if seg and seg["end"] > seg["start"]:
             store.outbox_put(self.conn, "segments", f"{seg['dev']}:{seg['start']}", seg, seg["dev"])
@@ -149,6 +180,10 @@ class Infer:
                     st.imu.clear()
                     self._close_segment(st, st.segmenter.flush(st.last_sample_t))
                 st.imu.extend(arr)
+                svm = np.linalg.norm(arr[:, 1:4], axis=1)
+                gmag = np.linalg.norm(arr[:, 4:7], axis=1)
+                for t_s, a_s, g_s in zip(arr[:, 0], svm, gmag):
+                    st.imu_dec.add(float(t_s), float(a_s), float(g_s))
                 st.last_sample_t = int(arr[-1, 0])
                 st.last_packet_now = now
                 st.tech.seen(now)
@@ -157,6 +192,8 @@ class Infer:
             elif kind == "env":
                 arr = env_packet_to_array(msg)
                 st.pressure.extend(arr)
+                for t_s, p_s in arr:
+                    st.baro_dec.add(float(t_s), float(p_s))
                 if msg.get("temp_c") is not None:
                     st.temp_c = msg["temp_c"]
                 if msg.get("rh") is not None:
@@ -234,6 +271,8 @@ class Infer:
                         "temp_c": st.temp_c, "rh": st.rh, "rssi": st.esp.get("rssi"),
                         "model": self.model.name, "fw": st.esp.get("fw"),
                     }
+                    if online:
+                        status.update(self._sensor_summary(st))
                     store.outbox_put(self.conn, "status", st.dev, status, st.dev)
                     out.append((f"har/{st.dev}/display", {"v": 1, "label": status["label"], "conf": status["conf"],
                                                           "mode": "monitor"}, 0, True))

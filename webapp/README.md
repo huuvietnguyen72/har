@@ -6,6 +6,7 @@ React 18 + Vite + TypeScript, React Router, Recharts. Build xong được Caddy 
 | --- | --- |
 | Đăng nhập | Tài khoản do nhóm cấp (JWT 12 giờ), không tự đăng ký |
 | Tổng quan | Hoạt động hiện tại + độ tin cậy, online, pin, nhiệt độ, độ ẩm, Wi-Fi; dải hoạt động 1 giờ qua; cảnh báo gần nhất; băng rôn đỏ khi có cảnh báo chưa xử lý |
+| Cảm biến | Trực tiếp 2 phút (điểm 5 Hz, hỏi `/api/sensors` mỗi 2 s, chỉ lấy điểm mới, dừng khi tab ẩn): gia tốc SVM trung bình và đỉnh, con quay, độ cao tương đối từ áp suất. Lịch sử 24 giờ (1 điểm/phút): gia tốc, con quay, áp suất. Chỉ có ở bản Cloudflare Worker |
 | Lịch sử | Chọn ngày; dòng thời gian 24 giờ có mốc té; thời lượng mỗi hoạt động; so sánh 7 ngày |
 | Cảnh báo | Bảng té/SOS/pin yếu/mất kết nối, nút "Đã xử lý", thông báo tức thời qua WebSocket |
 | Đánh giá model | Model đang chạy; bảng A1–C; F1 từng lớp có/không BMP280; ma trận nhầm lẫn; thí nghiệm D; độ trễ từng chặng; đồ thị pin |

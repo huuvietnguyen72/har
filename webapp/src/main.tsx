@@ -9,6 +9,7 @@ import History from "./pages/History";
 import Login from "./pages/Login";
 import ModelEval from "./pages/ModelEval";
 import Overview from "./pages/Overview";
+import Sensors from "./pages/Sensors";
 import "./styles.css";
 
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -32,6 +33,7 @@ createRoot(document.getElementById("root")!).render(
             }
           >
             <Route index element={<Overview />} />
+            <Route path="sensors" element={<Sensors />} />
             <Route path="history" element={<History />} />
             <Route path="alerts" element={<Alerts />} />
             <Route path="model" element={<ModelEval />} />

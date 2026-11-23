@@ -142,9 +142,25 @@ export const mockDataSource: DataSource = {
     const rows: StatusLogRow[] = [];
     for (let t = from; t < to; t += 10 * MIN) {
       const h = (t - from) / 3600_000;
-      rows.push({ dev: DEV, t, online: true, battery_v: 4.15 - h * 0.03, battery_pct: Math.max(0, 98 - h * 5), temp_c: 29, rh: 70 });
+      const busy = Math.sin(h / 3) > 0; // giả lập: lúc đi lại, lúc ngồi
+      rows.push({ dev: DEV, t, online: true, battery_v: 4.15 - h * 0.03, battery_pct: Math.max(0, 98 - h * 5), temp_c: 29, rh: 70,
+        svm_mean: busy ? 1.05 : 1.0, svm_max: busy ? 1.6 + 0.2 * Math.sin(h) : 1.05, gyro_mean: busy ? 45 : 4, p_hpa: 1008 + 2 * Math.sin(h / 6) });
     }
     return delay(rows);
+  },
+  getSensors: (_dev, since) => {
+    // giả lập 2 phút: đi bộ (dao động 2 Hz) rồi lên cầu thang (độ cao tăng dần)
+    const end = Math.floor(Date.now() / 200) * 200;
+    const imu: number[][] = [];
+    const baro: number[][] = [];
+    for (let t = end - 120_000; t <= end; t += 200) {
+      if (t <= since) continue;
+      const s = t / 1000;
+      const climb = Math.max(0, Math.min(1, (s % 120) / 40 - 1));
+      imu.push([t, 1 + 0.18 * Math.sin(2 * Math.PI * 2 * s), 1.3 + 0.15 * Math.abs(Math.sin(2 * Math.PI * 2 * s)), 40 + 15 * Math.sin(2 * Math.PI * s)]);
+      baro.push([t, 100800 - 36 * climb + Math.sin(s) * 2]);
+    }
+    return delay({ dev: DEV, t: end, window_ms: 120_000, imu, baro });
   },
   getSegments: (_dev, from, to) => delay(segments.filter((s) => s.end > from && s.start < to)),
   getSummary: (_dev, day, days = 1) => {

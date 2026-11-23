@@ -9,6 +9,7 @@ import type { Label } from "../types";
 
 const NAV = [
   { to: "/", label: "Tổng quan", end: true },
+  { to: "/sensors", label: "Cảm biến" },
   { to: "/history", label: "Lịch sử" },
   { to: "/alerts", label: "Cảnh báo" },
   { to: "/model", label: "Đánh giá model" },

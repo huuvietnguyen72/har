@@ -305,3 +305,50 @@ class TechMonitor:
                      "severity": "info", "source": "edge", "prob": None, "prev_label": None,
                      "cancelled": False, "notify": True}]
         return []
+
+
+class SensorDecimator:
+    """Gom mẫu dày (IMU 50 Hz, áp suất 10 Hz) thành một điểm mỗi `period_ms` cho biểu đồ dashboard.
+
+    Mỗi điểm: (t giữa khoảng, trung bình x, lớn nhất x, trung bình y). Giữ cả LỚN NHẤT để đỉnh va chạm khi té
+    (~20 ms, vài g) không bị trung bình làm mất. y tùy chọn (vd độ lớn con quay); không có thì None.
+    Mẫu thuộc khoảng cũ hơn khoảng đang gom (gói tới trễ) bị bỏ: biểu đồ chỉ cần dữ liệu thời gian thực.
+    """
+
+    def __init__(self, period_ms: int = 200, maxlen: int = 600):
+        self.period = period_ms
+        self.points: deque[tuple] = deque(maxlen=maxlen)
+        self._key: int | None = None
+        self._n = 0
+        self._sx = self._sy = 0.0
+        self._mx = float("-inf")
+        self._has_y = False
+
+    def add(self, t: float, x: float, y: float | None = None) -> None:
+        key = int(t // self.period)
+        if self._key is not None and key < self._key:
+            return
+        if key != self._key:
+            self._flush()
+            self._key, self._n, self._sx, self._sy, self._mx, self._has_y = key, 0, 0.0, 0.0, float("-inf"), False
+        self._n += 1
+        self._sx += x
+        self._mx = max(self._mx, x)
+        if y is not None:
+            self._sy += y
+            self._has_y = True
+
+    def _flush(self) -> None:
+        if self._key is None or self._n == 0:
+            return
+        t = int(self._key * self.period + self.period // 2)
+        self.points.append((t, self._sx / self._n, self._mx, self._sy / self._n if self._has_y else None))
+        self._n = 0
+
+    def since(self, t: float, limit: int = 100) -> list[tuple]:
+        """Các điểm đã chốt có thời điểm > t (mới nhất `limit` điểm)."""
+        out = [p for p in self.points if p[0] > t]
+        return out[-limit:]
+
+    def window(self, t_from: float) -> list[tuple]:
+        return [p for p in self.points if p[0] >= t_from]
